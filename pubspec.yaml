@@ -71,6 +71,8 @@ dependencies:
   wakelock_plus: ^1.2.10
   collection: ^1.19.1
   crypto: 3.0.3
+  super_editor: ^0.3.0-dev.52
+  xml: ^7.1.0
 dev_dependencies:
   flutter_test:
     sdk: flutter

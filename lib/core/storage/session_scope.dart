@@ -15,6 +15,9 @@ import 'package:streakin/core/storage/app_database.dart';
 import 'package:streakin/features/habits/data/drift_habit_repository.dart';
 import 'package:streakin/features/habits/data/habit_dao.dart';
 import 'package:streakin/features/habits/application/habit_providers.dart';
+import 'package:streakin/features/notes/application/note_providers.dart';
+import 'package:streakin/features/notes/data/note_dao.dart';
+import 'package:streakin/features/notes/data/drift_note_repository.dart';
 
 class SessionScope extends ConsumerStatefulWidget {
   const SessionScope({required this.child, super.key});
@@ -41,6 +44,9 @@ class _SessionScopeState extends ConsumerState<SessionScope> {
     if (mounted) {
       try {
         ref.read(habitRepositoryStateProvider.notifier).clear();
+        ref.read(noteRepositoryStateProvider.notifier).clear();
+        ref.read(attachmentRepositoryStateProvider.notifier).clear();
+        ref.read(ftsRepositoryStateProvider.notifier).clear();
       } catch (_) {}
     }
     _db?.close();
@@ -68,6 +74,20 @@ class _SessionScopeState extends ConsumerState<SessionScope> {
 
       final repo = DriftHabitRepository(HabitDao(db));
       ref.read(habitRepositoryStateProvider.notifier).set(repo);
+
+      // ── Notes repositories ───────────────────────────────────────────────
+      final noteDao = NoteDao(db);
+      final ftsDao = NoteFtsDao(db);
+      final attachmentDao = AttachmentDao(db);
+      ref.read(noteRepositoryStateProvider.notifier).set(
+            DriftNoteRepository(noteDao, ftsDao),
+          );
+      ref.read(attachmentRepositoryStateProvider.notifier).set(
+            DriftAttachmentRepository(attachmentDao),
+          );
+      ref.read(ftsRepositoryStateProvider.notifier).set(
+            DriftFtsRepository(ftsDao),
+          );
 
       if (mounted) {
         setState(() {

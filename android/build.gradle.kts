@@ -5,6 +5,17 @@ allprojects {
     }
 }
 
+// Force all plugin subprojects to compileSdk 37.
+// Required by super_keyboard (via super_editor) and flutter_plugin_android_lifecycle.
+subprojects {
+    afterEvaluate {
+        if (extensions.findByName("android") != null) {
+            val android = extensions.getByType(com.android.build.gradle.BaseExtension::class)
+            android.compileSdkVersion(37)
+        }
+    }
+}
+
 val newBuildDir: Directory =
     rootProject.layout.buildDirectory
         .dir("../../build")
