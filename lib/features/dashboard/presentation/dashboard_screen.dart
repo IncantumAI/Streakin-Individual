@@ -5,6 +5,7 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:streakin/core/design/tokens.dart';
 import 'package:streakin/core/design/icons.dart';
 import 'package:streakin/core/time/local_date.dart';
@@ -13,6 +14,8 @@ import 'package:streakin/features/habits/domain/habit.dart';
 import 'package:streakin/features/habits/domain/habit_repository.dart';
 import 'package:streakin/features/habits/domain/streak_engine.dart';
 import 'package:streakin/features/habits/presentation/habit_form.dart';
+import 'package:streakin/features/notes/notes_module.dart'
+    show recentNotesProvider, pinnedNotesProvider;
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -34,7 +37,9 @@ class DashboardScreen extends ConsumerWidget {
           SizedBox(height: 12),
           _AtRiskHabitsCard(),
           SizedBox(height: 12),
-          _UpcomingCard(),
+          _RecentNotesCard(),
+          SizedBox(height: 12),
+          _PinnedNotesCard(),
           SizedBox(height: 12),
           _QuickActionsCard(),
           SizedBox(height: 24),
@@ -394,23 +399,151 @@ class _AtRiskHabitsCard extends ConsumerWidget {
   }
 }
 
-// ── Upcoming (stub — Phase 4) ─────────────────────────────────────────────────
+// ── Recent Notes ──────────────────────────────────────────────────────────────
 
-class _UpcomingCard extends StatelessWidget {
-  const _UpcomingCard();
+class _RecentNotesCard extends ConsumerWidget {
+  const _RecentNotesCard();
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.colors;
+    final recentAsync = ref.watch(recentNotesProvider(5));
+
     return _DashCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Upcoming',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: colors.text)),
+          Row(
+            children: [
+              Text('Recent Notes',
+                  style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: colors.text)),
+              const Spacer(),
+              GestureDetector(
+                onTap: () => context.go('/notes'),
+                child: Text('See all',
+                    style: TextStyle(fontSize: 13, color: colors.brand)),
+              ),
+            ],
+          ),
           const SizedBox(height: 12),
-          Text('Coming in Phase 4 — tasks & note events',
-              style: TextStyle(fontSize: 13, color: colors.textMuted)),
+          recentAsync.when(
+            loading: () => const Center(
+                child: SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2))),
+            error: (_, _) => Text('Could not load notes',
+                style: TextStyle(fontSize: 13, color: colors.textMuted)),
+            data: (notes) {
+              if (notes.isEmpty) {
+                return Text('No notes yet — tap Notes to create one.',
+                    style: TextStyle(fontSize: 13, color: colors.textMuted));
+              }
+              return Column(
+                children: notes
+                    .map((n) => _NoteRow(
+                          id: n.id,
+                          title: n.title,
+                          subtitle: _ago(n.updatedAt),
+                        ))
+                    .toList(),
+              );
+            },
+          ),
         ],
+      ),
+    );
+  }
+
+  String _ago(DateTime dt) {
+    final diff = DateTime.now().difference(dt);
+    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
+    if (diff.inHours < 24) return '${diff.inHours}h ago';
+    if (diff.inDays == 1) return 'Yesterday';
+    return '${dt.day}/${dt.month}/${dt.year}';
+  }
+}
+
+// ── Pinned Notes ──────────────────────────────────────────────────────────────
+
+class _PinnedNotesCard extends ConsumerWidget {
+  const _PinnedNotesCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.colors;
+    final pinnedAsync = ref.watch(pinnedNotesProvider);
+
+    return pinnedAsync.when(
+      loading: () => const SizedBox.shrink(),
+      error: (_, _) => const SizedBox.shrink(),
+      data: (notes) {
+        if (notes.isEmpty) return const SizedBox.shrink();
+        return _DashCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Pinned',
+                  style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: colors.text)),
+              const SizedBox(height: 12),
+              ...notes.map((n) => _NoteRow(id: n.id, title: n.title)),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+// ── Note row helper ───────────────────────────────────────────────────────────
+
+class _NoteRow extends StatelessWidget {
+  const _NoteRow({required this.id, required this.title, this.subtitle});
+  final String id;
+  final String title;
+  final String? subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return InkWell(
+      onTap: () => context.push('/notes/$id'),
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: Row(
+          children: [
+            Icon(Icons.article_outlined, size: 18, color: colors.textMuted),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title.isEmpty ? 'Untitled' : title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: colors.text),
+                  ),
+                  if (subtitle != null)
+                    Text(subtitle!,
+                        style: TextStyle(
+                            fontSize: 12, color: colors.textMuted)),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right, size: 18, color: colors.outline),
+          ],
+        ),
       ),
     );
   }

@@ -3,6 +3,7 @@
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:streakin/features/notes/application/folder_tree.dart';
 import 'package:streakin/features/notes/domain/attachment.dart';
 import 'package:streakin/features/notes/domain/folder.dart';
 import 'package:streakin/features/notes/domain/note.dart';
@@ -141,3 +142,43 @@ class _ActiveTagNotifier extends Notifier<String?> {
 
 final activeTagFilterProvider =
     NotifierProvider<_ActiveTagNotifier, String?>(_ActiveTagNotifier.new);
+
+// ── Folder sort mode (UI state) ───────────────────────────────────────────────
+
+class _FolderSortNotifier extends Notifier<FolderSortMode> {
+  @override
+  FolderSortMode build() => FolderSortMode.manual;
+  void set(FolderSortMode mode) => state = mode;
+}
+
+final folderSortModeProvider =
+    NotifierProvider<_FolderSortNotifier, FolderSortMode>(_FolderSortNotifier.new);
+
+// ── Expanded folder IDs (UI state) ────────────────────────────────────────────
+
+class _ExpandedFoldersNotifier extends Notifier<Set<String>> {
+  @override
+  Set<String> build() => {};
+
+  void toggle(String id) {
+    final current = Set<String>.from(state);
+    if (current.contains(id)) {
+      current.remove(id);
+    } else {
+      current.add(id);
+    }
+    state = current;
+  }
+
+  void expand(String id) {
+    if (!state.contains(id)) state = {...state, id};
+  }
+
+  void collapse(String id) {
+    if (state.contains(id)) state = state.difference({id});
+  }
+}
+
+final expandedFolderIdsProvider =
+    NotifierProvider<_ExpandedFoldersNotifier, Set<String>>(
+        _ExpandedFoldersNotifier.new);

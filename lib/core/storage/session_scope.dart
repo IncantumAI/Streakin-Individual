@@ -18,6 +18,10 @@ import 'package:streakin/features/habits/application/habit_providers.dart';
 import 'package:streakin/features/notes/application/note_providers.dart';
 import 'package:streakin/features/notes/data/note_dao.dart';
 import 'package:streakin/features/notes/data/drift_note_repository.dart';
+import 'package:streakin/features/notes/application/todo_bridge_impl.dart';
+import 'package:streakin/features/todos/application/todo_providers.dart';
+import 'package:streakin/features/todos/data/todo_dao.dart';
+import 'package:streakin/features/todos/data/drift_todo_repository.dart';
 
 class SessionScope extends ConsumerStatefulWidget {
   const SessionScope({required this.child, super.key});
@@ -47,6 +51,8 @@ class _SessionScopeState extends ConsumerState<SessionScope> {
         ref.read(noteRepositoryStateProvider.notifier).clear();
         ref.read(attachmentRepositoryStateProvider.notifier).clear();
         ref.read(ftsRepositoryStateProvider.notifier).clear();
+        ref.read(todoRepositoryStateProvider.notifier).clear();
+        ref.read(todoBridgeStateProvider.notifier).clear();
       } catch (_) {}
     }
     _db?.close();
@@ -87,6 +93,20 @@ class _SessionScopeState extends ConsumerState<SessionScope> {
           );
       ref.read(ftsRepositoryStateProvider.notifier).set(
             DriftFtsRepository(ftsDao),
+          );
+
+      // ── Todos repository ─────────────────────────────────────────────────
+      final todoDao = TodoDao(db);
+      final todoRepo = DriftTodoRepository(todoDao);
+      ref.read(todoRepositoryStateProvider.notifier).set(todoRepo);
+
+      // ── Todo bridge (notes ↔ todos) ──────────────────────────────────────
+      final noteRepoForBridge = DriftNoteRepository(noteDao, ftsDao);
+      ref.read(todoBridgeStateProvider.notifier).set(
+            TodoBridgeImpl(
+              noteRepo: noteRepoForBridge,
+              todoRepo: todoRepo,
+            ),
           );
 
       if (mounted) {

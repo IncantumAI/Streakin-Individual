@@ -10,6 +10,8 @@ import 'package:streakin/core/design/icons.dart';
 import 'package:streakin/core/time/local_date.dart';
 import 'package:streakin/features/habits/application/habit_providers.dart';
 import 'package:streakin/features/habits/domain/habit.dart';
+import 'package:streakin/features/notes/notes_module.dart'
+    show notesDateMentionsByDateProvider, noteRepositoryStateProvider;
 
 class CalendarScreen extends ConsumerStatefulWidget {
   const CalendarScreen({super.key});
@@ -28,6 +30,20 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
   Widget build(BuildContext context) {
     final colors = context.colors;
     _selectedDay ??= _focusedDay;
+
+    // Compute the visible month range for note markers.
+    final rangeStart = LocalDate(
+        _focusedDay.year, _focusedDay.month, 1);
+    final rangeEnd = LocalDate(
+        _focusedDay.year, _focusedDay.month,
+        _daysInMonth(_focusedDay.year, _focusedDay.month));
+    final range = DateRange(start: rangeStart, end: rangeEnd);
+
+    // Note date-mention markers (only loaded when Notes layer is toggled on).
+    final noteMentionsAsync = _showNotes
+        ? ref.watch(notesDateMentionsByDateProvider(range))
+        : null;
+    final noteMentions = noteMentionsAsync?.value ?? {};
 
     return Scaffold(
       backgroundColor: colors.bg,
@@ -83,7 +99,10 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                   color: colors.brand.withValues(alpha: 0.3), shape: BoxShape.circle),
             ),
             calendarBuilders: CalendarBuilders(
-              markerBuilder: _showHabits ? _buildHabitMarker : null,
+              markerBuilder: (_showHabits || _showNotes)
+                  ? (ctx, day, events) =>
+                      _buildMarkers(ctx, day, noteMentions, colors)
+                  : null,
             ),
           ),
           Expanded(
@@ -103,17 +122,52 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     return const SizedBox.shrink();
   }
 
+  Widget? _buildMarkers(
+    BuildContext context,
+    DateTime day,
+    Map<String, List<String>> noteMentions,
+    AppColorTokens colors,
+  ) {
+    final isoDate = LocalDate.fromDateTime(day).toIso();
+    final hasNoteMarker = noteMentions.containsKey(isoDate);
+    if (!hasNoteMarker) return null;
+
+    return Positioned(
+      bottom: 1,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (hasNoteMarker)
+            Container(
+              width: 5,
+              height: 5,
+              margin: const EdgeInsets.symmetric(horizontal: 1),
+              decoration: BoxDecoration(
+                color: colors.success,
+                shape: BoxShape.circle,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  static int _daysInMonth(int year, int month) {
+    return DateTime(year, month + 1, 0).day;
+  }
+
   void _showDaySheet(BuildContext context, LocalDate date) {
     showModalBottomSheet<void>(
       context: context,
-      builder: (_) => _DaySheet(date: date),
+      builder: (_) => _DaySheet(date: date, showNotes: _showNotes),
     );
   }
 }
 
 class _DaySheet extends ConsumerWidget {
-  const _DaySheet({required this.date});
+  const _DaySheet({required this.date, this.showNotes = false});
   final LocalDate date;
+  final bool showNotes;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -167,8 +221,10 @@ class _DaySheet extends ConsumerWidget {
                         },
                       )),
                 const SizedBox(height: 16),
-                Text('Tasks & note events — Phase 4',
-                    style: TextStyle(fontSize: 12, color: colors.textMuted)),
+                if (showNotes) _NoteDayEntries(date: date),
+                if (!showNotes)
+                  Text('Tasks & note events — Phase 4',
+                      style: TextStyle(fontSize: 12, color: colors.textMuted)),
               ],
             );
           },
@@ -177,6 +233,72 @@ class _DaySheet extends ConsumerWidget {
     );
   }
 }
+
+// ── Note day entries ──────────────────────────────────────────────────────────
+
+class _NoteDayEntries extends ConsumerWidget {
+  const _NoteDayEntries({required this.date});
+  final LocalDate date;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.colors;
+    final isoDate = date.toIso();
+    final monthRange = DateRange(
+      start: LocalDate(date.year, date.month, 1),
+      end: LocalDate(date.year, date.month,
+          DateTime(date.year, date.month + 1, 0).day),
+    );
+    final mentionsAsync = ref.watch(notesDateMentionsByDateProvider(monthRange));
+
+    return mentionsAsync.when(
+      loading: () => const SizedBox.shrink(),
+      error: (_, _) => const SizedBox.shrink(),
+      data: (map) {
+        final noteIds = map[isoDate] ?? [];
+        if (noteIds.isEmpty) return const SizedBox.shrink();
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Notes',
+                style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: colors.textMuted)),
+            const SizedBox(height: 4),
+            ...noteIds.map((id) => _NoteEntryTile(noteId: id)),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _NoteEntryTile extends ConsumerWidget {
+  const _NoteEntryTile({required this.noteId});
+  final String noteId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.colors;
+    final noteAsync = ref.watch(_noteTitleProvider(noteId));
+    final title = noteAsync.value ?? 'Note';
+    return ListTile(
+      dense: true,
+      leading: Icon(Icons.article_outlined, size: 18, color: colors.success),
+      title: Text(title, style: TextStyle(fontSize: 14, color: colors.text)),
+    );
+  }
+}
+
+// Scoped provider to fetch a single note title.
+final _noteTitleProvider = FutureProvider.family<String, String>((ref, noteId) async {
+  final repo = ref.watch(noteRepositoryStateProvider);
+  if (repo == null) return 'Note';
+  final note = await repo.getById(noteId);
+  if (note == null) return 'Note';
+  return note.title.isEmpty ? 'Untitled' : note.title;
+});
 
 class _LayerChip extends StatelessWidget {
   const _LayerChip(

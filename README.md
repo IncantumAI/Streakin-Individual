@@ -5,7 +5,7 @@
 
   <p>A private, calm, beautiful place to build habits and think in notes.</p>
 
-  <img src="https://img.shields.io/badge/version-0.1.0--alpha-blue" alt="version" />
+  <img src="https://img.shields.io/badge/version-1.0.0--alpha-blue" alt="version" />
   <img src="https://img.shields.io/badge/platform-Android%20%7C%20Windows%20%7C%20Linux-brightgreen" alt="platforms" />
   <img src="https://img.shields.io/badge/offline--first-yes-success" alt="offline-first" />
   <img src="https://img.shields.io/badge/telemetry-zero-lightgrey" alt="zero telemetry" />

@@ -7,6 +7,8 @@ import 'package:streakin/core/security/lock_controller.dart';
 import 'package:streakin/features/calendar/presentation/calendar_screen.dart';
 import 'package:streakin/features/dashboard/presentation/dashboard_screen.dart';
 import 'package:streakin/features/habits/presentation/habits_screen.dart';
+import 'package:streakin/features/notes/presentation/notes_screen.dart';
+import 'package:streakin/features/notes/presentation/note_editor_screen.dart';
 import 'package:streakin/features/onboarding/presentation/lock_screen.dart';
 import 'package:streakin/features/onboarding/presentation/onboarding_screen.dart';
 import 'package:streakin/features/settings/presentation/settings_screen.dart';
@@ -84,6 +86,13 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.settings,
         builder: (_, _) => const SettingsScreen(),
       ),
+      GoRoute(
+        path: '/notes/:noteId',
+        name: 'note-editor',
+        builder: (context, state) => NoteEditorScreen(
+          noteId: state.pathParameters['noteId']!,
+        ),
+      ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, shell) => SessionScope(child: AppShell(shell: shell)),
         branches: [
@@ -94,7 +103,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             GoRoute(path: AppRoutes.habits, builder: (_, _) => const HabitsScreen()),
           ]),
           StatefulShellBranch(routes: [
-            GoRoute(path: AppRoutes.notes, builder: (_, _) => const _NotesPlaceholder()),
+            GoRoute(path: AppRoutes.notes, builder: (_, _) => const NotesScreen()),
           ]),
           StatefulShellBranch(routes: [
             GoRoute(path: AppRoutes.calendar, builder: (_, _) => const CalendarScreen()),
@@ -117,13 +126,6 @@ class _SplashScreen extends StatelessWidget {
       body: Center(child: CircularProgressIndicator.adaptive()),
     );
   }
-}
-
-class _NotesPlaceholder extends StatelessWidget {
-  const _NotesPlaceholder();
-  @override
-  Widget build(BuildContext context) =>
-      const Scaffold(body: Center(child: Text('Notes — Phase 3')));
 }
 
 /// Listens to both LockController and onboardingDoneProvider so the
