@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:streakin/core/design/tokens.dart';
-import 'package:streakin/core/design/icons.dart';
 import 'package:streakin/features/habits/presentation/today_view.dart';
 import 'package:streakin/features/habits/presentation/week_view.dart';
 import 'package:streakin/features/habits/presentation/month_view.dart';
@@ -51,17 +50,17 @@ class _HabitsScreenState extends ConsumerState<HabitsScreen>
             Tab(text: 'Month'),
           ],
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(AppIcons.add),
-            tooltip: 'Add habit',
-            onPressed: () => HabitForm.show(context),
-          ),
-        ],
       ),
       body: TabBarView(
         controller: _tab,
         children: const [TodayView(), WeekView(), MonthView()],
+      ),
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: colors.brand,
+        foregroundColor: colors.onBrand,
+        onPressed: () => HabitForm.show(context),
+        tooltip: 'Add habit',
+        child: const Icon(Icons.add),
       ),
     );
   }

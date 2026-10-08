@@ -129,3 +129,28 @@ final onboardingDoneProvider = FutureProvider<bool>((ref) async {
   final prefs = await ref.watch(sharedPrefsProvider.future);
   return prefs.getBool(AppIdentifiers.prefOnboardingDone) ?? false;
 });
+
+// ── Biometric unlock enabled ──────────────────────────────────────────────────
+
+final biometricEnabledProvider =
+    NotifierProvider<BiometricEnabledNotifier, bool>(
+        BiometricEnabledNotifier.new);
+
+class BiometricEnabledNotifier extends Notifier<bool> {
+  @override
+  bool build() {
+    _load();
+    return false;
+  }
+
+  Future<void> _load() async {
+    final prefs = await ref.read(sharedPrefsProvider.future);
+    state = prefs.getBool(AppIdentifiers.prefBiometricEnabled) ?? false;
+  }
+
+  Future<void> set(bool enabled) async {
+    state = enabled;
+    final prefs = await ref.read(sharedPrefsProvider.future);
+    await prefs.setBool(AppIdentifiers.prefBiometricEnabled, enabled);
+  }
+}

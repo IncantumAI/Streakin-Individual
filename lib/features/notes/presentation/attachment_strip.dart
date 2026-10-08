@@ -2,7 +2,6 @@
 // Horizontal attachment gallery strip at the bottom of the note editor.
 // Tap to preview; long-press to delete.
 
-import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';

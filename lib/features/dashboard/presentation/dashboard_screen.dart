@@ -6,16 +6,22 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:uuid/uuid.dart';
 import 'package:streakin/core/design/tokens.dart';
 import 'package:streakin/core/design/icons.dart';
+import 'package:streakin/core/time/hlc.dart';
 import 'package:streakin/core/time/local_date.dart';
 import 'package:streakin/features/habits/application/habit_providers.dart';
 import 'package:streakin/features/habits/domain/habit.dart';
 import 'package:streakin/features/habits/domain/habit_repository.dart';
 import 'package:streakin/features/habits/domain/streak_engine.dart';
 import 'package:streakin/features/habits/presentation/habit_form.dart';
+import 'package:streakin/features/notes/application/note_providers.dart';
+import 'package:streakin/features/notes/domain/note.dart';
 import 'package:streakin/features/notes/notes_module.dart'
     show recentNotesProvider, pinnedNotesProvider;
+import 'package:streakin/features/todos/presentation/todos_screen.dart'
+    show showAddTaskSheet;
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -575,12 +581,12 @@ class _QuickActionsCard extends ConsumerWidget {
               _QuickAction(
                 icon: AppIcons.note,
                 label: 'New note',
-                onTap: () {}, // Phase 3
+                onTap: () => _quickCreateNote(context, ref),
               ),
               _QuickAction(
                 icon: AppIcons.todoCircle,
                 label: 'Add task',
-                onTap: () {}, // Phase 4
+                onTap: () => _showAddTaskSheet(context),
               ),
               _QuickAction(
                 icon: AppIcons.zen,
@@ -592,6 +598,46 @@ class _QuickActionsCard extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  Future<void> _quickCreateNote(BuildContext context, WidgetRef ref) async {
+    // Guard: repo may not be set yet (shouldn't happen inside SessionScope,
+    // but defensive against race conditions).
+    final repo = ref.read(noteRepositoryStateProvider);
+    if (repo == null) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Notes not ready yet. Please try again.')),
+        );
+      }
+      return;
+    }
+    try {
+      final now = DateTime.now();
+      final id = const Uuid().v4();
+      final note = Note(
+        id: id,
+        folderId: null,
+        title: '',
+        templateKind: NoteTemplateKind.blank,
+        body: '[]',
+        createdAt: now,
+        updatedAt: now,
+        hlc: Hlc.now().toIso(),
+      );
+      await repo.saveNote(note);
+      if (context.mounted) context.push('/notes/$id');
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to create note: $e')),
+        );
+      }
+    }
+  }
+
+  void _showAddTaskSheet(BuildContext context) {
+    showAddTaskSheet(context);
   }
 }
 
@@ -672,3 +718,5 @@ class _Chip extends StatelessWidget {
     );
   }
 }
+
+// ── Dashboard add-task sheet removed — now uses showAddTaskSheet() from todos_screen.dart

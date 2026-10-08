@@ -24,7 +24,73 @@ class FolderSidebar extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _SidebarHeader(onNewFolder: () => _createFolder(context, ref, null)),
+        // ── Header — uses DrawerHeader for proper system-bar clearance ──────
+        DrawerHeader(
+          padding: EdgeInsets.zero,
+          margin: EdgeInsets.zero,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [colors.brand, colors.brand.withAlpha(200)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+          child: SafeArea(
+            bottom: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.folder_special_outlined,
+                          color: colors.onBrand, size: 22),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Folders',
+                          style: TextStyle(
+                            color: colors.onBrand,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.3,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const Spacer(),
+                  // New folder button — at the bottom of the header, thumb-reachable
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () =>
+                          _createFolder(context, ref, null),
+                      icon: Icon(Icons.create_new_folder_outlined,
+                          size: 16, color: colors.onBrand),
+                      label: Text('New folder',
+                          style: TextStyle(
+                              color: colors.onBrand, fontSize: 13)),
+                      style: OutlinedButton.styleFrom(
+                        side: BorderSide(
+                            color: colors.onBrand.withAlpha(128),
+                            width: 1),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 8),
+                        alignment: Alignment.centerLeft,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8)),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+
+        // ── Folder list + tags ──────────────────────────────────────────────
         Expanded(
           child: foldersAsync.when(
             loading: () => const Center(
@@ -38,6 +104,12 @@ class FolderSidebar extends ConsumerWidget {
               ],
             ),
           ),
+        ),
+
+        // ── Safe area bottom padding (navigation bar) ───────────────────────
+        SafeArea(
+          top: false,
+          child: const SizedBox(height: 4),
         ),
       ],
     );
@@ -102,7 +174,7 @@ class _FolderTree extends ConsumerWidget {
               icon: Icons.inbox_outlined,
               isActive: activeId == null,
               depth: 0,
-              onTap: () => ref.read(activeFolderIdProvider.notifier).set(null),
+              onTap: () => _selectFolder(context, ref, null),
             ),
             const SizedBox(height: 8),
             Text('No folders yet.',
@@ -123,7 +195,7 @@ class _FolderTree extends ConsumerWidget {
             icon: Icons.inbox_outlined,
             isActive: activeId == null,
             depth: 0,
-            onTap: () => ref.read(activeFolderIdProvider.notifier).set(null),
+            onTap: () => _selectFolder(context, ref, null),
           );
         }
         final node = flat[i - 1];
@@ -139,9 +211,7 @@ class _FolderTree extends ConsumerWidget {
           depth: node.depth,
           hasChildren: node.children.isNotEmpty,
           isExpanded: isExpanded,
-          onTap: () {
-            ref.read(activeFolderIdProvider.notifier).set(folder.id);
-          },
+          onTap: () => _selectFolder(context, ref, folder.id),
           onToggleExpand: () {
             ref.read(expandedFolderIdsProvider.notifier).toggle(folder.id);
           },
@@ -166,6 +236,16 @@ class _FolderTree extends ConsumerWidget {
         ref: ref,
       ),
     );
+  }
+
+  /// Set the active folder and close the drawer if open (mobile layout).
+  void _selectFolder(BuildContext context, WidgetRef ref, String? folderId) {
+    ref.read(activeFolderIdProvider.notifier).set(folderId);
+    // Close drawer when running inside a Scaffold with a drawer (mobile).
+    final scaffold = Scaffold.maybeOf(context);
+    if (scaffold != null && scaffold.isDrawerOpen) {
+      Navigator.of(context).pop();
+    }
   }
 }
 
@@ -202,13 +282,23 @@ class _FolderTile extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       onLongPress: onLongPress,
+      borderRadius: BorderRadius.circular(8),
       child: Container(
-        color: isActive ? colors.brand.withValues(alpha: 0.1) : null,
-        padding: EdgeInsets.only(
-          left: 12.0 + depth * 16.0,
+        margin: EdgeInsets.only(
+          left: 8.0 + depth * 14.0,
           right: 8,
-          top: 8,
-          bottom: 8,
+          top: 2,
+          bottom: 2,
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+        decoration: BoxDecoration(
+          color: isActive
+              ? colors.brand.withAlpha(20)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+          border: isActive
+              ? Border.all(color: colors.brand.withAlpha(60), width: 1)
+              : null,
         ),
         child: Row(
           children: [
@@ -223,7 +313,7 @@ class _FolderTile extends StatelessWidget {
                         ? Icons.keyboard_arrow_down
                         : Icons.keyboard_arrow_right,
                     size: 16,
-                    color: colors.textMuted,
+                    color: isActive ? colors.brand : colors.textMuted,
                   ),
                 ),
               )
@@ -250,40 +340,6 @@ class _FolderTile extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-// ── Sidebar header ────────────────────────────────────────────────────────────
-
-class _SidebarHeader extends StatelessWidget {
-  const _SidebarHeader({required this.onNewFolder});
-  final VoidCallback onNewFolder;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 12, 8, 4),
-      child: Row(
-        children: [
-          Text('Folders',
-              style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: colors.textMuted,
-                  letterSpacing: 0.5)),
-          const Spacer(),
-          InkWell(
-            onTap: onNewFolder,
-            borderRadius: BorderRadius.circular(6),
-            child: Padding(
-              padding: const EdgeInsets.all(4),
-              child: Icon(Icons.add, size: 18, color: colors.textMuted),
-            ),
-          ),
-        ],
       ),
     );
   }

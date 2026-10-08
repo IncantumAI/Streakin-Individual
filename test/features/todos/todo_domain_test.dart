@@ -120,22 +120,22 @@ void main() {
 
     test('isDueOn matches exact date', () {
       final t = _todo(dueDate: '2026-10-10');
-      expect(t.isDueOn(LocalDate(2026, 10, 10)), isTrue);
-      expect(t.isDueOn(LocalDate(2026, 10, 11)), isFalse);
+      expect(t.isDueOn(const LocalDate(2026, 10, 10)), isTrue);
+      expect(t.isDueOn(const LocalDate(2026, 10, 11)), isFalse);
     });
 
     test('isOverdue: past due date and pending', () {
       final t = _todo(dueDate: '2020-01-01');
-      expect(t.isOverdue(LocalDate(2026, 10, 7)), isTrue);
+      expect(t.isOverdue(const LocalDate(2026, 10, 7)), isTrue);
     });
 
     test('isOverdue: false when done', () {
       final t = _todo(dueDate: '2020-01-01', status: TodoStatus.done);
-      expect(t.isOverdue(LocalDate(2026, 10, 7)), isFalse);
+      expect(t.isOverdue(const LocalDate(2026, 10, 7)), isFalse);
     });
 
     test('isOverdue: false when no due date', () {
-      expect(_todo().isOverdue(LocalDate(2026, 10, 7)), isFalse);
+      expect(_todo().isOverdue(const LocalDate(2026, 10, 7)), isFalse);
     });
 
     test('isOverdue: false when due date is today', () {
@@ -324,7 +324,7 @@ void main() {
     // ── priority ordering ─────────────────────────────────────────────────
 
     test('high priority task appears before none in watchAnytime', () async {
-      final low = _todo(id: 'low', title: 'Low', priority: TodoPriority.none);
+      final low = _todo(id: 'low', title: 'Low');
       final high =
           _todo(id: 'high', title: 'High', priority: TodoPriority.high);
       await repo.save(low);
@@ -375,11 +375,11 @@ void main() {
     tearDown(() => db.close());
 
     test('task with due date in range produces CalendarEntry', () async {
-      final target = LocalDate(2026, 10, 15);
+      const target = LocalDate(2026, 10, 15);
       final t = _todo(dueDate: target.toIso(), title: 'Meeting');
       await repo.save(t);
 
-      final range = DateRange(
+      const range = DateRange(
         start: LocalDate(2026, 10, 1),
         end: LocalDate(2026, 10, 31),
       );
@@ -395,11 +395,11 @@ void main() {
     });
 
     test('task outside range not selected by range contains check', () {
-      final range = DateRange(
+      const range = DateRange(
         start: LocalDate(2026, 10, 1),
         end: LocalDate(2026, 10, 31),
       );
-      expect(range.contains(LocalDate(2026, 11, 1)), isFalse);
+      expect(range.contains(const LocalDate(2026, 11, 1)), isFalse);
     });
 
     test('high priority entry gets danger color marker', () {
@@ -449,7 +449,7 @@ void main() {
     test('unflagged task completed → flagged-done count unchanged', () async {
       final today = LocalDate.today().toIso();
       final flagged = _todo(dueDate: today, countsForLockin: true);
-      final unflagged = _todo(dueDate: today, countsForLockin: false);
+      final unflagged = _todo(dueDate: today);
       await repo.save(flagged);
       await repo.save(unflagged);
       await repo.complete(unflagged.id);
@@ -465,7 +465,7 @@ void main() {
       // With countTodosForLockIn = false, the lock-in service ignores todos.
       // This is enforced at the use-case layer (Phase 4 settings),
       // but we verify that flagged field itself is stored.
-      final t = _todo(countsForLockin: false);
+      final t = _todo();
       await repo.save(t);
       final fetched = await repo.getById(t.id);
       expect(fetched?.countsForLockin, isFalse);

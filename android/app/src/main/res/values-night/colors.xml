@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="ic_launcher_background">#00000000</color>
+    <!-- Brand purple used for native splash background (dark mode) -->
+    <color name="splash_brand_purple">#4A3A9A</color>
+</resources>

@@ -57,6 +57,9 @@ class AppIdentifiers {
   /// Haptics enabled: bool as string 'true'/'false'.
   static const String prefHapticsEnabled = 'core.haptics';
 
+  /// Whether biometric unlock is enabled (default false).
+  static const String prefBiometricEnabled = 'core.biometric_enabled';
+
   /// Whether to count to-dos toward daily lock-in (default false).
   static const String prefCountTodosForLockIn = 'core.todos_lockin';
 

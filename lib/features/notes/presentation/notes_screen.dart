@@ -31,21 +31,22 @@ class NotesScreen extends ConsumerWidget {
       );
     }
 
+    final colors = context.colors;
     return Scaffold(
       drawer: const Drawer(child: FolderSidebar()),
       appBar: AppBar(
         title: const Text('Notes'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.add),
-            tooltip: 'New note',
-            onPressed: () => _showTemplatePicker(context, ref),
-          ),
-        ],
       ),
       body: _NoteListPane(
         onNewNote: () => _showTemplatePicker(context, ref),
         showAppBar: false,
+      ),
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: colors.brand,
+        foregroundColor: colors.onBrand,
+        onPressed: () => _showTemplatePicker(context, ref),
+        tooltip: 'New note',
+        child: const Icon(Icons.add),
       ),
     );
   }

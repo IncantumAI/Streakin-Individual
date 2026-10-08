@@ -204,51 +204,67 @@ class AttachmentDao extends DatabaseAccessor<AppDatabase>
 // ── NoteFtsDao ────────────────────────────────────────────────────────────────
 
 /// Raw FTS5 operations via customStatement / customSelect.
+/// All methods are guarded — if the note_fts virtual table doesn't exist
+/// (e.g. on an existing install that predates the migration), operations
+/// fail silently rather than crashing saveNote.
 class NoteFtsDao {
   NoteFtsDao(this._db);
   final AppDatabase _db;
 
   Future<void> index(String noteId, String title, String plainText) async {
-    // Delete existing entry first (re-index support).
-    await _db.customStatement(
-      'DELETE FROM note_fts WHERE rowid = (SELECT rowid FROM notes WHERE id = ?)',
-      [noteId],
-    );
-    await _db.customStatement(
-      'INSERT INTO note_fts(rowid, title, plain_text) '
-      'SELECT rowid, ?, ? FROM notes WHERE id = ?',
-      [title, plainText, noteId],
-    );
+    try {
+      // Delete existing entry first (re-index support).
+      await _db.customStatement(
+        'DELETE FROM note_fts WHERE rowid = (SELECT rowid FROM notes WHERE id = ?)',
+        [noteId],
+      );
+      await _db.customStatement(
+        'INSERT INTO note_fts(rowid, title, plain_text) '
+        'SELECT rowid, ?, ? FROM notes WHERE id = ?',
+        [title, plainText, noteId],
+      );
+    } catch (_) {
+      // FTS table may not exist yet — non-fatal. Search will be unavailable
+      // until next app restart which will run beforeOpen and create the table.
+    }
   }
 
   Future<void> remove(String noteId) async {
-    await _db.customStatement(
-      'DELETE FROM note_fts WHERE rowid = (SELECT rowid FROM notes WHERE id = ?)',
-      [noteId],
-    );
+    try {
+      await _db.customStatement(
+        'DELETE FROM note_fts WHERE rowid = (SELECT rowid FROM notes WHERE id = ?)',
+        [noteId],
+      );
+    } catch (_) {
+      // FTS table may not exist — non-fatal.
+    }
   }
 
   Future<List<Map<String, dynamic>>> search(
     String query, {
     String? folderId,
   }) async {
-    final q = '${query.trim()}*';
-    final variables = <Variable<Object>>[
-      Variable.withString(q),
-      if (folderId != null) Variable.withString(folderId),
-    ];
-    final rows = await _db.customSelect(
-      'SELECT n.id, n.title, snippet(note_fts, 1, "**", "**", "…", 20) AS snip, '
-      'note_fts.rank AS rank '
-      'FROM note_fts '
-      'JOIN notes n ON note_fts.rowid = n.rowid '
-      'WHERE note_fts MATCH ? '
-      '${folderId != null ? "AND n.folder_id = ? " : ""}'
-      'AND n.deleted_at IS NULL '
-      'ORDER BY note_fts.rank '
-      'LIMIT 50',
-      variables: variables,
-    ).get();
-    return rows.map((r) => r.data).toList();
+    try {
+      final q = '${query.trim()}*';
+      final variables = <Variable<Object>>[
+        Variable.withString(q),
+        if (folderId != null) Variable.withString(folderId),
+      ];
+      final rows = await _db.customSelect(
+        'SELECT n.id, n.title, snippet(note_fts, 1, "**", "**", "…", 20) AS snip, '
+        'note_fts.rank AS rank '
+        'FROM note_fts '
+        'JOIN notes n ON note_fts.rowid = n.rowid '
+        'WHERE note_fts MATCH ? '
+        '${folderId != null ? "AND n.folder_id = ? " : ""}'
+        'AND n.deleted_at IS NULL '
+        'ORDER BY note_fts.rank '
+        'LIMIT 50',
+        variables: variables,
+      ).get();
+      return rows.map((r) => r.data).toList();
+    } catch (_) {
+      return [];
+    }
   }
 }

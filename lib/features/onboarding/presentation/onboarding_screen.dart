@@ -4,6 +4,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:local_auth/local_auth.dart';
 
 import 'package:streakin/core/design/tokens.dart';
 import 'package:streakin/core/design/icons.dart';
@@ -218,7 +219,7 @@ class _ThemeOption extends ConsumerWidget {
 
 // ── Step 2: Lock setup ────────────────────────────────────────────────────────
 
-class _Step2Lock extends StatelessWidget {
+class _Step2Lock extends ConsumerStatefulWidget {
   const _Step2Lock({
     required this.pwController,
     required this.pwConfirmController,
@@ -237,8 +238,33 @@ class _Step2Lock extends StatelessWidget {
   final VoidCallback onNext;
 
   @override
+  ConsumerState<_Step2Lock> createState() => _Step2LockState();
+}
+
+class _Step2LockState extends ConsumerState<_Step2Lock> {
+  bool _biometricAvailable = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkBiometric();
+  }
+
+  Future<void> _checkBiometric() async {
+    try {
+      final auth = LocalAuthentication();
+      final canCheck = await auth.canCheckBiometrics;
+      final isSupported = await auth.isDeviceSupported();
+      if (mounted) setState(() => _biometricAvailable = canCheck && isSupported);
+    } catch (_) {
+      // Device doesn't support biometrics — hide the option.
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final biometricEnabled = ref.watch(biometricEnabledProvider);
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
       child: Column(
@@ -250,34 +276,58 @@ class _Step2Lock extends StatelessWidget {
               style: TextStyle(color: colors.textMuted)),
           const SizedBox(height: 32),
           TextField(
-            controller: pwController,
-            obscureText: !pwVisible,
+            controller: widget.pwController,
+            obscureText: !widget.pwVisible,
             textInputAction: TextInputAction.next,
             decoration: InputDecoration(
               labelText: 'Password',
               suffixIcon: IconButton(
-                icon: Icon(pwVisible ? AppIcons.lockOpen : AppIcons.lock),
-                onPressed: onToggleVisible,
+                icon: Icon(widget.pwVisible ? Icons.visibility : Icons.visibility_off),
+                onPressed: widget.onToggleVisible,
               ),
             ),
           ),
           const SizedBox(height: 16),
           TextField(
-            controller: pwConfirmController,
-            obscureText: !pwVisible,
+            controller: widget.pwConfirmController,
+            obscureText: !widget.pwVisible,
             textInputAction: TextInputAction.done,
             decoration: const InputDecoration(labelText: 'Confirm password'),
           ),
-          if (pwError != null) ...[
+          if (widget.pwError != null) ...[
             const SizedBox(height: 8),
-            Text(pwError!, style: TextStyle(color: colors.danger, fontSize: 13)),
+            Text(widget.pwError!, style: TextStyle(color: colors.danger, fontSize: 13)),
+          ],
+          if (_biometricAvailable) ...[
+            const SizedBox(height: 24),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              decoration: BoxDecoration(
+                color: colors.surfaceAlt,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: colors.outline),
+              ),
+              child: SwitchListTile.adaptive(
+                contentPadding: EdgeInsets.zero,
+                value: biometricEnabled,
+                activeColor: colors.brand,
+                onChanged: (v) =>
+                    ref.read(biometricEnabledProvider.notifier).set(v),
+                title: Text('Enable biometric unlock',
+                    style: TextStyle(color: colors.text, fontSize: 14)),
+                subtitle: Text(
+                    'Use fingerprint or face ID to unlock after password is set.',
+                    style: TextStyle(color: colors.textMuted, fontSize: 12)),
+                secondary: Icon(Icons.fingerprint, color: colors.brand),
+              ),
+            ),
           ],
           const SizedBox(height: 40),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: settingUp ? null : onNext,
-              child: settingUp
+              onPressed: widget.settingUp ? null : widget.onNext,
+              child: widget.settingUp
                   ? const SizedBox(height: 20, width: 20,
                       child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                   : const Text('Set password & continue'),

@@ -30,10 +30,9 @@ import 'package:streakin/features/todos/domain/todo_repository.dart';
 
 class TodoBridgeImpl implements TodoBridge {
   TodoBridgeImpl({
-    required NoteRepository noteRepo,
-    required TodoRepository todoRepo,
-  })  : _noteRepo = noteRepo,
-        _todoRepo = todoRepo;
+    required this._noteRepo,
+    required this._todoRepo,
+  });
 
   final NoteRepository _noteRepo;
   final TodoRepository _todoRepo;

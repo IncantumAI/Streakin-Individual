@@ -47,6 +47,10 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    // Dismiss keyboard before tearing down the editor to avoid
+    // super_editor's SoftwareKeyboardController trying to detach from a
+    // defunct widget (FlutterError on back navigation).
+    FocusManager.instance.primaryFocus?.unfocus();
     _autosave?.saveNow(); // Save on navigate away.
     _titleController.dispose();
     _editorController?.dispose();

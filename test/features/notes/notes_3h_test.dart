@@ -8,7 +8,6 @@ import 'package:streakin/core/time/local_date.dart';
 import 'package:streakin/features/calendar/domain/calendar_source.dart';
 import 'package:streakin/features/notes/application/notes_calendar_source.dart';
 import 'package:streakin/features/notes/application/notes_dashboard_provider.dart';
-import 'package:streakin/features/notes/domain/dashboard_section_provider.dart';
 import 'package:streakin/features/notes/domain/folder.dart';
 import 'package:streakin/features/notes/domain/note.dart';
 import 'package:streakin/features/notes/domain/note_document.dart';
@@ -74,8 +73,8 @@ void main() {
 
       final source = NotesCalendarSource(repo);
       const range = DateRange(
-        start: const LocalDate(2026, 10, 1),
-        end: const LocalDate(2026, 10, 31),
+        start: LocalDate(2026, 10, 1),
+        end: LocalDate(2026, 10, 31),
       );
 
       final entries = await source.watch(range).first;
@@ -88,15 +87,15 @@ void main() {
     });
 
     test('Returns empty list when note has no @date mentions', () async {
-      final note = _note(body: '[]');
+      final note = _note();
 
       when(() => repo.watchFolders()).thenAnswer((_) => Stream.value([]));
       when(() => repo.watchFolder(null)).thenAnswer((_) => Stream.value([note]));
 
       final source = NotesCalendarSource(repo);
       const range = DateRange(
-        start: const LocalDate(2026, 10, 1),
-        end: const LocalDate(2026, 10, 31),
+        start: LocalDate(2026, 10, 1),
+        end: LocalDate(2026, 10, 31),
       );
 
       final entries = await source.watch(range).first;
@@ -111,8 +110,8 @@ void main() {
 
       final source = NotesCalendarSource(repo);
       const range = DateRange(
-        start: const LocalDate(2026, 10, 1),
-        end: const LocalDate(2026, 10, 31),
+        start: LocalDate(2026, 10, 1),
+        end: LocalDate(2026, 10, 31),
       );
 
       final entries = await source.watch(range).first;
@@ -135,8 +134,8 @@ void main() {
 
       final source = NotesCalendarSource(repo);
       const range = DateRange(
-        start: const LocalDate(2026, 10, 1),
-        end: const LocalDate(2026, 10, 31),
+        start: LocalDate(2026, 10, 1),
+        end: LocalDate(2026, 10, 31),
       );
 
       final entries = await source.watch(range).first;
@@ -151,8 +150,8 @@ void main() {
 
       final source = NotesCalendarSource(repo);
       const range = DateRange(
-        start: const LocalDate(2026, 10, 1),
-        end: const LocalDate(2026, 10, 31),
+        start: LocalDate(2026, 10, 1),
+        end: LocalDate(2026, 10, 31),
       );
 
       final entries = await source.watch(range).first;
@@ -173,8 +172,8 @@ void main() {
 
       final source = NotesCalendarSource(repo);
       const range = DateRange(
-        start: const LocalDate(2026, 10, 1),
-        end: const LocalDate(2026, 10, 31),
+        start: LocalDate(2026, 10, 1),
+        end: LocalDate(2026, 10, 31),
       );
 
       final entries = await source.watch(range).first;
@@ -196,8 +195,8 @@ void main() {
 
       final source = NotesCalendarSource(repo);
       const range = DateRange(
-        start: const LocalDate(2026, 10, 1),
-        end: const LocalDate(2026, 10, 31),
+        start: LocalDate(2026, 10, 1),
+        end: LocalDate(2026, 10, 31),
       );
 
       final entries = await source.watch(range).first;

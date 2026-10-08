@@ -44,6 +44,8 @@ class AppIcons {
   static const lock = Icons.lock_outline;
   static const lockOpen = Icons.lock_open_outlined;
   static const lockFill = Icons.lock;
+  static const eye = Icons.visibility_outlined;
+  static const eyeOff = Icons.visibility_off_outlined;
   static const export_ = Icons.upload_outlined;
   static const import_ = Icons.download_outlined;
   static const share = Icons.share_outlined;

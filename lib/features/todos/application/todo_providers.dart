@@ -5,7 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
 import 'package:streakin/core/time/hlc.dart';
-import 'package:streakin/core/time/local_date.dart';
 import 'package:streakin/features/todos/domain/todo.dart';
 import 'package:streakin/features/todos/domain/todo_repository.dart';
 
@@ -35,24 +34,36 @@ final todoRepositoryProvider = Provider<TodoRepository>((ref) {
 
 // ── Streams ───────────────────────────────────────────────────────────────
 
+bool _isSqliteError(dynamic e) =>
+    e.toString().contains('SqliteException') ||
+    e.toString().contains('database_closed');
+
 final todosTodayProvider = StreamProvider<List<Todo>>((ref) {
-  final repo = ref.watch(todoRepositoryProvider);
-  return repo.watchToday();
+  final repo = ref.watch(todoRepositoryStateProvider);
+  if (repo == null) return const Stream.empty();
+  return repo.watchToday().handleError(
+      (_) => <Todo>[], test: _isSqliteError);
 });
 
 final todosUpcomingProvider = StreamProvider<List<Todo>>((ref) {
-  final repo = ref.watch(todoRepositoryProvider);
-  return repo.watchUpcoming();
+  final repo = ref.watch(todoRepositoryStateProvider);
+  if (repo == null) return const Stream.empty();
+  return repo.watchUpcoming().handleError(
+      (_) => <Todo>[], test: _isSqliteError);
 });
 
 final todosAnytimeProvider = StreamProvider<List<Todo>>((ref) {
-  final repo = ref.watch(todoRepositoryProvider);
-  return repo.watchAnytime();
+  final repo = ref.watch(todoRepositoryStateProvider);
+  if (repo == null) return const Stream.empty();
+  return repo.watchAnytime().handleError(
+      (_) => <Todo>[], test: _isSqliteError);
 });
 
 final todosDoneProvider = StreamProvider<List<Todo>>((ref) {
-  final repo = ref.watch(todoRepositoryProvider);
-  return repo.watchDone();
+  final repo = ref.watch(todoRepositoryStateProvider);
+  if (repo == null) return const Stream.empty();
+  return repo.watchDone().handleError(
+      (_) => <Todo>[], test: _isSqliteError);
 });
 
 // ── Use-cases ─────────────────────────────────────────────────────────────

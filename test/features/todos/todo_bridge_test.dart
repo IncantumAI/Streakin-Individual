@@ -5,7 +5,6 @@
 // FTS indexing is stubbed — the bridge only reads/writes note body JSON,
 // not the FTS5 virtual table (which requires SQLCipher to be linked).
 
-import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:streakin/core/storage/app_database.dart' show AppDatabase;
@@ -126,7 +125,7 @@ void main() {
 
   group('promoteCheckbox', () {
     test('creates Todo with correct sourceNoteId and sourceBlockId', () async {
-      final (note, blockId) = _noteWithTask(taskText: 'Buy milk');
+      final (note, blockId) = _noteWithTask();
       await noteRepo.saveNote(note);
       await bridge.promoteCheckbox(note.id, blockId, 'Buy milk');
 

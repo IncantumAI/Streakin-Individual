@@ -3,7 +3,6 @@
 // re-encode (main isolate, images only) → encrypt → save.
 // Spec §9.
 
-import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart';
 import 'package:file_picker/file_picker.dart';

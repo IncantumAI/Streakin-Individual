@@ -45,17 +45,26 @@ class _SessionScopeState extends ConsumerState<SessionScope> {
 
   @override
   void dispose() {
-    if (mounted) {
-      try {
-        ref.read(habitRepositoryStateProvider.notifier).clear();
-        ref.read(noteRepositoryStateProvider.notifier).clear();
-        ref.read(attachmentRepositoryStateProvider.notifier).clear();
-        ref.read(ftsRepositoryStateProvider.notifier).clear();
-        ref.read(todoRepositoryStateProvider.notifier).clear();
-        ref.read(todoBridgeStateProvider.notifier).clear();
-      } catch (_) {}
+    // 1. Clear all repository providers first. This causes Riverpod to
+    //    invalidate dependent stream providers, which cancels their
+    //    subscriptions on the next microtask.
+    try {
+      ref.read(habitRepositoryStateProvider.notifier).clear();
+      ref.read(noteRepositoryStateProvider.notifier).clear();
+      ref.read(attachmentRepositoryStateProvider.notifier).clear();
+      ref.read(ftsRepositoryStateProvider.notifier).clear();
+      ref.read(todoRepositoryStateProvider.notifier).clear();
+      ref.read(todoBridgeStateProvider.notifier).clear();
+    } catch (_) {}
+
+    // 2. Defer DB close to the next event-loop iteration so that any
+    //    in-flight stream listeners have a chance to receive cancellation
+    //    before the underlying SQLite connection is torn down.
+    //    This prevents SqliteException zone errors on app lock/exit.
+    final db = _db;
+    if (db != null) {
+      Future.microtask(db.close);
     }
-    _db?.close();
     super.dispose();
   }
 

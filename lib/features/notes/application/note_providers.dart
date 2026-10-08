@@ -68,49 +68,79 @@ final ftsRepositoryStateProvider =
 
 final notesInFolderProvider =
     StreamProvider.family<List<Note>, String?>((ref, folderId) {
-  final repo = ref.watch(noteRepositoryProvider);
-  return repo.watchFolder(folderId);
+  final repo = ref.watch(noteRepositoryStateProvider);
+  if (repo == null) return const Stream.empty();
+  return repo.watchFolder(folderId).handleError(
+      (_) => <Note>[],
+      test: (e) => e.toString().contains('SqliteException') ||
+          e.toString().contains('database_closed'));
 });
 
 // ── Single note ───────────────────────────────────────────────────────────────
 
 final noteProvider = StreamProvider.family<Note?, String>((ref, id) {
-  final repo = ref.watch(noteRepositoryProvider);
-  return repo.watchNote(id);
+  final repo = ref.watch(noteRepositoryStateProvider);
+  if (repo == null) return const Stream.empty();
+  // Handle SqliteException gracefully — repo may be cleared mid-stream
+  // when SessionScope disposes (lock/sign-out). Return null instead of
+  // letting the exception escape to the root zone.
+  return repo.watchNote(id).handleError((e) => null,
+      test: (e) => e.toString().contains('SqliteException') ||
+          e.toString().contains('database_closed'));
 });
 
 // ── Folder tree ───────────────────────────────────────────────────────────────
 
 final foldersProvider = StreamProvider<List<Folder>>((ref) {
-  final repo = ref.watch(noteRepositoryProvider);
-  return repo.watchFolders();
+  final repo = ref.watch(noteRepositoryStateProvider);
+  if (repo == null) return const Stream.empty();
+  return repo.watchFolders().handleError(
+      (_) => <Folder>[],
+      test: (e) => e.toString().contains('SqliteException') ||
+          e.toString().contains('database_closed'));
 });
 
 // ── Tags ──────────────────────────────────────────────────────────────────────
 
 final allTagsProvider = StreamProvider<List<String>>((ref) {
-  final repo = ref.watch(noteRepositoryProvider);
-  return repo.watchTags();
+  final repo = ref.watch(noteRepositoryStateProvider);
+  if (repo == null) return const Stream.empty();
+  return repo.watchTags().handleError(
+      (_) => <String>[],
+      test: (e) => e.toString().contains('SqliteException') ||
+          e.toString().contains('database_closed'));
 });
 
 final notesByTagProvider =
     StreamProvider.family<List<Note>, String>((ref, tag) {
-  final repo = ref.watch(noteRepositoryProvider);
-  return repo.watchNotesByTag(tag);
+  final repo = ref.watch(noteRepositoryStateProvider);
+  if (repo == null) return const Stream.empty();
+  return repo.watchNotesByTag(tag).handleError(
+      (_) => <Note>[],
+      test: (e) => e.toString().contains('SqliteException') ||
+          e.toString().contains('database_closed'));
 });
 
 // ── Backlinks ─────────────────────────────────────────────────────────────────
 
 final backlinksProvider =
     StreamProvider.family<List<Note>, String>((ref, noteId) {
-  final repo = ref.watch(noteRepositoryProvider);
-  return repo.watchBacklinks(noteId);
+  final repo = ref.watch(noteRepositoryStateProvider);
+  if (repo == null) return const Stream.empty();
+  return repo.watchBacklinks(noteId).handleError(
+      (_) => <Note>[],
+      test: (e) => e.toString().contains('SqliteException') ||
+          e.toString().contains('database_closed'));
 });
 
 final outgoingLinksProvider =
     StreamProvider.family<List<Note>, String>((ref, noteId) {
-  final repo = ref.watch(noteRepositoryProvider);
-  return repo.watchOutgoingLinks(noteId);
+  final repo = ref.watch(noteRepositoryStateProvider);
+  if (repo == null) return const Stream.empty();
+  return repo.watchOutgoingLinks(noteId).handleError(
+      (_) => <Note>[],
+      test: (e) => e.toString().contains('SqliteException') ||
+          e.toString().contains('database_closed'));
 });
 
 // ── Attachments for a note ────────────────────────────────────────────────────

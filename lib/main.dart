@@ -3,6 +3,7 @@
 
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -21,6 +22,13 @@ void main() {
 
       // Initialise logging before anything else.
       AppLogger.init(verbose: _flavor != 'prod');
+
+      // Silence super_editor's extremely verbose infrastructure loggers
+      // (content_layers, editor.ime etc.) even in debug builds.
+      if (kDebugMode) {
+        Logger('infrastructure').level = Level.WARNING;
+        Logger('editor').level = Level.WARNING;
+      }
 
       // Apply SQLCipher Android workaround before any DB operations.
       await initSqlCipherOnAndroid();

@@ -231,7 +231,7 @@ class _TodoTile extends ConsumerWidget {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Task deleted'),
+              content: const Text('Task deleted'),
               duration: const Duration(seconds: 10),
               action: SnackBarAction(
                 label: 'Undo',
@@ -782,4 +782,15 @@ class _EmptyState extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Public helper — shows the full Add Task sheet from anywhere in the app.
+/// Used by the Dashboard quick action.
+void showAddTaskSheet(BuildContext context, {Todo? existing}) {
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (_) => _TaskFormSheet(existing: existing),
+  );
 }

@@ -1,6 +1,9 @@
 // lib/core/logging/app_logger.dart
 // Spec §14: package:logging with redacting sink.
+// Production: all logging suppressed (Level.OFF). No console output.
+// Debug: Level.ALL with redaction.
 
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:logging/logging.dart';
 
 export 'package:logging/logging.dart' show Logger, Level;
@@ -13,6 +16,16 @@ class AppLogger {
     if (_initialised) return;
     _initialised = true;
     hierarchicalLoggingEnabled = true;
+
+    if (!kDebugMode) {
+      // Production: suppress ALL logging — no console output whatsoever.
+      // Only SEVERE errors are kept, routed through the zone error handler
+      // in main.dart, not printed.
+      Logger.root.level = Level.OFF;
+      return;
+    }
+
+    // Debug builds: log everything; redact sensitive values.
     Logger.root.level = verbose ? Level.ALL : Level.WARNING;
     Logger.root.onRecord.listen(RedactorSink._handle);
   }
@@ -23,7 +36,6 @@ class AppLogger {
 class RedactorSink {
   RedactorSink._();
 
-  // Dart RegExp does not support (?i) inline flags — use caseSensitive: false.
   static final _sensitivePatterns = <RegExp>[
     RegExp(r'password\s*[=:]\s*\S+', caseSensitive: false),
     RegExp(r'key\s*[=:]\s*[0-9a-fA-F]{8,}', caseSensitive: false),
@@ -33,6 +45,7 @@ class RedactorSink {
   ];
 
   static void _handle(LogRecord record) {
+    if (!kDebugMode) return; // Extra guard — should not reach here in prod.
     final cleaned = _redact(record.message);
     final output = '[${record.level.name}][${record.loggerName}] $cleaned';
     // ignore: avoid_print

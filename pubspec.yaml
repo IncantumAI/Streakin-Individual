@@ -104,6 +104,10 @@ flutter_launcher_icons:
   ios: false
   image_path: "assets/icon.png"
   min_sdk_android: 24
+  # Adaptive icon config — #00000000 (fully transparent) background so the
+  # icon fills edge-to-edge without a white layer on Android 8+.
+  adaptive_icon_background: "#00000000"
+  adaptive_icon_foreground: "assets/icon.png"
   web:
     generate: false
   windows:
@@ -133,4 +137,5 @@ flutter:
           weight: 500
 
   assets:
+    - assets/icon.png
     - assets/fonts/

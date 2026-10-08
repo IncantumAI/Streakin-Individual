@@ -186,18 +186,38 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onCreate: (m) async {
           await m.createAll();
-          await customStatement(
-            'CREATE VIRTUAL TABLE IF NOT EXISTS note_fts '
-            "USING fts5(title, plain_text, content=notes, content_rowid=rowid)",
-          );
+          await _createFtsTable();
+        },
+        onUpgrade: (m, from, to) async {
+          // v1→v2: ensure FTS table exists (may have been missing on old installs).
+          if (from < 2) {
+            await _createFtsTable();
+          }
+        },
+        beforeOpen: (details) async {
+          // Always ensure the FTS table exists — defensive against any
+          // install where onCreate ran without the customStatement succeeding.
+          await _createFtsTable();
         },
       );
+
+  Future<void> _createFtsTable() async {
+    try {
+      await customStatement(
+        'CREATE VIRTUAL TABLE IF NOT EXISTS note_fts '
+        "USING fts5(title, plain_text, content=notes, content_rowid=rowid)",
+      );
+    } catch (_) {
+      // Non-fatal — FTS search will be unavailable but core functionality
+      // (create/save notes) will still work.
+    }
+  }
 }
 
 // ── Opener ──────────────────────────────────────────────────────────────────
