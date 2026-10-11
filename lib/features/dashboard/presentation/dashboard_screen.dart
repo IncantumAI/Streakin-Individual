@@ -19,7 +19,9 @@ import 'package:streakin/features/habits/presentation/habit_form.dart';
 import 'package:streakin/features/notes/application/note_providers.dart';
 import 'package:streakin/features/notes/domain/note.dart';
 import 'package:streakin/features/notes/notes_module.dart'
-    show recentNotesProvider, pinnedNotesProvider;
+    show recentNotesProvider, pinnedNotesProvider,
+        notesDateMentionsByDateProvider;
+import 'package:streakin/features/todos/application/todo_providers.dart';
 import 'package:streakin/features/todos/presentation/todos_screen.dart'
     show showAddTaskSheet;
 
@@ -42,6 +44,8 @@ class DashboardScreen extends ConsumerWidget {
           _ConsistencyChartCard(),
           SizedBox(height: 12),
           _AtRiskHabitsCard(),
+          SizedBox(height: 12),
+          _UpcomingCard(),
           SizedBox(height: 12),
           _RecentNotesCard(),
           SizedBox(height: 12),
@@ -405,6 +409,146 @@ class _AtRiskHabitsCard extends ConsumerWidget {
   }
 }
 
+// ── Upcoming ──────────────────────────────────────────────────────────────────
+
+class _UpcomingCard extends ConsumerWidget {
+  const _UpcomingCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.colors;
+    final today = LocalDate.today();
+    final range = DateRange(start: today, end: today.addDays(7));
+
+    final todosAsync = ref.watch(todosUpcomingProvider);
+    final noteMentionsAsync =
+        ref.watch(notesDateMentionsByDateProvider(range));
+
+    final todos = todosAsync.value ?? [];
+    final noteMentions = noteMentionsAsync.value ?? {};
+
+    final items = <_UpcomingItem>[];
+    for (final t in todos.where((x) => x.dueDate != null).take(5)) {
+      items.add(_UpcomingItem(
+        label: t.title,
+        isoDate: t.dueDate!,
+        icon: Icons.check_box_outlined,
+        color: colors.warning,
+        onTap: () => context.go('/tasks'),
+      ));
+    }
+    for (final entry in noteMentions.entries) {
+      for (final nid in entry.value.take(2)) {
+        items.add(_UpcomingItem(
+          label: nid,
+          isoDate: entry.key,
+          icon: Icons.article_outlined,
+          color: colors.success,
+          isNoteId: true,
+          onTap: () => context.push('/notes/$nid'),
+        ));
+      }
+    }
+
+    items.sort((a, b) => a.isoDate.compareTo(b.isoDate));
+    final top = items.take(5).toList();
+
+    return _DashCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Upcoming',
+              style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: colors.text)),
+          const SizedBox(height: 8),
+          if (top.isEmpty)
+            Text('Nothing coming up',
+                style: TextStyle(color: colors.textMuted, fontSize: 13))
+          else
+            ...top.map((item) => _UpcomingTile(item: item)),
+        ],
+      ),
+    );
+  }
+}
+
+class _UpcomingItem {
+  const _UpcomingItem({
+    required this.label,
+    required this.isoDate,
+    required this.icon,
+    required this.color,
+    required this.onTap,
+    this.isNoteId = false,
+  });
+  final String label;
+  final String isoDate;
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+  final bool isNoteId;
+}
+
+class _UpcomingTile extends ConsumerWidget {
+  const _UpcomingTile({required this.item});
+  final _UpcomingItem item;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.colors;
+    final today = LocalDate.today();
+    final itemDate = LocalDate.parse(item.isoDate);
+    final diff = DateTime(itemDate.year, itemDate.month, itemDate.day)
+        .difference(DateTime(today.year, today.month, today.day))
+        .inDays;
+    final dateLabel = diff == 0
+        ? 'Today'
+        : diff == 1
+            ? 'Tomorrow'
+            : item.isoDate;
+
+    return ListTile(
+      dense: true,
+      contentPadding: EdgeInsets.zero,
+      leading: Icon(item.icon, color: item.color, size: 18),
+      title: item.isNoteId
+          ? _NoteTitle(noteId: item.label)
+          : Text(item.label,
+              style: TextStyle(color: colors.text, fontSize: 13),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis),
+      subtitle: Text(dateLabel,
+          style: TextStyle(color: colors.textMuted, fontSize: 11)),
+      onTap: item.onTap,
+    );
+  }
+}
+
+class _NoteTitle extends ConsumerWidget {
+  const _NoteTitle({required this.noteId});
+  final String noteId;
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.colors;
+    final repo = ref.watch(noteRepositoryStateProvider);
+    if (repo == null) return Text('Note', style: TextStyle(color: colors.text, fontSize: 13));
+    return FutureBuilder<Note?>(
+      future: repo.getById(noteId),
+      builder: (_, snap) {
+        final title = snap.data?.title;
+        return Text(
+          (title == null || title.isEmpty) ? 'Untitled' : title,
+          style: TextStyle(color: colors.text, fontSize: 13),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        );
+      },
+    );
+  }
+}
+
 // ── Recent Notes ──────────────────────────────────────────────────────────────
 
 class _RecentNotesCard extends ConsumerWidget {
@@ -617,9 +761,7 @@ class _QuickActionsCard extends ConsumerWidget {
       final id = const Uuid().v4();
       final note = Note(
         id: id,
-        folderId: null,
         title: '',
-        templateKind: NoteTemplateKind.blank,
         body: '[]',
         createdAt: now,
         updatedAt: now,

@@ -2,9 +2,9 @@ package `in`.incantum.streakin
 
 import android.os.Bundle
 import android.util.Log
-import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.android.FlutterFragmentActivity
 
-class MainActivity : FlutterActivity() {
+class MainActivity : FlutterFragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         // We have migrated to a custom sharedPreferencesName ('biometric_storage_v2').
         // However, flutter_secure_storage internally attempts to migrate old keys from the

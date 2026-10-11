@@ -15,9 +15,10 @@ import 'package:streakin/features/onboarding/presentation/lock_screen.dart';
 import 'package:streakin/features/onboarding/presentation/onboarding_screen.dart';
 import 'package:streakin/features/settings/presentation/settings_screen.dart';
 import 'package:streakin/features/todos/presentation/todos_screen.dart';
-import 'package:streakin/features/settings/application/settings_providers.dart';
+import 'package:streakin/features/notes/graph/graph_screen.dart';
 import 'package:streakin/app/shell/app_shell.dart';
 import 'package:streakin/core/storage/session_scope.dart';
+import 'package:streakin/features/settings/application/settings_providers.dart';
 
 class AppRoutes {
   static const splash = '/';
@@ -33,7 +34,8 @@ class AppRoutes {
 
 // ── Splash animation minimum duration ──────────────────────────────────────────
 final splashAnimationProvider = FutureProvider<void>((ref) async {
-  await Future.delayed(const Duration(milliseconds: 1800));
+  // Optimized to 800ms: Just enough time for the 700ms fade-in animation to complete.
+  await Future.delayed(const Duration(milliseconds: 800));
 });
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -77,11 +79,11 @@ final routerProvider = Provider<GoRouter>((ref) {
     routes: [
       GoRoute(
         path: AppRoutes.splash,
-        builder: (_, __) => const _SplashScreen(),
+        builder: (_, _) => const _SplashScreen(),
       ),
       GoRoute(
         path: AppRoutes.onboarding,
-        builder: (_, __) => const OnboardingScreen(),
+        builder: (_, _) => const OnboardingScreen(),
       ),
       GoRoute(
         path: AppRoutes.lock,
@@ -92,7 +94,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: AppRoutes.settings,
-        builder: (_, __) => const SettingsScreen(),
+        builder: (_, _) => const SettingsScreen(),
+      ),
+      GoRoute(
+        path: '/notes/graph',
+        builder: (_, _) => const GraphScreen(),
       ),
       GoRoute(
         path: '/notes/:noteId',
@@ -105,19 +111,19 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state, shell) => SessionScope(child: AppShell(shell: shell)),
         branches: [
           StatefulShellBranch(routes: [
-            GoRoute(path: AppRoutes.home, builder: (_, __) => const DashboardScreen()),
+            GoRoute(path: AppRoutes.home, builder: (_, _) => const DashboardScreen()),
           ]),
           StatefulShellBranch(routes: [
-            GoRoute(path: AppRoutes.habits, builder: (_, __) => const HabitsScreen()),
+            GoRoute(path: AppRoutes.habits, builder: (_, _) => const HabitsScreen()),
           ]),
           StatefulShellBranch(routes: [
-            GoRoute(path: AppRoutes.notes, builder: (_, __) => const NotesScreen()),
+            GoRoute(path: AppRoutes.notes, builder: (_, _) => const NotesScreen()),
           ]),
           StatefulShellBranch(routes: [
-            GoRoute(path: AppRoutes.calendar, builder: (_, __) => const CalendarScreen()),
+            GoRoute(path: AppRoutes.calendar, builder: (_, _) => const CalendarScreen()),
           ]),
           StatefulShellBranch(routes: [
-            GoRoute(path: AppRoutes.tasks, builder: (_, __) => const TodosScreen()),
+            GoRoute(path: AppRoutes.tasks, builder: (_, _) => const TodosScreen()),
           ]),
         ],
       ),
@@ -247,7 +253,7 @@ class _SplashScreenState extends State<_SplashScreen>
                             AnimatedBuilder(
                               animation: Listenable.merge(
                                   [_orbitCtrl, _shimmerCtrl]),
-                              builder: (_, __) => Transform.rotate(
+                              builder: (_, _) => Transform.rotate(
                                 angle: _orbitCtrl.value * 2 * math.pi,
                                 child: CustomPaint(
                                   size: const Size(144, 144),
@@ -290,7 +296,7 @@ class _SplashScreenState extends State<_SplashScreen>
                                   height: 100,
                                   fit: BoxFit.cover,
                                   // Fallback in case the asset somehow fails.
-                                  errorBuilder: (_, __, ___) => const Icon(
+                                  errorBuilder: (_, _, _) => const Icon(
                                     Icons.bolt_rounded,
                                     size: 56,
                                     color: Colors.white,
@@ -420,8 +426,8 @@ class _LoadingDots extends AnimatedWidget {
 /// router refreshes when either changes.
 class _RouterListenable extends ChangeNotifier {
   _RouterListenable(Ref ref) {
-    ref.listen(LockController.provider, (_, __) => notifyListeners());
-    ref.listen(onboardingDoneProvider, (_, __) => notifyListeners());
-    ref.listen(splashAnimationProvider, (_, __) => notifyListeners());
+    ref.listen(LockController.provider, (_, _) => notifyListeners());
+    ref.listen(onboardingDoneProvider, (_, _) => notifyListeners());
+    ref.listen(splashAnimationProvider, (_, _) => notifyListeners());
   }
 }

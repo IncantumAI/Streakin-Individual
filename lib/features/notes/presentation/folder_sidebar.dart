@@ -74,8 +74,7 @@ class FolderSidebar extends ConsumerWidget {
                               color: colors.onBrand, fontSize: 13)),
                       style: OutlinedButton.styleFrom(
                         side: BorderSide(
-                            color: colors.onBrand.withAlpha(128),
-                            width: 1),
+                            color: colors.onBrand.withAlpha(128)),
                         padding: const EdgeInsets.symmetric(
                             horizontal: 12, vertical: 8),
                         alignment: Alignment.centerLeft,
@@ -107,9 +106,9 @@ class FolderSidebar extends ConsumerWidget {
         ),
 
         // ── Safe area bottom padding (navigation bar) ───────────────────────
-        SafeArea(
+        const SafeArea(
           top: false,
-          child: const SizedBox(height: 4),
+          child: SizedBox(height: 4),
         ),
       ],
     );
@@ -297,7 +296,7 @@ class _FolderTile extends StatelessWidget {
               : Colors.transparent,
           borderRadius: BorderRadius.circular(8),
           border: isActive
-              ? Border.all(color: colors.brand.withAlpha(60), width: 1)
+              ? Border.all(color: colors.brand.withAlpha(60))
               : null,
         ),
         child: Row(

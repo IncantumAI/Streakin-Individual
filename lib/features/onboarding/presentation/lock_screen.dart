@@ -17,7 +17,6 @@
 
 import 'dart:async' show unawaited;
 import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -64,7 +63,6 @@ class _LockScreenState extends ConsumerState<LockScreen> {
   static const _storage = FlutterSecureStorage(
     aOptions: AndroidOptions(
       sharedPreferencesName: 'biometric_storage_v2',
-      resetOnError: true,
     ),
   );
   static const _dekBiometricKey = AppIdentifiers.ssKeyQuickUnlock;
@@ -96,14 +94,14 @@ class _LockScreenState extends ConsumerState<LockScreen> {
       if (!isSupported) return;
 
       // Try reading the stored DEK — this is where decryption failures surface.
-      // Catch Object (not just Exception) to also handle PlatformException and
-      // native errors that may escape as Error subclasses on some OEM ROMs.
+      // If the native plugin crashes, the MethodChannel hangs infinitely.
+      // We use .timeout() to detect this hang and trigger the native wipe.
       bool hasDek = false;
       try {
-        hasDek = await _storage.containsKey(key: _dekBiometricKey);
+        hasDek = await _storage.containsKey(key: _dekBiometricKey).timeout(const Duration(milliseconds: 800));
       } catch (_) {
         // Keystore key invalidated (reinstall, lock-screen change on MIUI).
-        // Delete corrupted entry so the user can re-register after password unlock.
+        // Native thread probably crashed. Delete corrupted entry securely.
         await _clearBiometricDek();
         hasDek = false;
       }
@@ -150,9 +148,6 @@ class _LockScreenState extends ConsumerState<LockScreen> {
       final auth = LocalAuthentication();
       final authenticated = await auth.authenticate(
         localizedReason: 'Unlock Streakin with biometrics',
-        // biometricOnly: false allows PIN/pattern fallback on MIUI and
-        // other OEM ROMs that reject biometricOnly: true.
-        biometricOnly: false,
         persistAcrossBackgrounding: true,
       );
       if (!authenticated) {
@@ -165,7 +160,7 @@ class _LockScreenState extends ConsumerState<LockScreen> {
       // that may be thrown on MIUI/Samsung Knox after reinstall.
       String? dekBase64;
       try {
-        dekBase64 = await _storage.read(key: _dekBiometricKey);
+        dekBase64 = await _storage.read(key: _dekBiometricKey).timeout(const Duration(milliseconds: 800));
       } catch (_) {
         // Keystore key invalidated — clear and ask for password.
         await _clearBiometricDek();
@@ -241,7 +236,7 @@ class _LockScreenState extends ConsumerState<LockScreen> {
           await _storage.write(
             key: _dekBiometricKey,
             value: base64Encode(dek),
-          );
+          ).timeout(const Duration(milliseconds: 800));
         }
       } catch (_) {
         // Non-fatal — biometric DEK storage failure must not block unlock.

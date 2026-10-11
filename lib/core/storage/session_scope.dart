@@ -2,6 +2,7 @@
 // Opens the SQLCipher DB after unlock and writes the repository into
 // habitRepositoryStateProvider (a root-level StateProvider).
 
+import 'dart:async' show unawaited;
 import 'dart:typed_data';
 
 import 'package:drift/native.dart' show SqliteException;
@@ -18,6 +19,7 @@ import 'package:streakin/features/habits/application/habit_providers.dart';
 import 'package:streakin/features/notes/application/note_providers.dart';
 import 'package:streakin/features/notes/data/note_dao.dart';
 import 'package:streakin/features/notes/data/drift_note_repository.dart';
+import 'package:streakin/core/notifications/notification_reconciler.dart';
 import 'package:streakin/features/notes/application/todo_bridge_impl.dart';
 import 'package:streakin/features/todos/application/todo_providers.dart';
 import 'package:streakin/features/todos/data/todo_dao.dart';
@@ -55,6 +57,7 @@ class _SessionScopeState extends ConsumerState<SessionScope> {
       ref.read(ftsRepositoryStateProvider.notifier).clear();
       ref.read(todoRepositoryStateProvider.notifier).clear();
       ref.read(todoBridgeStateProvider.notifier).clear();
+      ref.read(reconcilerStateProvider.notifier).clear();
     } catch (_) {}
 
     // 2. Defer DB close to the next event-loop iteration so that any
@@ -117,6 +120,14 @@ class _SessionScopeState extends ConsumerState<SessionScope> {
               todoRepo: todoRepo,
             ),
           );
+
+      // ── Notification reconciler ──────────────────────────────────────────
+      final reconciler = NotificationReconciler(
+        habitRepo: repo,
+        todoRepo: todoRepo,
+      );
+      ref.read(reconcilerStateProvider.notifier).set(reconciler);
+      unawaited(reconciler.reconcile());
 
       if (mounted) {
         setState(() {

@@ -20,11 +20,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
 import 'package:streakin/core/time/hlc.dart';
-import 'package:streakin/features/notes/application/note_providers.dart';
 import 'package:streakin/features/notes/domain/note_document.dart';
 import 'package:streakin/features/notes/domain/note_repository.dart';
 import 'package:streakin/features/notes/domain/todo_bridge.dart';
-import 'package:streakin/features/todos/application/todo_providers.dart';
 import 'package:streakin/features/todos/domain/todo.dart';
 import 'package:streakin/features/todos/domain/todo_repository.dart';
 

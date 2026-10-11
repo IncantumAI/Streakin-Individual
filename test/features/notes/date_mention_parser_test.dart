@@ -76,7 +76,7 @@ void main() {
       expect(_parse('today 14:31'), _timed(DateTime(2026, 10, 7, 14, 31)));
     });
     test('today 00:00 → tomorrow 00:00 (midnight past)', () {
-      expect(_parse('today 0'), _timed(DateTime(2026, 10, 8, 0)));
+      expect(_parse('today 0'), _timed(DateTime(2026, 10, 8)));
     });
   });
 
@@ -91,7 +91,7 @@ void main() {
       expect(_parse('tomorrow 6:30pm'), _timed(DateTime(2026, 10, 8, 18, 30)));
     });
     test('tomorrow 00:00', () {
-      expect(_parse('tomorrow 00:00'), _timed(DateTime(2026, 10, 8, 0)));
+      expect(_parse('tomorrow 00:00'), _timed(DateTime(2026, 10, 8)));
     });
     test('tomorrow 23:59', () {
       expect(_parse('tomorrow 23:59'), _timed(DateTime(2026, 10, 8, 23, 59)));
@@ -100,7 +100,7 @@ void main() {
       expect(_parse('tomorrow 12pm'), _timed(DateTime(2026, 10, 8, 12)));
     });
     test('tomorrow 12am (midnight)', () {
-      expect(_parse('tomorrow 12am'), _timed(DateTime(2026, 10, 8, 0)));
+      expect(_parse('tomorrow 12am'), _timed(DateTime(2026, 10, 8)));
     });
   });
 
@@ -248,10 +248,10 @@ void main() {
     });
     // Past date same year → next year.
     test('1 jan → 2027-01-01 (past)', () {
-      expect(_parse('1 jan'), _allDay(DateTime(2027, 1)));
+      expect(_parse('1 jan'), _allDay(DateTime(2027)));
     });
     test('jan 1 → 2027-01-01 (past)', () {
-      expect(_parse('jan 1'), _allDay(DateTime(2027, 1)));
+      expect(_parse('jan 1'), _allDay(DateTime(2027)));
     });
     test('5 oct → 2027-10-05 (past)', () {
       expect(_parse('5 oct'), _allDay(DateTime(2027, 10, 5)));
@@ -307,19 +307,19 @@ void main() {
       expect(_parse('2026-12-31 23:59'), _timed(DateTime(2026, 12, 31, 23, 59)));
     });
     test('@2027-01-01 → all-day', () {
-      expect(_parse('2027-01-01'), _allDay(DateTime(2027, 1)));
+      expect(_parse('2027-01-01'), _allDay(DateTime(2027)));
     });
     test('@2026-10-07 → today all-day', () {
       expect(_parse('2026-10-07'), _allDay(DateTime(2026, 10, 7)));
     });
     test('@2020-01-01 → past date (no ambiguity for ISO)', () {
-      expect(_parse('2020-01-01'), _allDay(DateTime(2020, 1)));
+      expect(_parse('2020-01-01'), _allDay(DateTime(2020)));
     });
     test('@2026-10-15 09:00', () {
       expect(_parse('2026-10-15 09:00'), _timed(DateTime(2026, 10, 15, 9)));
     });
     test('@2026-11-01 00:00', () {
-      expect(_parse('2026-11-01 00:00'), _timed(DateTime(2026, 11, 1, 0)));
+      expect(_parse('2026-11-01 00:00'), _timed(DateTime(2026, 11)));
     });
   });
 
@@ -354,10 +354,10 @@ void main() {
       expect(_parse('tomorrow 12pm'), _timed(DateTime(2026, 10, 8, 12)));
     });
     test('12am (midnight)', () {
-      expect(_parse('tomorrow 12am'), _timed(DateTime(2026, 10, 8, 0)));
+      expect(_parse('tomorrow 12am'), _timed(DateTime(2026, 10, 8)));
     });
     test('00:00', () {
-      expect(_parse('tomorrow 00:00'), _timed(DateTime(2026, 10, 8, 0)));
+      expect(_parse('tomorrow 00:00'), _timed(DateTime(2026, 10, 8)));
     });
     test('23:59', () {
       expect(_parse('tomorrow 23:59'), _timed(DateTime(2026, 10, 8, 23, 59)));
@@ -566,7 +566,7 @@ void main() {
       expect(_parse('  2026-10-15  '), _allDay(DateTime(2026, 10, 15)));
     });
     test('mon 0 (midnight)', () {
-      expect(_parse('mon 0'), _timed(DateTime(2026, 10, 12, 0)));
+      expect(_parse('mon 0'), _timed(DateTime(2026, 10, 12)));
     });
     test('fri 12', () {
       expect(_parse('fri 12'), _timed(DateTime(2026, 10, 9, 12)));
