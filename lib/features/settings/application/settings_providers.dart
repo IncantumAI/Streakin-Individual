@@ -154,3 +154,38 @@ class BiometricEnabledNotifier extends Notifier<bool> {
     await prefs.setBool(AppIdentifiers.prefBiometricEnabled, enabled);
   }
 }
+
+// ── Profile ───────────────────────────────────────────────────────────────────
+
+class ProfileNotifier extends Notifier<({String name, String username, String bio})> {
+  @override
+  ({String name, String username, String bio}) build() {
+    _load();
+    return (name: '', username: '', bio: '');
+  }
+
+  Future<void> _load() async {
+    final prefs = await ref.read(sharedPrefsProvider.future);
+    state = (
+      name: prefs.getString(AppIdentifiers.prefProfileName) ?? '',
+      username: prefs.getString(AppIdentifiers.prefProfileUsername) ?? '',
+      bio: prefs.getString(AppIdentifiers.prefProfileBio) ?? '',
+    );
+  }
+
+  Future<void> save({
+    required String name,
+    required String username,
+    required String bio,
+  }) async {
+    state = (name: name, username: username, bio: bio);
+    final prefs = await ref.read(sharedPrefsProvider.future);
+    await prefs.setString(AppIdentifiers.prefProfileName, name);
+    await prefs.setString(AppIdentifiers.prefProfileUsername, username);
+    await prefs.setString(AppIdentifiers.prefProfileBio, bio);
+  }
+}
+
+final profileProvider =
+    NotifierProvider<ProfileNotifier, ({String name, String username, String bio})>(
+        ProfileNotifier.new);

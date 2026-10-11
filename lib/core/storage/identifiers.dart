@@ -76,6 +76,11 @@ class AppIdentifiers {
   /// Goal reminder notification channel ID.
   static const String channelGoalCountdown = 'goal_countdown';
 
+  // ── Profile keys ──────────────────────────────────────────────────────────
+  static const String prefProfileName = 'core.profile_name';
+  static const String prefProfileUsername = 'core.profile_username';
+  static const String prefProfileBio = 'core.profile_bio';
+
   // ── Goal settings SharedPreferences keys ─────────────────────────────────
   static const String prefGoalReminderCadence = 'goals.reminder_cadence';
   static const String prefGoalReminderHour = 'goals.reminder_hour';

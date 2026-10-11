@@ -13,7 +13,18 @@ import 'package:streakin/features/notes/presentation/notes_screen.dart';
 import 'package:streakin/features/notes/presentation/note_editor_screen.dart';
 import 'package:streakin/features/onboarding/presentation/lock_screen.dart';
 import 'package:streakin/features/onboarding/presentation/onboarding_screen.dart';
-import 'package:streakin/features/settings/presentation/settings_screen.dart';
+import 'package:streakin/features/settings/presentation/settings_screen.dart'
+    show
+        SettingsScreen,
+        ProfileSettingsPage,
+        AppearanceSettingsPage,
+        NotificationsSettingsPage,
+        BiometricSettingsPage,
+        AutoLockSettingsPage,
+        WeekDaySettingsPage,
+        AccessibilitySettingsPage,
+        GoalRemindersSettingsPage,
+        AboutPage;
 import 'package:streakin/features/todos/presentation/todos_screen.dart';
 import 'package:streakin/features/notes/graph/graph_screen.dart';
 import 'package:streakin/features/goals/goals_module.dart'
@@ -108,6 +119,42 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.settings,
         builder: (_, _) => const SettingsScreen(),
+      ),
+      GoRoute(
+        path: '/settings/profile',
+        builder: (_, _) => const ProfileSettingsPage(),
+      ),
+      GoRoute(
+        path: '/settings/appearance',
+        builder: (_, _) => const AppearanceSettingsPage(),
+      ),
+      GoRoute(
+        path: '/settings/notifications',
+        builder: (_, _) => const NotificationsSettingsPage(),
+      ),
+      GoRoute(
+        path: '/settings/biometric',
+        builder: (_, _) => const BiometricSettingsPage(),
+      ),
+      GoRoute(
+        path: '/settings/autolock',
+        builder: (_, _) => const AutoLockSettingsPage(),
+      ),
+      GoRoute(
+        path: '/settings/week-day',
+        builder: (_, _) => const WeekDaySettingsPage(),
+      ),
+      GoRoute(
+        path: '/settings/accessibility',
+        builder: (_, _) => const AccessibilitySettingsPage(),
+      ),
+      GoRoute(
+        path: '/settings/goal-reminders',
+        builder: (_, _) => const GoalRemindersSettingsPage(),
+      ),
+      GoRoute(
+        path: '/settings/about',
+        builder: (_, _) => const AboutPage(),
       ),
       GoRoute(
         path: '/goals/history',

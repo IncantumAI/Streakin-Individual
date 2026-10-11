@@ -190,7 +190,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
       updatedAt: now,
       hlc: Hlc.now().toIso(),
     ));
-    if (context.mounted) context.push('/notes/$id');
+    if (context.mounted) await context.push('/notes/$id');
   }
 
   void _showDaySheet(BuildContext context, LocalDate date) {
