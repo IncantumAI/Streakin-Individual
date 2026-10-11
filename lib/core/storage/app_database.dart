@@ -164,6 +164,63 @@ class Vaults extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+class Goals extends Table {
+  TextColumn get id => text()();
+  TextColumn get title => text()();
+  TextColumn get why => text().nullable()();
+  TextColumn get kind => text().withDefault(const Constant('dated'))(); // 'dated'|'open'
+  TextColumn get startDate => text()();
+  TextColumn get endDate => text().nullable()();
+  TextColumn get status => text().withDefault(const Constant('active'))(); // 'active'|'archived'
+  TextColumn get archiveReason => text().nullable()(); // 'completed'|'completed_early'|'replaced'|'abandoned'
+  TextColumn get archivedAt => text().nullable()();
+  TextColumn get activatedHlc => text()();
+  IntColumn get accentIndex => integer().withDefault(const Constant(0))();
+  IntColumn get restTokenPool => integer().withDefault(const Constant(0))();
+  TextColumn get createdAt => text()();
+  TextColumn get updatedAt => text()();
+  TextColumn get hlc => text()();
+  TextColumn get deletedAt => text().nullable()();
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+class GoalHabits extends Table {
+  TextColumn get id => text()();
+  TextColumn get goalId => text().references(Goals, #id)();
+  TextColumn get habitId => text()();
+  TextColumn get linkedFrom => text()();
+  TextColumn get linkedTo => text().nullable()();
+  TextColumn get hlc => text()();
+  TextColumn get deletedAt => text().nullable()();
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+class GoalSummaries extends Table {
+  TextColumn get goalId => text().references(Goals, #id)();
+  TextColumn get computedThrough => text()();
+  IntColumn get totalDays => integer()();
+  IntColumn get elapsedDays => integer()();
+  IntColumn get alignmentPct => integer().nullable()();
+  IntColumn get perfectDays => integer()();
+  IntColumn get bestStreak => integer()();
+  TextColumn get perHabit => text().withDefault(const Constant('{}'))(); // JSON
+  TextColumn get milestones => text().withDefault(const Constant('[]'))(); // JSON
+  TextColumn get hlc => text()();
+  @override
+  Set<Column> get primaryKey => {goalId};
+}
+
+class GoalLocalState extends Table {
+  TextColumn get goalId => text().references(Goals, #id)();
+  BoolColumn get celebrationPending => boolean().withDefault(const Constant(false))();
+  TextColumn get milestonesShown => text().withDefault(const Constant('[]'))(); // JSON
+  TextColumn get heroPromptDismissedUntil => text().nullable()();
+  @override
+  Set<Column> get primaryKey => {goalId};
+}
+
 class SyncPeers extends Table {
   TextColumn get deviceId => text()();
   TextColumn get name => text()();
@@ -181,29 +238,34 @@ class SyncPeers extends Table {
   Habits, HabitLogs, DayLocks, Todos, Folders, Notes,
   NoteLinks, NoteTags, DateMentions, Attachments,
   NoteEmbeddings, Vaults, SyncPeers,
+  Goals, GoalHabits, GoalSummaries, GoalLocalState,
 ])
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onCreate: (m) async {
           await m.createAll();
           await _createFtsTable();
+          await _createGoalIndexes();
         },
         onUpgrade: (m, from, to) async {
-          // v1→v2: ensure FTS table exists (may have been missing on old installs).
-          if (from < 2) {
-            await _createFtsTable();
+          if (from < 2) await _createFtsTable();
+          if (from < 3) {
+            await m.createTable(goals);
+            await m.createTable(goalHabits);
+            await m.createTable(goalSummaries);
+            await m.createTable(goalLocalState);
+            await _createGoalIndexes();
           }
         },
         beforeOpen: (details) async {
-          // Always ensure the FTS table exists — defensive against any
-          // install where onCreate ran without the customStatement succeeding.
           await _createFtsTable();
+          await _createGoalIndexes();
         },
       );
 
@@ -217,6 +279,19 @@ class AppDatabase extends _$AppDatabase {
       // Non-fatal — FTS search will be unavailable but core functionality
       // (create/save notes) will still work.
     }
+  }
+
+  Future<void> _createGoalIndexes() async {
+    try {
+      await customStatement(
+        'CREATE UNIQUE INDEX IF NOT EXISTS one_active_goal ON goals(status) '
+        "WHERE status = 'active' AND deleted_at IS NULL",
+      );
+      await customStatement(
+        'CREATE UNIQUE INDEX IF NOT EXISTS one_open_link ON goal_habits(goal_id, habit_id) '
+        'WHERE linked_to IS NULL AND deleted_at IS NULL',
+      );
+    } catch (_) {}
   }
 }
 

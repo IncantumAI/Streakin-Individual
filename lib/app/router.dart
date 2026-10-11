@@ -16,6 +16,8 @@ import 'package:streakin/features/onboarding/presentation/onboarding_screen.dart
 import 'package:streakin/features/settings/presentation/settings_screen.dart';
 import 'package:streakin/features/todos/presentation/todos_screen.dart';
 import 'package:streakin/features/notes/graph/graph_screen.dart';
+import 'package:streakin/features/goals/goals_module.dart'
+    show GoalDetailScreen, GoalHistoryScreen;
 import 'package:streakin/app/shell/app_shell.dart';
 import 'package:streakin/core/storage/session_scope.dart';
 import 'package:streakin/features/settings/application/settings_providers.dart';
@@ -32,11 +34,22 @@ class AppRoutes {
   static const settings = '/settings';
 }
 
-// ── Splash animation minimum duration ──────────────────────────────────────────
-final splashAnimationProvider = FutureProvider<void>((ref) async {
-  // Optimized to 800ms: Just enough time for the 700ms fade-in animation to complete.
-  await Future.delayed(const Duration(milliseconds: 800));
-});
+// ── Splash ready gate ─────────────────────────────────────────────────────────
+// The splash widget flips this to true after its 900ms minimum.
+// The router holds on splash until this is true.
+// Using a plain Notifier so it can be reset on demand without autoDispose.
+class _SplashReadyNotifier extends Notifier<bool> {
+  @override
+  bool build() => false;
+  void setReady() => state = true;
+  void reset() => state = false;
+}
+
+final splashReadyProvider =
+    NotifierProvider<_SplashReadyNotifier, bool>(_SplashReadyNotifier.new);
+
+// Alias used by _RouterListenable for compatibility.
+final splashAnimationProvider = splashReadyProvider;
 
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
@@ -45,10 +58,10 @@ final routerProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) {
       final loc = state.matchedLocation;
 
-      // While onboarding status or splash animation is loading, stay on splash.
+      // Hold on splash until the minimum display time has passed.
+      final splashReady = ref.read(splashReadyProvider);
       final onboardingAsync = ref.read(onboardingDoneProvider);
-      final splashAnimAsync = ref.read(splashAnimationProvider);
-      if (onboardingAsync.isLoading || splashAnimAsync.isLoading) {
+      if (!splashReady || onboardingAsync.isLoading) {
         return loc == AppRoutes.splash ? null : AppRoutes.splash;
       }
 
@@ -97,6 +110,15 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, _) => const SettingsScreen(),
       ),
       GoRoute(
+        path: '/goals/history',
+        builder: (_, _) => const GoalHistoryScreen(),
+      ),
+      GoRoute(
+        path: '/goals/:goalId',
+        builder: (_, state) =>
+            GoalDetailScreen(goalId: state.pathParameters['goalId']!),
+      ),
+      GoRoute(
         path: '/notes/graph',
         builder: (_, _) => const GraphScreen(),
       ),
@@ -143,13 +165,13 @@ final routerProvider = Provider<GoRouter>((ref) {
 ///  • A ring of 12 orbit dots continuously rotates with a comet-shimmer.
 ///  • The entire icon+text block subtly pulses once the fade-in completes.
 ///  • Three bouncing loading dots appear below the tagline.
-class _SplashScreen extends StatefulWidget {
+class _SplashScreen extends ConsumerStatefulWidget {
   const _SplashScreen();
   @override
-  State<_SplashScreen> createState() => _SplashScreenState();
+  ConsumerState<_SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<_SplashScreen>
+class _SplashScreenState extends ConsumerState<_SplashScreen>
     with TickerProviderStateMixin {
   late final AnimationController _fadeCtrl;
   late final AnimationController _pulseCtrl;
@@ -164,7 +186,13 @@ class _SplashScreenState extends State<_SplashScreen>
   void initState() {
     super.initState();
 
-    // 1. Fade + scale-in (700 ms, easeOutBack for a spring feel).
+    // Signal the router after minimum display time.
+    Future<void>.delayed(const Duration(milliseconds: 900), () {
+      if (mounted) {
+        ref.read(splashReadyProvider.notifier).setReady();
+      }
+    });
+
     _fadeCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 700),
@@ -174,7 +202,6 @@ class _SplashScreenState extends State<_SplashScreen>
       CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeOutBack),
     );
 
-    // 2. Pulse — starts after fade-in, loops 1.0 ↔ 1.06.
     _pulseCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1400),
@@ -183,13 +210,11 @@ class _SplashScreenState extends State<_SplashScreen>
       CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut),
     );
 
-    // 3. Orbit ring rotation — full 360° every 3 s.
     _orbitCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 3000),
     )..repeat();
 
-    // 4. Comet shimmer sweeps at a different speed (2.2 s).
     _shimmerCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 2200),

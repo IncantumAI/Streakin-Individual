@@ -73,6 +73,21 @@ class AppIdentifiers {
   static const String channelNoteMentions = 'note_mention_reminders';
   static const String channelLockInNudge = 'lock_in_nudge';
 
+  /// Goal reminder notification channel ID.
+  static const String channelGoalCountdown = 'goal_countdown';
+
+  // ── Goal settings SharedPreferences keys ─────────────────────────────────
+  static const String prefGoalReminderCadence = 'goals.reminder_cadence';
+  static const String prefGoalReminderHour = 'goals.reminder_hour';
+  static const String prefGoalReminderMinute = 'goals.reminder_minute';
+  static const String prefGoalFinalStretch = 'goals.final_stretch';
+  static const String prefGoalMilestoneAlerts = 'goals.milestone_alerts';
+  static const String prefGoalCompletionAlert = 'goals.completion_alert';
+  static const String prefGoalShowTitle = 'goals.show_title';
+  static const String prefGoalShowAlignment = 'goals.show_alignment';
+  static const String prefGoalSuppressIfDone = 'goals.suppress_if_done';
+  static const String prefGoalCountFromStart = 'goals.count_from_start';
+
   // ── Share container ───────────────────────────────────────────────────────
   /// Magic bytes written at offset 0 of every .ncx export file.
   /// MUST remain 'NCX1' regardless of any brand rename. See spec §10.1.

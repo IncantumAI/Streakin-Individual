@@ -70,7 +70,8 @@ class _HabitMonthCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.colors;
-    final repo = ref.watch(habitRepositoryProvider);
+    final repo = ref.watch(habitRepositoryStateProvider);
+    if (repo == null) return const SizedBox.shrink();
     final engine = ref.watch(streakEngineProvider);
 
     final firstDay = LocalDate(focusedMonth.year, focusedMonth.month, 1);

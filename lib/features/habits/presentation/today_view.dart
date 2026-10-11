@@ -198,8 +198,7 @@ class _HabitTileState extends ConsumerState<_HabitTile> {
         action: SnackBarAction(
           label: 'Undo',
           onPressed: () async {
-            // Restore: save with deletedAt = null.
-            final habit = await ref.read(habitRepositoryProvider).getById(habitId);
+            final habit = await ref.read(habitRepositoryStateProvider)?.getById(habitId);
             if (habit != null) {
               await ref.read(habitUseCasesProvider).saveHabit(
                   habit.copyWith());

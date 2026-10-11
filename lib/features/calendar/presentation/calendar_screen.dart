@@ -9,7 +9,6 @@ import 'package:streakin/core/time/hlc.dart';
 import 'package:streakin/core/time/local_date.dart';
 import 'package:streakin/features/habits/application/habit_providers.dart';
 import 'package:streakin/features/habits/domain/habit.dart';
-import 'package:streakin/features/notes/application/note_providers.dart';
 import 'package:streakin/features/notes/domain/note.dart';
 import 'package:streakin/features/notes/notes_module.dart'
     show notesDateMentionsByDateProvider, noteRepositoryStateProvider;
@@ -454,7 +453,8 @@ class _HabitDaySection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.colors;
-    final repo = ref.watch(habitRepositoryProvider);
+    final repo = ref.watch(habitRepositoryStateProvider);
+    if (repo == null) return const SizedBox.shrink();
     return FutureBuilder<List<Habit>>(
       future: repo.watchActiveForDate(date).first,
       builder: (_, snap) {

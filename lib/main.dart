@@ -40,7 +40,7 @@ void main() {
       // Global Flutter error handler → friendly screen + local log.
       FlutterError.onError = (details) {
         AppLogger.get('Flutter').severe(
-          'Unhandled Flutter error',
+          'Unhandled Flutter error\n  ${details.exceptionAsString()}',
           details.exception,
           details.stack,
         );
@@ -53,7 +53,10 @@ void main() {
       );
     },
     (error, stack) {
-      AppLogger.get('Zone').severe('Unhandled zone error', error, stack);
+      AppLogger.get('Zone').severe(
+          'Unhandled zone error\n  Error type: ${error.runtimeType}\n  $error',
+          error,
+          stack);
     },
   );
 }

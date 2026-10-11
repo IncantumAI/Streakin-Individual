@@ -102,7 +102,8 @@ class _HabitWeekRow extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.colors;
-    final repo = ref.watch(habitRepositoryProvider);
+    final repo = ref.watch(habitRepositoryStateProvider);
+    if (repo == null) return const SizedBox.shrink();
     final range = DateRange(start: days.first, end: days.last);
 
     return FutureBuilder<Map<String, List<HabitLog>>>(

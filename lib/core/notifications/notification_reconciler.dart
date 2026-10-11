@@ -46,7 +46,6 @@ Future<void> _ensureChannels() async {
   await android.createNotificationChannel(const AndroidNotificationChannel(
     AppIdentifiers.channelNoteMentions,
     'Note Reminders',
-    importance: Importance.defaultImportance,
   ));
   await android.createNotificationChannel(const AndroidNotificationChannel(
     AppIdentifiers.channelLockInNudge,
@@ -57,10 +56,9 @@ Future<void> _ensureChannels() async {
 
 class NotificationReconciler {
   NotificationReconciler({
-    required HabitRepository habitRepo,
+    required this._habitRepo,
     required TodoRepository todoRepo,
-  })  : _habitRepo = habitRepo,
-        _todoRepo = todoRepo;
+  })  : _todoRepo = todoRepo;
 
   final HabitRepository _habitRepo;
   final TodoRepository _todoRepo;
@@ -93,8 +91,8 @@ class NotificationReconciler {
         title: h.name,
         body: 'Time to check in!',
         scheduledDate: _nextInstance(today, hour, minute),
-        notificationDetails: NotificationDetails(
-          android: AndroidNotificationDetails(
+        notificationDetails: const NotificationDetails(
+          android: const AndroidNotificationDetails(
             AppIdentifiers.channelHabitReminders,
             'Habit Reminders',
             importance: Importance.high,
@@ -119,8 +117,8 @@ class NotificationReconciler {
         title: t.title,
         body: 'Task reminder',
         scheduledDate: tz.TZDateTime.from(dt, tz.local),
-        notificationDetails: NotificationDetails(
-          android: AndroidNotificationDetails(
+        notificationDetails: const NotificationDetails(
+          android: const AndroidNotificationDetails(
             AppIdentifiers.channelTodoReminders,
             'Task Reminders',
             importance: Importance.high,

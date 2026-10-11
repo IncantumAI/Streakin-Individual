@@ -24,6 +24,8 @@ import 'package:streakin/features/notes/notes_module.dart'
 import 'package:streakin/features/todos/application/todo_providers.dart';
 import 'package:streakin/features/todos/presentation/todos_screen.dart'
     show showAddTaskSheet;
+import 'package:streakin/features/goals/goals_module.dart'
+    show GoalHeroCard;
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -37,6 +39,8 @@ class DashboardScreen extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: const [
+          GoalHeroCard(),
+          SizedBox(height: 12),
           _TodayRingCard(),
           SizedBox(height: 12),
           _StreakCard(),
@@ -188,8 +192,9 @@ class _StreakCard extends ConsumerWidget {
     final colors = context.colors;
     final today = ref.watch(todayProvider);
     final habitsAsync = ref.watch(allHabitsProvider);
-    final repo = ref.watch(habitRepositoryProvider);
+    final repo = ref.watch(habitRepositoryStateProvider);
     final engine = ref.watch(streakEngineProvider);
+    if (repo == null) return const _DashCard(child: SizedBox(height: 60));
 
     return _DashCard(
       child: FutureBuilder(
@@ -334,7 +339,8 @@ class _ConsistencyChartCardState extends ConsumerState<_ConsistencyChartCard> {
       int days, WidgetRef ref) async {
     if (habits.isEmpty) return [];
     setState(() => _animated = true);
-    final repo = ref.read(habitRepositoryProvider);
+    final repo = ref.read(habitRepositoryStateProvider);
+    if (repo == null) return [];
     final active = habits.where((h) => h.isActive).toList();
     final ids = active.map((h) => h.id).toList();
     final range =
