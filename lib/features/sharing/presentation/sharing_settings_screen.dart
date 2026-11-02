@@ -16,7 +16,10 @@ import 'package:share_plus/share_plus.dart';
 
 import 'package:streakin/core/crypto/base32.dart';
 import 'package:streakin/core/design/icons.dart';
+import 'package:streakin/core/design/motion.dart';
+import 'package:streakin/core/design/spacing.dart';
 import 'package:streakin/core/design/tokens.dart';
+import 'package:streakin/core/design/typography.dart';
 import 'package:streakin/core/errors/app_failure.dart';
 import 'package:streakin/core/security/password_strength.dart';
 import 'package:streakin/core/storage/app_database.dart' show SyncPeer;
@@ -25,6 +28,7 @@ import 'package:streakin/features/sharing/data/device_identity.dart';
 import 'package:streakin/features/sharing/data/ncx_reader.dart'
     show kTamperedMessage;
 import 'package:streakin/features/sharing/domain/ncx_container.dart';
+import 'package:streakin/shared/widgets/widgets.dart';
 
 class SharingSettingsScreen extends ConsumerWidget {
   const SharingSettingsScreen({super.key});
@@ -35,79 +39,71 @@ class SharingSettingsScreen extends ConsumerWidget {
     final peers = ref.watch(syncPeersProvider).value ?? const <SyncPeer>[];
     return Scaffold(
       backgroundColor: colors.bg,
-      appBar: AppBar(
-        title: const Text('Export, import & devices'),
-        backgroundColor: colors.surface,
-      ),
-      body: ListView(
+      appBar: AppBar(title: const Text('Export, import & devices')),
+      body: ReadableListView(
         children: [
-          _h('Paired devices', colors),
-          if (peers.isEmpty)
-            const ListTile(
-              title: Text('No paired devices'),
-              subtitle: Text(
-                'Pair a device to export directly to it and '
-                'send only what changed.',
+          const SectionHeader('Transfer'),
+          Row(
+            children: [
+              Expanded(
+                child: _ActionCard(
+                  icon: AppIcons.export_,
+                  title: 'Export',
+                  subtitle: 'Passphrase, device or key',
+                  onTap: () => _export(context, ref, peers),
+                ),
               ),
-            ),
-          for (final d in peers)
-            ListTile(
-              leading: Icon(AppIcons.devices, color: colors.brand),
-              title: Text(d.name),
-              subtitle: Text(
-                'Paired ${_ago(d.pairedAt)} · last sent ${d.lastSentHlc == null ? 'never' : 'recorded'}',
+              const SizedBox(width: AppSpace.md),
+              Expanded(
+                child: _ActionCard(
+                  icon: AppIcons.import_,
+                  title: 'Import',
+                  subtitle: 'Open a .$kNcxExtension file',
+                  onTap: () => _import(context, ref),
+                ),
               ),
-              trailing: IconButton(
-                icon: const Icon(AppIcons.linkOff),
-                tooltip: 'Unpair',
-                onPressed: () async {
-                  await ref.read(syncPeerStoreProvider)?.unpair(d.deviceId);
-                },
+            ],
+          ),
+          SettingsGroup(
+            title: 'Paired devices',
+            footer: peers.isEmpty
+                ? 'Pair a device to export directly to it and send only what changed.'
+                : null,
+            children: [
+              for (final d in peers)
+                SettingsTile(
+                  icon: AppIcons.devices,
+                  title: d.name,
+                  subtitle:
+                      'Paired ${_ago(d.pairedAt)} · last sent ${d.lastSentHlc == null ? 'never' : 'recorded'}',
+                  trailing: IconButton(
+                    icon: Icon(AppIcons.linkOff, color: colors.textMuted),
+                    tooltip: 'Unpair',
+                    onPressed: () async {
+                      await ref.read(syncPeerStoreProvider)?.unpair(d.deviceId);
+                    },
+                  ),
+                ),
+              SettingsTile(
+                icon: AppIcons.addLink,
+                title: 'Pair a device',
+                onTap: () => _pair(context, ref),
               ),
-            ),
-          ListTile(
-            leading: Icon(AppIcons.addLink, color: colors.brand),
-            title: const Text('Pair a device'),
-            onTap: () => _pair(context, ref),
+            ],
           ),
-          const Divider(height: 1),
-          _h('Export', colors),
-          ListTile(
-            leading: Icon(AppIcons.export_, color: colors.brand),
-            title: const Text('Export data'),
-            subtitle: const Text('Passphrase, paired device or raw key'),
-            onTap: () => _export(context, ref, peers),
-          ),
-          _h('Import', colors),
-          ListTile(
-            leading: Icon(AppIcons.import_, color: colors.brand),
-            title: const Text('Import data'),
-            subtitle: const Text('Choose a .$kNcxExtension file'),
-            onTap: () => _import(context, ref),
-          ),
-          const Divider(height: 1),
-          ListTile(
-            leading: Icon(AppIcons.storageOutlined, color: colors.brand),
-            title: const Text('Storage usage & caches'),
-            trailing: const Icon(AppIcons.chevronRight),
-            onTap: () => context.push('/settings/data'),
+          SettingsGroup(
+            children: [
+              SettingsTile.nav(
+                icon: AppIcons.storageOutlined,
+                title: 'Storage usage & caches',
+                onTap: () => context.push('/settings/data'),
+              ),
+            ],
           ),
         ],
       ),
     );
   }
-
-  Widget _h(String t, AppColorTokens c) => Padding(
-    padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-    child: Text(
-      t.toUpperCase(),
-      style: TextStyle(
-        fontSize: 12,
-        fontWeight: FontWeight.w600,
-        color: c.textMuted,
-      ),
-    ),
-  );
 
   static String _ago(String iso) {
     final d = DateTime.tryParse(iso);
@@ -143,12 +139,16 @@ class SharingSettingsScreen extends ConsumerWidget {
                   child: QrImageView(
                     data: identity.public.base32,
                     size: 160,
-                    backgroundColor: Colors.white,
+                    backgroundColor: AppColors.white,
                   ),
                 ),
+                const SizedBox(height: AppSpace.sm),
                 SelectableText(
                   Base32.grouped(identity.public.base32, size: 8),
-                  style: const TextStyle(fontSize: 11),
+                  style: AppTypography.mono.copyWith(
+                    fontSize: 11,
+                    color: ctx.colors.textMuted,
+                  ),
                 ),
                 const SizedBox(height: 12),
                 const Text('2. Paste the other device\'s code:'),
@@ -169,16 +169,24 @@ class SharingSettingsScreen extends ConsumerWidget {
                   Center(
                     child: Text(
                       sas!,
-                      style: const TextStyle(
+                      style: AppTypography.numeric.copyWith(
                         fontSize: 32,
                         letterSpacing: 6,
-                        fontWeight: FontWeight.bold,
+                        color: ctx.colors.text,
                       ),
                     ),
                   ),
                 ],
                 if (error != null)
-                  Text(error!, style: TextStyle(color: ctx.colors.danger)),
+                  Padding(
+                    padding: const EdgeInsets.only(top: AppSpace.sm),
+                    child: Text(
+                      error!,
+                      style: ctx.text.bodySmall!.copyWith(
+                        color: ctx.colors.danger,
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -290,7 +298,7 @@ class SharingSettingsScreen extends ConsumerWidget {
                     pass.text.length < 8
                         ? 'At least 8 characters'
                         : PasswordStrength.estimate(pass.text).label,
-                    style: const TextStyle(fontSize: 12),
+                    style: ctx.text.bodySmall,
                   ),
                 ],
                 if (scheme == NcxScheme.pair) ...[
@@ -325,10 +333,10 @@ class SharingSettingsScreen extends ConsumerWidget {
                 if (locked.isNotEmpty)
                   const Padding(
                     padding: EdgeInsets.only(top: 12),
-                    child: Text(
-                      'Some vaults are locked, so their notes will NOT be exported. '
-                      'Unlock them first if you want them included.',
-                      style: TextStyle(color: Colors.orange, fontSize: 12),
+                    child: StatusPill(
+                      'Locked vaults are skipped. Unlock them to include their notes.',
+                      tone: PillTone.warning,
+                      icon: AppIcons.lockFill,
                     ),
                   ),
               ],
@@ -368,7 +376,25 @@ class SharingSettingsScreen extends ConsumerWidget {
           title: const Text('Exporting…'),
           content: ValueListenableBuilder<double>(
             valueListenable: progress,
-            builder: (_, v, _) => LinearProgressIndicator(value: v),
+            builder: (ctx, v, _) => Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                TweenAnimationBuilder<double>(
+                  tween: Tween(end: v),
+                  duration: resolvedDuration(ctx, AppDurations.base),
+                  builder: (_, t, _) => LinearProgressIndicator(value: t),
+                ),
+                const SizedBox(height: AppSpace.sm),
+                Text(
+                  '${(v * 100).round()}%',
+                  style: ctx.text.labelMedium!.copyWith(
+                    fontFeatures: AppTypography.tabular,
+                    color: ctx.colors.textMuted,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -395,13 +421,18 @@ class SharingSettingsScreen extends ConsumerWidget {
                 QrImageView(
                   data: Base32.encode(result.rawKey!),
                   size: 160,
-                  backgroundColor: Colors.white,
+                  backgroundColor: AppColors.white,
                 ),
-                SelectableText(Base32.grouped(Base32.encode(result.rawKey!))),
-                const SizedBox(height: 8),
-                const Text(
+                const SizedBox(height: AppSpace.md),
+                SelectableText(
+                  Base32.grouped(Base32.encode(result.rawKey!)),
+                  textAlign: TextAlign.center,
+                  style: AppTypography.mono.copyWith(color: ctx.colors.text),
+                ),
+                const SizedBox(height: AppSpace.sm),
+                Text(
                   'Shown once. The file cannot be opened without it.',
-                  style: TextStyle(fontSize: 12),
+                  style: ctx.text.bodySmall,
                 ),
               ],
             ),
@@ -555,6 +586,47 @@ class SharingSettingsScreen extends ConsumerWidget {
             onPressed: () => Navigator.pop(ctx, c.text),
             child: const Text('OK'),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Large tappable tile for a primary action.
+class _ActionCard extends StatelessWidget {
+  const _ActionCard({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return AppCard(
+      onTap: onTap,
+      semanticLabel: title,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: c.brandSubtle,
+              borderRadius: AppRadius.brMd,
+            ),
+            child: Icon(icon, color: c.brandText),
+          ),
+          const SizedBox(height: AppSpace.md),
+          Text(title, style: context.text.titleMedium),
+          const SizedBox(height: AppSpace.xxs),
+          Text(subtitle, style: context.text.bodySmall),
         ],
       ),
     );

@@ -85,4 +85,76 @@ void main() {
       expect(_contrastRatio(t.textMuted, t.bg), greaterThanOrEqualTo(3.0));
     });
   });
+
+  for (final entry in {
+    'Light': AppColorTokens.light,
+    'Dark': AppColorTokens.dark,
+  }.entries) {
+    final name = entry.key;
+    final t = entry.value;
+
+    group('WCAG AA Contrast — extended tokens ($name)', () {
+      test('text on surfaceRaised ≥ 4.5:1', () {
+        expect(
+          _contrastRatio(t.text, t.surfaceRaised),
+          greaterThanOrEqualTo(4.5),
+        );
+      });
+
+      for (final bg in {
+        'bg': t.bg,
+        'surface': t.surface,
+        'surfaceAlt': t.surfaceAlt,
+        'surfaceRaised': t.surfaceRaised,
+      }.entries) {
+        test('textMuted on ${bg.key} ≥ 4.5:1', () {
+          expect(
+            _contrastRatio(t.textMuted, bg.value),
+            greaterThanOrEqualTo(4.5),
+          );
+        });
+      }
+
+      test('onBrand on brand ≥ 4.5:1', () {
+        expect(_contrastRatio(t.onBrand, t.brand), greaterThanOrEqualTo(4.5));
+      });
+
+      for (final bg in {
+        'bg': t.bg,
+        'surface': t.surface,
+        'brandSubtle': t.brandSubtle,
+      }.entries) {
+        test('brandText on ${bg.key} ≥ 4.5:1', () {
+          expect(
+            _contrastRatio(t.brandText, bg.value),
+            greaterThanOrEqualTo(4.5),
+          );
+        });
+      }
+
+      test('outlineStrong on surface ≥ 3:1 (non-text UI)', () {
+        expect(
+          _contrastRatio(t.outlineStrong, t.surface),
+          greaterThanOrEqualTo(3.0),
+        );
+      });
+
+      test('onInverse on inverseSurface ≥ 4.5:1', () {
+        expect(
+          _contrastRatio(t.onInverse, t.inverseSurface),
+          greaterThanOrEqualTo(4.5),
+        );
+      });
+
+      for (final c in {
+        'success': t.success,
+        'warning': t.warning,
+        'danger': t.danger,
+      }.entries) {
+        test('${c.key} on surface ≥ 3:1', () {
+          expect(_contrastRatio(c.value, t.surface), greaterThanOrEqualTo(3.0));
+        });
+      }
+    });
+  }
 }

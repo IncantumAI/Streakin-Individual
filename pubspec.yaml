@@ -48,6 +48,7 @@ dependencies:
   # UI / Design
   animations: ^3.0.0
   flutter_animate: ^4.5.2
+  confetti: ^0.8.0
 
   # Charts
   fl_chart: ^1.2.0

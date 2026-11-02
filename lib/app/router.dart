@@ -41,6 +41,7 @@ import 'package:streakin/features/zen/presentation/zen_screen.dart'
 import 'package:streakin/features/goals/goals_module.dart'
     show GoalDetailScreen, GoalHistoryScreen;
 import 'package:streakin/app/shell/app_shell.dart';
+import 'package:streakin/app/transitions.dart';
 import 'package:streakin/core/storage/session_scope.dart';
 import 'package:streakin/features/settings/application/settings_providers.dart';
 
@@ -115,16 +116,21 @@ final routerProvider = Provider<GoRouter>((ref) {
       return null;
     },
     routes: [
-      GoRoute(path: AppRoutes.splash, builder: (_, _) => const _SplashScreen()),
+      GoRoute(
+        path: AppRoutes.splash,
+        pageBuilder: (_, state) =>
+            fadeThroughPage(state, const _SplashScreen()),
+      ),
       GoRoute(
         path: AppRoutes.onboarding,
-        builder: (_, _) => const OnboardingScreen(),
+        pageBuilder: (_, state) =>
+            fadeThroughPage(state, const OnboardingScreen()),
       ),
       GoRoute(
         path: AppRoutes.lock,
-        builder: (context, state) {
+        pageBuilder: (context, state) {
           final returnTo = state.uri.queryParameters['from'];
-          return LockScreen(returnTo: returnTo);
+          return fadeThroughPage(state, LockScreen(returnTo: returnTo));
         },
       ),
       GoRoute(
@@ -180,11 +186,16 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/settings/sharing',
         builder: (_, _) => const SharingSettingsScreen(),
       ),
-      GoRoute(path: '/zen', builder: (_, _) => const ZenScreen()),
+      GoRoute(
+        path: '/zen',
+        pageBuilder: (_, state) => scaledAxisPage(state, const ZenScreen()),
+      ),
       GoRoute(
         path: '/zen/focus',
-        builder: (_, state) =>
-            FocusZenScreen(habitId: state.uri.queryParameters['habit']),
+        pageBuilder: (_, state) => scaledAxisPage(
+          state,
+          FocusZenScreen(habitId: state.uri.queryParameters['habit']),
+        ),
       ),
       GoRoute(
         path: '/habits/heatmaps',
@@ -208,7 +219,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/notes/search',
-        builder: (_, _) => const NoteSearchScreen(),
+        pageBuilder: (_, state) =>
+            scaledAxisPage(state, const NoteSearchScreen()),
       ),
       GoRoute(
         path: '/notes/:noteId',
@@ -218,7 +230,14 @@ final routerProvider = Provider<GoRouter>((ref) {
           zen: state.uri.queryParameters['zen'] == '1',
         ),
       ),
-      StatefulShellRoute.indexedStack(
+      // Custom container (not .indexedStack) so tab switches fade through
+      // while every branch keeps its state.
+      StatefulShellRoute(
+        navigatorContainerBuilder: (context, shell, children) =>
+            AnimatedBranchContainer(
+              currentIndex: shell.currentIndex,
+              children: children,
+            ),
         builder: (context, state, shell) =>
             SessionScope(child: AppShell(shell: shell)),
         branches: [

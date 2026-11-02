@@ -12,7 +12,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
 
+import 'package:streakin/core/design/spacing.dart';
 import 'package:streakin/core/design/tokens.dart';
+import 'package:streakin/core/design/typography.dart';
 import 'package:streakin/core/time/hlc.dart';
 import 'package:streakin/features/notes/application/note_providers.dart';
 import 'package:streakin/features/notes/domain/note.dart';
@@ -20,6 +22,7 @@ import 'package:streakin/features/notes/editor/note_templates.dart';
 import 'package:streakin/features/notes/presentation/folder_breadcrumbs.dart';
 import 'package:streakin/features/notes/presentation/folder_sidebar.dart';
 import 'package:streakin/features/notes/presentation/notes_layout.dart';
+import 'package:streakin/shared/widgets/widgets.dart';
 
 /// Opens the template picker and creates the chosen note (used by the
 /// dashboard "New note" quick action).
@@ -49,33 +52,31 @@ class NotesScreen extends ConsumerWidget {
         title: const Text('Notes'),
         actions: [
           IconButton(
-            icon: const Icon(AppIcons.search),
-            tooltip: 'Search notes',
-            onPressed: () => context.push('/notes/search'),
+            icon: const Icon(AppIcons.graph),
+            tooltip: 'Graph view',
+            onPressed: () => context.push('/notes/graph'),
           ),
+          const SizedBox(width: AppSpace.sm),
         ],
       ),
+      backgroundColor: colors.bg,
       body: _NoteListPane(
         onNewNote: () => _showTemplatePicker(context, ref),
         showAppBar: false,
       ),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: colors.brand,
-        foregroundColor: colors.onBrand,
+      floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showTemplatePicker(context, ref),
         tooltip: 'New note',
-        child: const Icon(AppIcons.add),
+        icon: const Icon(AppIcons.add),
+        label: const Text('New note'),
       ),
     );
   }
 
   static void _showTemplatePicker(BuildContext context, WidgetRef ref) {
-    showModalBottomSheet<NoteTemplateKind>(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
+    showAppBottomSheet<NoteTemplateKind>(
+      context,
+      title: 'Choose a template',
       builder: (_) => const _TemplatePickerSheet(),
     ).then((kind) {
       if (kind != null && context.mounted) {
@@ -131,18 +132,43 @@ class _NoteListPane extends ConsumerWidget {
 
     final body = Column(
       children: [
+        // Search affordance (mobile header; desktop has its own panes).
+        if (!showAppBar)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpace.lg,
+              AppSpace.xs,
+              AppSpace.lg,
+              AppSpace.xs,
+            ),
+            child: _SearchField(onTap: () => context.push('/notes/search')),
+          ),
         const FolderBreadcrumbs(),
         Expanded(
           child: notesAsync.when(
-            loading: () =>
-                const Center(child: CircularProgressIndicator.adaptive()),
-            error: (e, _) => Center(child: Text('Error: $e')),
+            loading: () => const SkeletonList(),
+            error: (e, st) => ErrorState(
+              error: e,
+              stackTrace: st,
+              title: 'Couldn’t load notes',
+            ),
             data: (notes) {
-              if (notes.isEmpty) return const _EmptyNotesState();
-              return ListView.builder(
-                padding: const EdgeInsets.symmetric(vertical: 8),
+              if (notes.isEmpty) {
+                return _EmptyNotesState(onNewNote: onNewNote);
+              }
+              return ListView.separated(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpace.lg,
+                  AppSpace.sm,
+                  AppSpace.lg,
+                  96,
+                ),
                 itemCount: notes.length,
-                itemBuilder: (ctx, i) => _NoteListTile(note: notes[i]),
+                separatorBuilder: (_, _) => const SizedBox(height: AppSpace.sm),
+                itemBuilder: (ctx, i) => StaggeredEntrance(
+                  index: i,
+                  child: _NoteListTile(note: notes[i]),
+                ),
               );
             },
           ),
@@ -155,16 +181,21 @@ class _NoteListPane extends ConsumerWidget {
     // Desktop pane header
     final folderName = _activeFolderName(ref);
     return Scaffold(
-      backgroundColor: colors.surface,
+      backgroundColor: colors.bg,
       appBar: AppBar(
-        backgroundColor: colors.surface,
         title: Text(folderName),
         actions: [
           IconButton(
+            icon: const Icon(AppIcons.search),
+            tooltip: 'Search notes (Ctrl+K)',
+            onPressed: () => context.push('/notes/search'),
+          ),
+          IconButton(
             icon: const Icon(AppIcons.add),
-            tooltip: 'New note',
+            tooltip: 'New note (Ctrl+N)',
             onPressed: onNewNote,
           ),
+          const SizedBox(width: AppSpace.sm),
         ],
       ),
       body: body,
@@ -192,50 +223,130 @@ class _NoteListTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.colors;
-    return ListTile(
+    final title = note.title.isEmpty ? 'Untitled' : note.title;
+    return AppCard(
       onTap: () => context.push('/notes/${note.id}'),
-      title: Text(
-        note.title.isEmpty ? 'Untitled' : note.title,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: TextStyle(
-          fontWeight: FontWeight.w500,
-          color: colors.text,
-          fontSize: 15,
-        ),
+      onLongPress: () => _showActionSheet(context, ref),
+      onSecondaryTapDown: (d) =>
+          _showContextMenu(context, ref, d.globalPosition),
+      semanticLabel: title,
+      padding: const EdgeInsets.fromLTRB(
+        AppSpace.md,
+        AppSpace.md,
+        AppSpace.xs,
+        AppSpace.md,
       ),
-      subtitle: Text(
-        _formatDate(note.updatedAt),
-        style: TextStyle(fontSize: 12, color: colors.textMuted),
-      ),
-      leading: Icon(
-        AppIcons.articleOutlined,
-        color: colors.textMuted,
-        size: 22,
-      ),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
+      child: Row(
         children: [
-          if (note.isPinned)
-            Padding(
-              padding: const EdgeInsets.only(right: 4),
-              child: Icon(AppIcons.pin, size: 16, color: colors.brand),
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: note.isPinned ? colors.brandSubtle : colors.surfaceAlt,
+              borderRadius: AppRadius.brMd,
             ),
+            child: Icon(
+              note.isPinned ? AppIcons.pinFill : AppIcons.articleOutlined,
+              color: note.isPinned ? colors.brandText : colors.textMuted,
+              size: AppSizes.iconMd,
+            ),
+          ),
+          const SizedBox(width: AppSpace.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: context.text.titleSmall!.copyWith(
+                    fontSize: 15,
+                    color: note.title.isEmpty ? colors.textMuted : colors.text,
+                  ),
+                ),
+                const SizedBox(height: AppSpace.xxs),
+                Text(
+                  _formatDate(note.updatedAt),
+                  style: context.text.bodySmall!.copyWith(fontSize: 12),
+                ),
+              ],
+            ),
+          ),
           PopupMenuButton<_NoteAction>(
+            tooltip: 'Note options',
             icon: Icon(AppIcons.more, size: 18, color: colors.textMuted),
             onSelected: (action) => _handleAction(context, ref, action),
-            itemBuilder: (_) => const [
-              PopupMenuItem(value: _NoteAction.pin, child: Text('Pin / Unpin')),
-              PopupMenuItem(
-                value: _NoteAction.move,
-                child: Text('Move to folder'),
-              ),
-              PopupMenuItem(value: _NoteAction.delete, child: Text('Delete')),
-            ],
+            itemBuilder: (_) => _menuItems(),
           ),
         ],
       ),
     );
+  }
+
+  List<PopupMenuEntry<_NoteAction>> _menuItems() => [
+    PopupMenuItem(
+      value: _NoteAction.pin,
+      child: Text(note.isPinned ? 'Unpin' : 'Pin'),
+    ),
+    const PopupMenuItem(value: _NoteAction.move, child: Text('Move to folder')),
+    const PopupMenuItem(value: _NoteAction.delete, child: Text('Delete')),
+  ];
+
+  /// Desktop right-click menu at the pointer.
+  Future<void> _showContextMenu(
+    BuildContext context,
+    WidgetRef ref,
+    Offset at,
+  ) async {
+    final overlay =
+        Overlay.of(context).context.findRenderObject()! as RenderBox;
+    final action = await showMenu<_NoteAction>(
+      context: context,
+      position: RelativeRect.fromRect(
+        at & const Size(1, 1),
+        Offset.zero & overlay.size,
+      ),
+      items: _menuItems(),
+    );
+    if (action != null && context.mounted) {
+      await _handleAction(context, ref, action);
+    }
+  }
+
+  /// Mobile long-press actions.
+  Future<void> _showActionSheet(BuildContext context, WidgetRef ref) async {
+    final action = await showAppBottomSheet<_NoteAction>(
+      context,
+      title: note.title.isEmpty ? 'Untitled' : note.title,
+      isScrollControlled: false,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: Icon(note.isPinned ? AppIcons.pin : AppIcons.pinFill),
+              title: Text(note.isPinned ? 'Unpin' : 'Pin'),
+              onTap: () => Navigator.of(ctx).pop(_NoteAction.pin),
+            ),
+            ListTile(
+              leading: const Icon(AppIcons.folder),
+              title: const Text('Move to folder'),
+              onTap: () => Navigator.of(ctx).pop(_NoteAction.move),
+            ),
+            ListTile(
+              leading: Icon(AppIcons.delete, color: ctx.colors.danger),
+              title: Text('Delete', style: TextStyle(color: ctx.colors.danger)),
+              onTap: () => Navigator.of(ctx).pop(_NoteAction.delete),
+            ),
+            const SizedBox(height: AppSpace.sm),
+          ],
+        ),
+      ),
+    );
+    if (action != null && context.mounted) {
+      await _handleAction(context, ref, action);
+    }
   }
 
   Future<void> _handleAction(
@@ -255,10 +366,20 @@ class _NoteListTile extends ConsumerWidget {
         );
       case _NoteAction.delete:
         await repo.softDeleteNote(note.id);
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                '“${note.title.isEmpty ? 'Untitled' : note.title}” deleted',
+              ),
+            ),
+          );
+        }
       case _NoteAction.move:
         if (!context.mounted) return;
-        final targetId = await showModalBottomSheet<String>(
-          context: context,
+        final targetId = await showAppBottomSheet<String>(
+          context,
+          title: 'Move to folder',
           builder: (_) => _MoveFolderSheet(currentFolderId: note.folderId),
         );
         if (targetId != null) {
@@ -291,32 +412,28 @@ class _MoveFolderSheet extends ConsumerWidget {
     final foldersAsync = ref.watch(foldersProvider);
     final colors = context.colors;
     return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.only(bottom: AppSpace.md),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-              child: Text(
-                'Move to folder',
-                style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 15,
-                  color: colors.text,
-                ),
-              ),
-            ),
-            const Divider(),
             ListTile(
               leading: Icon(AppIcons.inboxOutlined, color: colors.textMuted),
               title: const Text('Inbox'),
+              selected: currentFolderId == null,
+              trailing: currentFolderId == null
+                  ? Icon(AppIcons.check, color: colors.brandText)
+                  : null,
               onTap: () => Navigator.of(context).pop(''),
             ),
             ...?foldersAsync.value?.map(
               (f) => ListTile(
                 leading: Icon(AppIcons.folder, color: colors.textMuted),
                 title: Text(f.name),
+                selected: currentFolderId == f.id,
+                trailing: currentFolderId == f.id
+                    ? Icon(AppIcons.check, color: colors.brandText)
+                    : null,
                 onTap: () => Navigator.of(context).pop(f.id),
               ),
             ),
@@ -330,30 +447,62 @@ class _MoveFolderSheet extends ConsumerWidget {
 // ── Empty state ───────────────────────────────────────────────────────────────
 
 class _EmptyNotesState extends StatelessWidget {
-  const _EmptyNotesState();
+  const _EmptyNotesState({required this.onNewNote});
+  final VoidCallback onNewNote;
   @override
   Widget build(BuildContext context) {
-    final colors = context.colors;
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(AppIcons.articleOutlined, size: 56, color: colors.outline),
-          const SizedBox(height: 16),
-          Text(
-            'No notes yet',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: colors.text,
+    return EmptyState(
+      icon: AppIcons.emptyNotes,
+      title: 'No notes yet',
+      message: 'Start with a blank page or pick a template.',
+      action: FilledButton.icon(
+        onPressed: onNewNote,
+        icon: const Icon(AppIcons.add, size: AppSizes.iconMd),
+        label: const Text('New note'),
+      ),
+    );
+  }
+}
+
+/// Tappable faux search field that opens the search screen.
+class _SearchField extends StatelessWidget {
+  const _SearchField({required this.onTap});
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Semantics(
+      button: true,
+      label: 'Search notes',
+      excludeSemantics: true,
+      child: Material(
+        color: c.surfaceAlt,
+        borderRadius: AppRadius.brMd,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: AppRadius.brMd,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpace.lg,
+              vertical: AppSpace.md,
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  AppIcons.search,
+                  size: AppSizes.iconMd,
+                  color: c.textMuted,
+                ),
+                const SizedBox(width: AppSpace.md),
+                Text(
+                  'Search notes',
+                  style: context.text.bodyMedium!.copyWith(color: c.textMuted),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 8),
-          Text(
-            'Tap + to create your first note.',
-            style: TextStyle(fontSize: 14, color: colors.textMuted),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -367,56 +516,63 @@ class _TemplatePickerSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(
+          AppSpace.lg,
+          0,
+          AppSpace.lg,
+          AppSpace.xl,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: colors.outline,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Choose a template',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: colors.text,
-              ),
-            ),
-            const SizedBox(height: 12),
-            ...kAllTemplates.map(
-              (t) => ListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text(
-                  t.label,
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w500,
-                    color: colors.text,
+            for (var i = 0; i < kAllTemplates.length; i++) ...[
+              if (i > 0) const SizedBox(height: AppSpace.sm),
+              StaggeredEntrance(
+                index: i,
+                child: AppCard(
+                  onTap: () => Navigator.of(context).pop(kAllTemplates[i].kind),
+                  padding: const EdgeInsets.all(AppSpace.md),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: colors.brandSubtle,
+                          borderRadius: AppRadius.brMd,
+                        ),
+                        child: Icon(
+                          kAllTemplates[i].kind == NoteTemplateKind.blank
+                              ? AppIcons.add
+                              : AppIcons.descriptionOutlined,
+                          color: colors.brandText,
+                          size: AppSizes.iconMd,
+                        ),
+                      ),
+                      const SizedBox(width: AppSpace.md),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              kAllTemplates[i].label,
+                              style: context.text.titleSmall,
+                            ),
+                            const SizedBox(height: AppSpace.xxs),
+                            Text(
+                              kAllTemplates[i].description,
+                              style: context.text.bodySmall,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                subtitle: Text(
-                  t.description,
-                  style: TextStyle(fontSize: 13, color: colors.textMuted),
-                ),
-                leading: Icon(
-                  t.kind == NoteTemplateKind.blank
-                      ? AppIcons.add
-                      : AppIcons.descriptionOutlined,
-                  color: colors.brand,
-                ),
-                onTap: () => Navigator.of(context).pop(t.kind),
               ),
-            ),
+            ],
           ],
         ),
       ),

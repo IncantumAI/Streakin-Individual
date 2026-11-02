@@ -3,12 +3,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:intl/intl.dart';
+import 'package:streakin/core/design/motion.dart';
+import 'package:streakin/core/design/spacing.dart';
 import 'package:streakin/core/design/tokens.dart';
+import 'package:streakin/core/design/typography.dart';
+import 'package:streakin/core/time/local_date.dart';
 import 'package:streakin/features/goals/application/goal_providers.dart';
 import 'package:streakin/features/goals/domain/goal.dart';
 import 'package:streakin/features/goals/domain/goal_clock.dart';
 import 'package:streakin/features/goals/domain/goal_repository.dart';
 import 'package:streakin/features/goals/presentation/goal_create_sheet.dart';
+import 'package:streakin/shared/widgets/widgets.dart';
 
 class GoalDetailScreen extends ConsumerWidget {
   const GoalDetailScreen({required this.goalId, super.key});
@@ -24,10 +30,20 @@ class GoalDetailScreen extends ConsumerWidget {
     final linksAsync = ref.watch(activeGoalLinksProvider);
 
     return goalAsync.when(
-      loading: () => const Scaffold(
-        body: Center(child: CircularProgressIndicator.adaptive()),
+      loading: () => Scaffold(
+        backgroundColor: colors.bg,
+        appBar: AppBar(),
+        body: const SkeletonList(count: 3, showLeading: false),
       ),
-      error: (_, _) => const Scaffold(body: Center(child: Text('Error'))),
+      error: (e, st) => Scaffold(
+        backgroundColor: colors.bg,
+        appBar: AppBar(),
+        body: ErrorState(
+          error: e,
+          stackTrace: st,
+          onRetry: () => ref.invalidate(activeGoalProvider),
+        ),
+      ),
       data: (goal) {
         if (goal == null || goal.id != goalId) {
           return _ArchivedGoalDetail(goalId: goalId);
@@ -35,56 +51,57 @@ class GoalDetailScreen extends ConsumerWidget {
         final clock = clockState;
         if (clock == null) return const SizedBox.shrink();
 
+        final sections = <Widget>[
+          _CountdownHeader(clock: clock, colors: colors),
+          const SizedBox(height: AppSpace.md),
+          AppCard(
+            child: goal.kind == GoalKind.dated
+                ? _TimelineBar(clock: clock, colors: colors)
+                : _MilestoneTrack(clock: clock, colors: colors),
+          ),
+          const SizedBox(height: AppSpace.md),
+          _AlignmentSection(
+            alignAsync: alignAsync,
+            liveAsync: liveAsync,
+            colors: colors,
+          ),
+          const SectionHeader('Linked habits'),
+          linksAsync.when(
+            loading: () => const SkeletonCard(height: 80),
+            error: (e, st) => ErrorState.inline(error: e, stackTrace: st),
+            data: (links) =>
+                _LinkedHabitsSection(links: links, goal: goal, colors: colors),
+          ),
+          const SectionHeader('Actions'),
+          _ActionsSection(goal: goal, colors: colors),
+          const SizedBox(height: AppSpace.sm),
+          Center(
+            child: TextButton.icon(
+              style: TextButton.styleFrom(foregroundColor: colors.textMuted),
+              onPressed: () => context.push('/goals/history'),
+              icon: const Icon(AppIcons.archive, size: AppSizes.iconSm),
+              label: const Text('Past goals'),
+            ),
+          ),
+        ];
+
         return Scaffold(
           backgroundColor: colors.bg,
           appBar: AppBar(
-            title: Text(
-              goal.title,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-            ),
+            title: Text(goal.title),
             actions: [
               IconButton(
                 icon: const Icon(AppIcons.edit),
+                tooltip: 'Edit goal',
                 onPressed: () => showGoalCreateSheet(context, existing: goal),
               ),
+              const SizedBox(width: AppSpace.sm),
             ],
           ),
-          body: ListView(
-            padding: const EdgeInsets.all(16),
+          body: ReadableListView(
             children: [
-              _CountdownHeader(clock: clock, colors: colors),
-              const SizedBox(height: 16),
-              if (goal.kind == GoalKind.dated)
-                _TimelineBar(clock: clock, colors: colors)
-              else
-                _MilestoneTrack(clock: clock, colors: colors),
-              const SizedBox(height: 16),
-              _AlignmentSection(
-                alignAsync: alignAsync,
-                liveAsync: liveAsync,
-                colors: colors,
-              ),
-              const SizedBox(height: 16),
-              linksAsync.when(
-                loading: () => const SizedBox.shrink(),
-                error: (_, _) => const SizedBox.shrink(),
-                data: (links) => _LinkedHabitsSection(
-                  links: links,
-                  goal: goal,
-                  colors: colors,
-                ),
-              ),
-              const SizedBox(height: 16),
-              _ActionsSection(goal: goal, colors: colors),
-              const SizedBox(height: 8),
-              TextButton(
-                onPressed: () => context.push('/goals/history'),
-                child: Text(
-                  'Past goals',
-                  style: TextStyle(color: colors.textMuted, fontSize: 13),
-                ),
-              ),
-              const SizedBox(height: 24),
+              for (var i = 0; i < sections.length; i++)
+                StaggeredEntrance(index: i, child: sections[i]),
             ],
           ),
         );
@@ -93,6 +110,9 @@ class GoalDetailScreen extends ConsumerWidget {
   }
 }
 
+String _fmtDate(LocalDate d) =>
+    DateFormat('d MMM yyyy').format(DateTime(d.year, d.month, d.day));
+
 class _CountdownHeader extends StatelessWidget {
   const _CountdownHeader({required this.clock, required this.colors});
   final GoalClockState clock;
@@ -100,54 +120,57 @@ class _CountdownHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: colors.outline),
-      ),
+    final countdown =
+        clock.goal.kind == GoalKind.dated &&
+        clock.phase == GoalPhase.active &&
+        clock.daysLeft != null;
+    final value = countdown ? clock.daysLeft! : clock.dayNumber;
+    return AppCard(
+      variant: AppCardVariant.brand,
+      padding: const EdgeInsets.all(AppSpace.xl),
       child: Column(
         children: [
-          Text(
-            clock.caption,
-            style: TextStyle(fontSize: 14, color: colors.textMuted),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              StatusPill(
+                clock.caption,
+                tone: clock.isFinalStretch ? PillTone.warning : PillTone.brand,
+              ),
+            ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpace.lg),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.baseline,
             textBaseline: TextBaseline.alphabetic,
             children: [
-              Text(
-                clock.goal.kind == GoalKind.dated &&
-                        clock.phase == GoalPhase.active &&
-                        clock.daysLeft != null
-                    ? '${clock.daysLeft}'
-                    : '${clock.dayNumber}',
-                style: TextStyle(
-                  fontSize: 56,
-                  fontWeight: FontWeight.w700,
-                  color: colors.brand,
+              AnimatedCounter(
+                value: value,
+                semanticsLabel: '$value ${countdown ? 'days left' : 'days in'}',
+                style: AppTypography.numeric.copyWith(
+                  fontSize: 64,
+                  color: colors.text,
                 ),
               ),
-              const SizedBox(width: 4),
+              const SizedBox(width: AppSpace.sm),
               Text(
                 clock.goal.kind == GoalKind.dated &&
                         clock.phase == GoalPhase.active
                     ? 'days left'
                     : 'days in',
-                style: TextStyle(fontSize: 16, color: colors.textMuted),
+                style: context.text.titleMedium!.copyWith(
+                  color: colors.textMuted,
+                ),
               ),
             ],
           ),
           if (clock.goal.why != null && clock.goal.why!.isNotEmpty)
             Padding(
-              padding: const EdgeInsets.only(top: 8),
+              padding: const EdgeInsets.only(top: AppSpace.md),
               child: Text(
-                clock.goal.why!,
-                style: TextStyle(
-                  fontSize: 13,
+                '“${clock.goal.why!}”',
+                style: context.text.bodyMedium!.copyWith(
                   color: colors.textMuted,
                   fontStyle: FontStyle.italic,
                 ),
@@ -155,6 +178,28 @@ class _CountdownHeader extends StatelessWidget {
               ),
             ),
         ],
+      ),
+    );
+  }
+}
+
+/// Animated rounded progress bar.
+class _Bar extends StatelessWidget {
+  const _Bar({required this.value, required this.colors});
+  final double value;
+  final AppColorTokens colors;
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: value.clamp(0.0, 1.0)),
+      duration: resolvedDuration(context, AppDurations.chartDrawIn),
+      curve: AppCurves.emphasized,
+      builder: (_, v, _) => LinearProgressIndicator(
+        value: v,
+        minHeight: 10,
+        backgroundColor: colors.surfaceAlt,
+        color: colors.brand,
       ),
     );
   }
@@ -172,28 +217,30 @@ class _TimelineBar extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
+            Expanded(child: Text('Timeline', style: context.text.titleSmall)),
             Text(
-              clock.goal.startDate.toIso(),
-              style: TextStyle(fontSize: 11, color: colors.textMuted),
-            ),
-            if (clock.goal.endDate != null)
-              Text(
-                clock.goal.endDate!.toIso(),
-                style: TextStyle(fontSize: 11, color: colors.textMuted),
+              '${(progress * 100).round()}%',
+              style: context.text.labelLarge!.copyWith(
+                color: colors.brandText,
+                fontFeatures: AppTypography.tabular,
               ),
+            ),
           ],
         ),
-        const SizedBox(height: 4),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(4),
-          child: LinearProgressIndicator(
-            value: progress,
-            minHeight: 8,
-            backgroundColor: colors.brand.withAlpha(30),
-            valueColor: AlwaysStoppedAnimation(colors.brand),
-          ),
+        const SizedBox(height: AppSpace.md),
+        _Bar(value: progress, colors: colors),
+        const SizedBox(height: AppSpace.sm),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(_fmtDate(clock.goal.startDate), style: context.text.bodySmall),
+            if (clock.goal.endDate != null)
+              Text(
+                _fmtDate(clock.goal.endDate!),
+                style: context.text.bodySmall,
+              ),
+          ],
         ),
       ],
     );
@@ -212,24 +259,28 @@ class _MilestoneTrack extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Progress to Day $next',
-          style: TextStyle(fontSize: 13, color: colors.textMuted),
+        Row(
+          children: [
+            Icon(
+              AppIcons.milestone,
+              size: AppSizes.iconMd,
+              color: colors.brandText,
+            ),
+            const SizedBox(width: AppSpace.sm),
+            Expanded(
+              child: Text(
+                'Progress to day $next',
+                style: context.text.titleSmall,
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: 4),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(4),
-          child: LinearProgressIndicator(
-            value: progress,
-            minHeight: 8,
-            backgroundColor: colors.brand.withAlpha(30),
-            valueColor: AlwaysStoppedAnimation(colors.brand),
-          ),
-        ),
-        const SizedBox(height: 4),
+        const SizedBox(height: AppSpace.md),
+        _Bar(value: progress, colors: colors),
+        const SizedBox(height: AppSpace.sm),
         Text(
           '${clock.daysToNextMilestone ?? 0} days to go',
-          style: TextStyle(fontSize: 11, color: colors.textMuted),
+          style: context.text.bodySmall,
         ),
       ],
     );
@@ -251,25 +302,12 @@ class _AlignmentSection extends StatelessWidget {
     final stats = alignAsync.value;
     final live = liveAsync.value;
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: colors.outline),
-      ),
+    return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Alignment',
-            style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
-              color: colors.text,
-            ),
-          ),
-          const SizedBox(height: 12),
+          Text('Alignment', style: context.text.titleSmall),
+          const SizedBox(height: AppSpace.lg),
           Row(
             children: [
               _StatTile(
@@ -292,10 +330,19 @@ class _AlignmentSection extends StatelessWidget {
             ],
           ),
           if (live != null && live.scheduled > 0) ...[
-            const SizedBox(height: 12),
-            Text(
-              'Today: ${live.done}/${live.scheduled} linked habits done',
-              style: TextStyle(fontSize: 13, color: colors.textMuted),
+            const SizedBox(height: AppSpace.lg),
+            Row(
+              children: [
+                StatusPill(
+                  'Today ${live.done}/${live.scheduled}',
+                  tone: live.done == live.scheduled
+                      ? PillTone.success
+                      : PillTone.neutral,
+                  icon: AppIcons.check,
+                ),
+                const SizedBox(width: AppSpace.sm),
+                Text('linked habits done', style: context.text.bodySmall),
+              ],
             ),
           ],
         ],
@@ -321,13 +368,17 @@ class _StatTile extends StatelessWidget {
         children: [
           Text(
             value,
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w700,
-              color: colors.brand,
+            style: AppTypography.numeric.copyWith(
+              fontSize: 24,
+              color: colors.text,
             ),
           ),
-          Text(label, style: TextStyle(fontSize: 11, color: colors.textMuted)),
+          const SizedBox(height: AppSpace.xxs),
+          Text(
+            label,
+            style: context.text.bodySmall,
+            textAlign: TextAlign.center,
+          ),
         ],
       ),
     );
@@ -348,26 +399,24 @@ class _LinkedHabitsSection extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final openLinks = links.where((l) => l.isOpen).toList();
     if (openLinks.isEmpty) {
-      return Text(
-        'No habits linked. Tap Edit to link habits.',
-        style: TextStyle(color: colors.textMuted, fontSize: 13),
-      );
-    }
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Linked habits',
-          style: TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w600,
-            color: colors.text,
+      return AppCard(
+        variant: AppCardVariant.filled,
+        child: EmptyState(
+          compact: true,
+          icon: AppIcons.link,
+          title: 'No habits linked',
+          message: 'Link habits so they count towards this goal.',
+          action: OutlinedButton(
+            onPressed: () => showGoalCreateSheet(context, existing: goal),
+            child: const Text('Link habits'),
           ),
         ),
-        const SizedBox(height: 8),
-        ...openLinks.map(
-          (link) => _LinkedHabitTile(link: link, goal: goal, colors: colors),
-        ),
+      );
+    }
+    return SettingsGroup(
+      children: [
+        for (final link in openLinks)
+          _LinkedHabitTile(link: link, goal: goal, colors: colors),
       ],
     );
   }
@@ -390,20 +439,16 @@ class _LinkedHabitTile extends ConsumerWidget {
       future: port?.watchHabits({link.habitId}).first,
       builder: (_, snap) {
         final name = snap.data?.firstOrNull?.name ?? '…';
-        return ListTile(
-          dense: true,
-          contentPadding: EdgeInsets.zero,
-          leading: Icon(AppIcons.link, size: 18, color: colors.brand),
-          title: Text(name, style: TextStyle(fontSize: 14, color: colors.text)),
+        return SettingsTile(
+          icon: AppIcons.link,
+          title: name,
           trailing: TextButton(
+            style: TextButton.styleFrom(foregroundColor: colors.textMuted),
             onPressed: () async {
               final svc = ref.read(goalLifecycleServiceProvider);
               if (svc != null) await svc.unlinkHabit(goal, link.habitId);
             },
-            child: Text(
-              'Unlink',
-              style: TextStyle(fontSize: 12, color: colors.textMuted),
-            ),
+            child: const Text('Unlink'),
           ),
         );
       },
@@ -418,82 +463,54 @@ class _ActionsSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return Column(
+    return SettingsGroup(
       children: [
-        OutlinedButton.icon(
-          onPressed: () => showGoalCreateSheet(context, existing: goal),
-          icon: const Icon(AppIcons.edit, size: 16),
-          label: const Text('Edit'),
-          style: OutlinedButton.styleFrom(
-            minimumSize: const Size.fromHeight(44),
-          ),
+        SettingsTile.nav(
+          icon: AppIcons.edit,
+          title: 'Edit goal',
+          onTap: () => showGoalCreateSheet(context, existing: goal),
         ),
-        const SizedBox(height: 8),
-        OutlinedButton.icon(
-          onPressed: () async {
-            final confirm = await _confirm(
+        SettingsTile(
+          icon: AppIcons.checkCircleOutline,
+          title: 'Complete early',
+          subtitle: 'Archive as completed',
+          onTap: () async {
+            final confirm = await showConfirmDialog(
               context,
-              'Complete early?',
-              'This will archive the goal as completed early.',
+              title: 'Complete early?',
+              message: 'This will archive the goal as completed early.',
+              confirmLabel: 'Complete',
             );
             if (!confirm) return;
             final svc = ref.read(goalLifecycleServiceProvider);
             if (svc != null) await svc.completeEarly(goal);
-            if (context.mounted) context.pop();
+            if (context.mounted) {
+              context.celebrate(CelebrationKind.goalDone);
+              context.pop();
+            }
           },
-          icon: Icon(
-            AppIcons.checkCircleOutline,
-            size: 16,
-            color: colors.success,
-          ),
-          label: const Text('Complete early'),
-          style: OutlinedButton.styleFrom(
-            minimumSize: const Size.fromHeight(44),
-          ),
         ),
-        const SizedBox(height: 8),
-        OutlinedButton.icon(
-          onPressed: () async {
-            final confirm = await _confirm(
+        SettingsTile(
+          icon: AppIcons.cancelOutlined,
+          title: 'Abandon',
+          subtitle: 'Archive without completing',
+          destructive: true,
+          onTap: () async {
+            final confirm = await showConfirmDialog(
               context,
-              'Abandon goal?',
-              'This will archive the goal as abandoned.',
+              title: 'Abandon goal?',
+              message: 'This will archive the goal as abandoned.',
+              confirmLabel: 'Abandon',
+              destructive: true,
             );
             if (!confirm) return;
             final svc = ref.read(goalLifecycleServiceProvider);
             if (svc != null) await svc.abandon(goal);
             if (context.mounted) context.pop();
           },
-          icon: Icon(AppIcons.cancelOutlined, size: 16, color: colors.danger),
-          label: const Text('Abandon'),
-          style: OutlinedButton.styleFrom(
-            foregroundColor: colors.danger,
-            minimumSize: const Size.fromHeight(44),
-          ),
         ),
       ],
     );
-  }
-
-  Future<bool> _confirm(BuildContext context, String title, String body) async {
-    return await showDialog<bool>(
-          context: context,
-          builder: (_) => AlertDialog(
-            title: Text(title),
-            content: Text(body),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(false),
-                child: const Text('Cancel'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(true),
-                child: const Text('Confirm'),
-              ),
-            ],
-          ),
-        ) ??
-        false;
   }
 }
 
@@ -509,13 +526,13 @@ class _ArchivedGoalDetail extends ConsumerWidget {
     final repo = ref.watch(goalRepositoryStateProvider);
     return Scaffold(
       backgroundColor: colors.bg,
-      appBar: AppBar(title: const Text('Goal Summary')),
+      appBar: AppBar(title: const Text('Goal summary')),
       body: FutureBuilder<GoalSummary?>(
         future: repo?.getSummary(goalId),
         builder: (_, snap) {
           final summary = snap.data;
           if (summary == null) {
-            return const Center(child: CircularProgressIndicator.adaptive());
+            return const SkeletonList(count: 3, showLeading: false);
           }
           return _SummaryView(summary: summary, colors: colors);
         },
@@ -531,50 +548,58 @@ class _SummaryView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.all(16),
+    return ReadableListView(
       children: [
-        Text(
-          '${summary.elapsedDays} days',
-          style: TextStyle(
-            fontSize: 48,
-            fontWeight: FontWeight.w700,
-            color: colors.brand,
+        const SizedBox(height: AppSpace.lg),
+        AppCard(
+          variant: AppCardVariant.brand,
+          padding: const EdgeInsets.all(AppSpace.xl),
+          child: Column(
+            children: [
+              Text(
+                '${summary.elapsedDays}',
+                style: AppTypography.numeric.copyWith(
+                  fontSize: 56,
+                  color: colors.text,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: AppSpace.xs),
+              Text(
+                'days of ${summary.totalDays}',
+                style: context.text.bodySmall,
+                textAlign: TextAlign.center,
+              ),
+            ],
           ),
-          textAlign: TextAlign.center,
         ),
-        const SizedBox(height: 4),
-        Text(
-          'of ${summary.totalDays} total',
-          style: TextStyle(color: colors.textMuted),
-          textAlign: TextAlign.center,
+        const SizedBox(height: AppSpace.md),
+        SettingsGroup(
+          children: [
+            _SummaryRow(
+              label: 'Alignment',
+              value: summary.alignmentPct != null
+                  ? '${summary.alignmentPct}%'
+                  : '—',
+              colors: colors,
+            ),
+            _SummaryRow(
+              label: 'Perfect days',
+              value: '${summary.perfectDays}',
+              colors: colors,
+            ),
+            _SummaryRow(
+              label: 'Best streak',
+              value: '${summary.bestStreak} days',
+              colors: colors,
+            ),
+          ],
         ),
-        const SizedBox(height: 20),
-        _SummaryRow(
-          label: 'Alignment',
-          value: summary.alignmentPct != null
-              ? '${summary.alignmentPct}%'
-              : '—',
-          colors: colors,
-        ),
-        _SummaryRow(
-          label: 'Perfect days',
-          value: '${summary.perfectDays}',
-          colors: colors,
-        ),
-        _SummaryRow(
-          label: 'Best streak',
-          value: '${summary.bestStreak} days',
-          colors: colors,
-        ),
-        const SizedBox(height: 20),
-        FilledButton(
+        const SizedBox(height: AppSpace.xl),
+        FilledButton.icon(
           onPressed: () => showGoalCreateSheet(context),
-          style: FilledButton.styleFrom(
-            backgroundColor: colors.brand,
-            foregroundColor: colors.onBrand,
-          ),
-          child: const Text('Set your next goal'),
+          icon: const Icon(AppIcons.add, size: AppSizes.iconMd),
+          label: const Text('Set your next goal'),
         ),
       ],
     );
@@ -593,18 +618,13 @@ class _SummaryRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(label, style: TextStyle(color: colors.textMuted)),
-          ),
-          Text(
-            value,
-            style: TextStyle(fontWeight: FontWeight.w600, color: colors.text),
-          ),
-        ],
+    return SettingsTile(
+      title: label,
+      trailing: Text(
+        value,
+        style: context.text.titleSmall!.copyWith(
+          fontFeatures: AppTypography.tabular,
+        ),
       ),
     );
   }

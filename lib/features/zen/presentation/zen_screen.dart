@@ -14,7 +14,9 @@ import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
+import 'package:streakin/core/design/spacing.dart';
 import 'package:streakin/core/design/tokens.dart';
+import 'package:streakin/core/design/typography.dart';
 import 'package:streakin/core/time/hlc.dart';
 import 'package:streakin/features/goals/goals_module.dart' show GoalZenLine;
 import 'package:streakin/features/habits/application/habit_providers.dart';
@@ -24,6 +26,8 @@ import 'package:streakin/features/notes/notes_module.dart'
     show noteRepositoryStateProvider;
 import 'package:streakin/features/settings/application/settings_providers.dart'
     show reducedMotionProvider;
+import 'package:streakin/shared/feedback/haptics.dart';
+import 'package:streakin/shared/widgets/widgets.dart';
 
 /// Breathing rhythm (Spec §4.9).
 const Duration kInhale = Duration(seconds: 4);
@@ -41,31 +45,47 @@ class ZenScreen extends ConsumerWidget {
     final colors = context.colors;
     return Scaffold(
       backgroundColor: colors.bg,
-      appBar: AppBar(title: const Text('Zen'), backgroundColor: colors.surface),
+      appBar: AppBar(title: const Text('Zen')),
       body: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 420),
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const GoalZenLine(),
-                const SizedBox(height: 24),
-                FilledButton.icon(
-                  icon: const Icon(AppIcons.editNote),
-                  label: const Text('Writing Zen'),
-                  onPressed: () => _startWriting(context, ref),
+          constraints: const BoxConstraints(maxWidth: 520),
+          child: ListView(
+            shrinkWrap: true,
+            padding: const EdgeInsets.all(AppSpace.xl),
+            children: [
+              Text('Find your focus', style: context.text.displaySmall),
+              const SizedBox(height: AppSpace.sm),
+              Text(
+                'Distraction-free space for one thing at a time.',
+                style: context.text.bodyLarge!.copyWith(
+                  color: colors.textMuted,
                 ),
-                const SizedBox(height: 12),
-                OutlinedButton.icon(
-                  icon: const Icon(AppIcons.selfImprovement),
-                  label: const Text('Focus Zen'),
-                  onPressed: () => context.push('/zen/focus'),
+              ),
+              const SizedBox(height: AppSpace.lg),
+              const GoalZenLine(),
+              const SizedBox(height: AppSpace.xl),
+              StaggeredEntrance(
+                index: 0,
+                child: _ZenModeCard(
+                  icon: AppIcons.editNote,
+                  title: 'Writing Zen',
+                  description: 'A blank page, full screen. No toolbars, no noise. Just write.',
+                  accent: AppColors.celebBrand,
+                  onTap: () => _startWriting(context, ref),
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(height: AppSpace.md),
+              StaggeredEntrance(
+                index: 1,
+                child: _ZenModeCard(
+                  icon: AppIcons.selfImprovement,
+                  title: 'Focus Zen',
+                  description: 'One habit at a time with a guided breathing circle and optional timer.',
+                  accent: AppColors.celebTeal,
+                  onTap: () => context.push('/zen/focus'),
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -88,6 +108,64 @@ class ZenScreen extends ConsumerWidget {
       ),
     );
     if (context.mounted) unawaited(context.push('/notes/$id?zen=1'));
+  }
+}
+
+class _ZenModeCard extends StatelessWidget {
+  const _ZenModeCard({
+    required this.icon,
+    required this.title,
+    required this.description,
+    required this.accent,
+    required this.onTap,
+  });
+  final IconData icon;
+  final String title;
+  final String description;
+  final Color accent;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return AppCard(
+      onTap: onTap,
+      semanticLabel: title,
+      padding: const EdgeInsets.all(AppSpace.xl),
+      child: Row(
+        children: [
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  accent.withValues(alpha: 0.28),
+                  accent.withValues(alpha: 0.10),
+                ],
+              ),
+              borderRadius: AppRadius.brLg,
+            ),
+            child: Icon(icon, size: 28, color: c.text),
+          ),
+          const SizedBox(width: AppSpace.lg),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: context.text.titleMedium),
+                const SizedBox(height: AppSpace.xs),
+                Text(description, style: context.text.bodySmall),
+              ],
+            ),
+          ),
+          const SizedBox(width: AppSpace.sm),
+          Icon(AppIcons.chevronRight, color: c.textMuted),
+        ],
+      ),
+    );
   }
 }
 
@@ -177,96 +255,128 @@ class _FocusZenScreenState extends ConsumerState<FocusZenScreen>
 
     return Scaffold(
       backgroundColor: colors.bg,
-      body: SafeArea(
-        child: Stack(
-          children: [
-            Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const GoalZenLine(),
-                  const SizedBox(height: 16),
-                  Text(
-                    habit?.name ?? 'Nothing left to focus on',
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w600,
-                      color: colors.text,
-                    ),
-                  ),
-                  const SizedBox(height: 32),
-                  AnimatedBuilder(
-                    animation: _breath,
-                    builder: (_, _) => CustomPaint(
-                      size: const Size(260, 260),
-                      painter: BreathingPainter(
-                        scale: breathScale(_breath.value, reduced: reduced),
-                        color: colors.brand,
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: RadialGradient(
+            center: const Alignment(0, -0.1),
+            radius: 1.0,
+            colors: [AppColors.celebTeal.withValues(alpha: 0.08), colors.bg],
+          ),
+        ),
+        child: SafeArea(
+          child: Stack(
+            children: [
+              Center(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(AppSpace.xl),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const GoalZenLine(),
+                      const SizedBox(height: AppSpace.lg),
+                      Text(
+                        habit == null ? 'All clear' : 'FOCUS ON',
+                        style: AppTypography.overline.copyWith(
+                          color: colors.textMuted,
+                        ),
                       ),
-                      child: SizedBox(
-                        width: 260,
-                        height: 260,
-                        child: Center(
-                          child: Text(
-                            _timer == null
-                                ? (reduced ? '' : breathLabel(_breath.value))
-                                : _fmt(_left),
-                            style: TextStyle(
-                              color: colors.text,
-                              fontSize: 24,
-                              fontWeight: FontWeight.w300,
+                      const SizedBox(height: AppSpace.xs),
+                      AnimatedSwitcher(
+                        duration: reduced
+                            ? Duration.zero
+                            : const Duration(milliseconds: 320),
+                        child: Text(
+                          habit?.name ?? 'Nothing left to focus on',
+                          key: ValueKey(habit?.id),
+                          textAlign: TextAlign.center,
+                          style: context.text.headlineLarge,
+                        ),
+                      ),
+                      const SizedBox(height: AppSpace.xxl),
+                      AnimatedBuilder(
+                        animation: _breath,
+                        builder: (_, _) => CustomPaint(
+                          size: const Size(260, 260),
+                          painter: BreathingPainter(
+                            scale: breathScale(_breath.value, reduced: reduced),
+                            color: colors.brand,
+                          ),
+                          child: SizedBox(
+                            width: 260,
+                            height: 260,
+                            child: Center(
+                              child: Text(
+                                _timer == null
+                                    ? (reduced
+                                          ? ''
+                                          : breathLabel(_breath.value))
+                                    : _fmt(_left),
+                                style: context.text.headlineLarge!.copyWith(
+                                  fontWeight: _timer == null
+                                      ? FontWeight.w400
+                                      : FontWeight.w300,
+                                  fontSize: _timer == null ? 22 : 40,
+                                  fontFeatures: AppTypography.tabular,
+                                  color: colors.text,
+                                ),
+                              ),
                             ),
                           ),
                         ),
                       ),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  Wrap(
-                    spacing: 8,
-                    children: [
-                      for (final m in [5, 10, 25])
-                        ChoiceChip(
-                          label: Text('$m min'),
-                          selected: _timer == Duration(minutes: m),
-                          onSelected: (_) => _startTimer(Duration(minutes: m)),
+                      const SizedBox(height: AppSpace.xl),
+                      Wrap(
+                        spacing: AppSpace.sm,
+                        children: [
+                          for (final m in [5, 10, 25])
+                            ChoiceChip(
+                              label: Text('$m min'),
+                              selected: _timer == Duration(minutes: m),
+                              onSelected: (_) =>
+                                  _startTimer(Duration(minutes: m)),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: AppSpace.xl),
+                      if (habit != null)
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            TextButton(
+                              style: TextButton.styleFrom(
+                                foregroundColor: colors.textMuted,
+                              ),
+                              onPressed: () => setState(() => _index++),
+                              child: const Text('Skip'),
+                            ),
+                            const SizedBox(width: AppSpace.md),
+                            FilledButton.icon(
+                              icon: const Icon(AppIcons.check),
+                              label: const Text('Done'),
+                              onPressed: () async {
+                                ref.read(hapticsProvider).success();
+                                await ref
+                                    .read(habitUseCasesProvider)
+                                    .checkHabit(habit.id);
+                              },
+                            ),
+                          ],
                         ),
                     ],
                   ),
-                  const SizedBox(height: 24),
-                  if (habit != null)
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        TextButton(
-                          onPressed: () => setState(() => _index++),
-                          child: const Text('Skip'),
-                        ),
-                        const SizedBox(width: 12),
-                        FilledButton.icon(
-                          icon: const Icon(AppIcons.check),
-                          label: const Text('Done'),
-                          onPressed: () async {
-                            await ref
-                                .read(habitUseCasesProvider)
-                                .checkHabit(habit.id);
-                          },
-                        ),
-                      ],
-                    ),
-                ],
+                ),
               ),
-            ),
-            Positioned(
-              top: 4,
-              right: 4,
-              child: IconButton(
-                tooltip: 'Exit',
-                icon: Icon(AppIcons.close, color: colors.textMuted),
-                onPressed: () => context.pop(),
+              Positioned(
+                top: AppSpace.xs,
+                right: AppSpace.xs,
+                child: IconButton(
+                  tooltip: 'Exit',
+                  icon: Icon(AppIcons.close, color: colors.textMuted),
+                  onPressed: () => context.pop(),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -305,14 +415,37 @@ class BreathingPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final c = size.center(Offset.zero);
     final r = size.shortestSide / 2 * scale;
-    canvas.drawCircle(c, r, Paint()..color = color.withValues(alpha: 0.15));
+    // Soft outer glow, layered fill, crisp rim.
+    canvas.drawCircle(
+      c,
+      r,
+      Paint()
+        ..color = color.withValues(alpha: 0.18)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 24),
+    );
+    canvas.drawCircle(
+      c,
+      r,
+      Paint()
+        ..shader = RadialGradient(
+          colors: [color.withValues(alpha: 0.05), color.withValues(alpha: 0.2)],
+        ).createShader(Rect.fromCircle(center: c, radius: r)),
+    );
+    canvas.drawCircle(
+      c,
+      r * 0.72,
+      Paint()
+        ..color = color.withValues(alpha: 0.18)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1,
+    );
     canvas.drawCircle(
       c,
       r,
       Paint()
         ..color = color.withValues(alpha: 0.6)
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 3,
+        ..strokeWidth = 2.5,
     );
   }
 

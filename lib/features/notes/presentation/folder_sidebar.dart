@@ -7,7 +7,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
+import 'package:streakin/core/design/motion.dart';
+import 'package:streakin/core/design/spacing.dart';
 import 'package:streakin/core/design/tokens.dart';
+import 'package:streakin/shared/widgets/widgets.dart';
 import 'package:streakin/core/time/hlc.dart';
 import 'package:streakin/features/notes/application/folder_tree.dart';
 import 'package:streakin/features/notes/application/note_providers.dart';
@@ -101,10 +104,15 @@ class FolderSidebar extends ConsumerWidget {
         // ── Folder list + tags ──────────────────────────────────────────────
         Expanded(
           child: foldersAsync.when(
-            loading: () =>
-                const Center(child: CircularProgressIndicator.adaptive()),
-            error: (e, _) => Center(
-              child: Text('Error', style: TextStyle(color: colors.danger)),
+            loading: () => const SkeletonList(count: 4, showLeading: false),
+            error: (e, st) => Padding(
+              padding: const EdgeInsets.all(AppSpace.lg),
+              child: ErrorState.inline(
+                error: e,
+                stackTrace: st,
+                title: 'Couldn’t load folders',
+                onRetry: () => ref.invalidate(foldersProvider),
+              ),
             ),
             data: (folders) => Column(
               children: [
@@ -284,63 +292,72 @@ class _FolderTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    return InkWell(
-      onTap: onTap,
-      onLongPress: onLongPress,
-      borderRadius: BorderRadius.circular(8),
-      child: Container(
-        margin: EdgeInsets.only(
-          left: 8.0 + depth * 14.0,
-          right: 8,
-          top: 2,
-          bottom: 2,
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
-        decoration: BoxDecoration(
-          color: isActive ? colors.brand.withAlpha(20) : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
-          border: isActive
-              ? Border.all(color: colors.brand.withAlpha(60))
-              : null,
-        ),
-        child: Row(
-          children: [
-            // Expand/collapse toggle
-            if (hasChildren)
-              GestureDetector(
-                onTap: onToggleExpand,
-                child: Padding(
-                  padding: const EdgeInsets.only(right: 4),
-                  child: Icon(
-                    isExpanded
-                        ? AppIcons.keyboardArrowDown
-                        : AppIcons.keyboardArrowRight,
-                    size: 16,
-                    color: isActive ? colors.brand : colors.textMuted,
+    return Padding(
+      padding: EdgeInsets.only(
+        left: AppSpace.sm + depth * 14.0,
+        right: AppSpace.sm,
+        top: AppSpace.xxs,
+        bottom: AppSpace.xxs,
+      ),
+      child: Material(
+        color: AppColors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          onLongPress: onLongPress,
+          onSecondaryTap: onLongPress,
+          borderRadius: AppRadius.brSm,
+          child: AnimatedContainer(
+            duration: resolvedDuration(context, AppDurations.fast),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpace.sm + 2,
+              vertical: AppSpace.sm + 1,
+            ),
+            decoration: BoxDecoration(
+              color: isActive ? colors.brandSubtle : AppColors.transparent,
+              borderRadius: AppRadius.brSm,
+            ),
+            child: Row(
+              children: [
+                // Expand/collapse toggle
+                if (hasChildren)
+                  GestureDetector(
+                    onTap: onToggleExpand,
+                    child: Padding(
+                      padding: const EdgeInsets.only(right: 4),
+                      child: Icon(
+                        isExpanded
+                            ? AppIcons.keyboardArrowDown
+                            : AppIcons.keyboardArrowRight,
+                        size: 16,
+                        color: isActive ? colors.brandText : colors.textMuted,
+                      ),
+                    ),
+                  )
+                else
+                  const SizedBox(width: 20),
+                Icon(
+                  isActive ? (activeIcon ?? icon) : icon,
+                  size: 18,
+                  color: isActive ? colors.brandText : colors.textMuted,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: isActive
+                          ? FontWeight.w600
+                          : FontWeight.normal,
+                      color: isActive ? colors.brandText : colors.text,
+                    ),
                   ),
                 ),
-              )
-            else
-              const SizedBox(width: 20),
-            Icon(
-              isActive ? (activeIcon ?? icon) : icon,
-              size: 18,
-              color: isActive ? colors.brand : colors.textMuted,
+              ],
             ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
-                  color: isActive ? colors.brand : colors.text,
-                ),
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );

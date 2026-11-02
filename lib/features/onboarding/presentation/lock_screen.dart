@@ -26,8 +26,13 @@ import 'package:go_router/go_router.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:streakin/app/brand.dart';
+import 'package:streakin/core/design/elevation.dart';
+import 'package:streakin/core/design/motion.dart';
+import 'package:streakin/core/design/spacing.dart';
 import 'package:streakin/core/design/tokens.dart';
 import 'package:streakin/core/design/icons.dart';
+import 'package:streakin/core/design/typography.dart';
 import 'package:streakin/core/errors/app_failure.dart';
 import 'package:streakin/core/security/brute_force_guard.dart';
 import 'package:streakin/core/security/erase_all_data_service.dart';
@@ -35,6 +40,8 @@ import 'package:streakin/core/security/lock_controller.dart';
 import 'package:streakin/core/storage/identifiers.dart';
 import 'package:streakin/features/onboarding/application/onboarding_service.dart';
 import 'package:streakin/app/router.dart';
+import 'package:streakin/shared/feedback/haptics.dart';
+import 'package:streakin/shared/widgets/shake.dart';
 
 class LockScreen extends ConsumerStatefulWidget {
   const LockScreen({this.returnTo, super.key});
@@ -51,6 +58,7 @@ class _LockScreenState extends ConsumerState<LockScreen> {
   String? _error;
   bool _showRecovery = false;
   final _rkController = TextEditingController();
+  final _shake = ShakeController();
 
   bool _biometricAvailable = false;
   bool _biometricAttempted = false;
@@ -139,7 +147,14 @@ class _LockScreenState extends ConsumerState<LockScreen> {
   void dispose() {
     _pwController.dispose();
     _rkController.dispose();
+    _shake.dispose();
     super.dispose();
+  }
+
+  /// Error feedback: shake the field and buzz (both respect user settings).
+  void _signalFailure() {
+    _shake.shake();
+    ref.read(hapticsProvider).error();
   }
 
   // ── Biometric unlock ───────────────────────────────────────────────────────
@@ -225,6 +240,7 @@ class _LockScreenState extends ConsumerState<LockScreen> {
           () => _error =
               'Too many attempts. Try again in ${wait.inSeconds + 1}s.',
         );
+        _signalFailure();
       }
       return;
     }
@@ -285,11 +301,13 @@ class _LockScreenState extends ConsumerState<LockScreen> {
             : e.message;
         _unlocking = false;
       });
+      _signalFailure();
     } catch (e) {
       setState(() {
         _error = 'Unlock failed. Please try again.';
         _unlocking = false;
       });
+      _signalFailure();
     }
   }
 
@@ -304,123 +322,238 @@ class _LockScreenState extends ConsumerState<LockScreen> {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final d = resolvedDuration(context, AppDurations.base);
 
     return Scaffold(
       backgroundColor: colors.bg,
       resizeToAvoidBottomInset: true,
-      body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 420),
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(32),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const SizedBox(height: 32),
-                  Icon(AppIcons.lockFill, size: 48, color: colors.brand),
-                  const SizedBox(height: 24),
-                  Text(
-                    _showRecovery ? 'Enter recovery key' : 'Welcome back',
-                    style: Theme.of(context).textTheme.titleLarge,
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 32),
-
-                  // ── Biometric button ───────────────────────────────────────
-                  if (_biometricAvailable && !_showRecovery) ...[
-                    OutlinedButton.icon(
-                      onPressed: _unlocking ? null : _unlockWithBiometric,
-                      icon: const Icon(AppIcons.biometric),
-                      label: const Text('Unlock with biometrics'),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        side: BorderSide(color: colors.brand),
-                        foregroundColor: colors.brand,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Expanded(child: Divider(color: colors.outline)),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          child: Text(
-                            'or',
-                            style: TextStyle(
-                              color: colors.textMuted,
-                              fontSize: 12,
-                            ),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: RadialGradient(
+            center: const Alignment(0, -0.9),
+            radius: 1.1,
+            colors: [colors.brand.withValues(alpha: 0.10), colors.bg],
+          ),
+        ),
+        child: SafeArea(
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 400),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpace.xl,
+                  vertical: AppSpace.xxl,
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 84,
+                        height: 84,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(24),
+                          boxShadow: AppElevation.glow(colors.brand),
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(24),
+                          child: Image.asset(
+                            'assets/icon.png',
+                            semanticLabel: Brand.appName,
                           ),
                         ),
-                        Expanded(child: Divider(color: colors.outline)),
+                      ),
+                    ),
+                    const SizedBox(height: AppSpace.xl),
+                    AnimatedSwitcher(
+                      duration: d,
+                      child: Text(
+                        _showRecovery ? 'Enter recovery key' : 'Welcome back',
+                        key: ValueKey(_showRecovery),
+                        style: context.text.titleLarge,
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpace.xs),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          AppIcons.lockFill,
+                          size: 14,
+                          color: colors.textMuted,
+                        ),
+                        const SizedBox(width: AppSpace.xs),
+                        Flexible(
+                          child: Text(
+                            _showRecovery
+                                ? 'Use the key you saved during setup'
+                                : 'Encrypted on this device',
+                            style: context.text.bodySmall,
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
                       ],
                     ),
-                    const SizedBox(height: 16),
-                  ],
+                    const SizedBox(height: AppSpace.xxl),
 
-                  // ── Password / recovery field ──────────────────────────────
-                  if (_showRecovery)
-                    TextField(
-                      controller: _rkController,
-                      decoration: const InputDecoration(
-                        labelText: 'Recovery key (e.g. AAABB-CCCDD-...)',
-                      ),
-                    )
-                  else
-                    TextField(
-                      controller: _pwController,
-                      obscureText: !_pwVisible,
-                      autofocus: !_biometricAvailable,
-                      onSubmitted: (_) => _unlock(),
-                      decoration: InputDecoration(
-                        labelText: 'Password',
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            _pwVisible
-                                ? AppIcons.visibility
-                                : AppIcons.visibilityOff,
-                          ),
-                          onPressed: () =>
-                              setState(() => _pwVisible = !_pwVisible),
-                        ),
+                    // ── Biometric button ─────────────────────────────────────
+                    AnimatedSize(
+                      duration: d,
+                      curve: AppCurves.standard,
+                      child: _biometricAvailable && !_showRecovery
+                          ? Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                FilledButton.tonalIcon(
+                                  onPressed: _unlocking
+                                      ? null
+                                      : _unlockWithBiometric,
+                                  style: FilledButton.styleFrom(
+                                    backgroundColor: colors.brandSubtle,
+                                    foregroundColor: colors.brandText,
+                                  ),
+                                  icon: const Icon(AppIcons.biometric),
+                                  label: const Text('Unlock with biometrics'),
+                                ),
+                                const SizedBox(height: AppSpace.lg),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Divider(color: colors.outline),
+                                    ),
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: AppSpace.md,
+                                      ),
+                                      child: Text(
+                                        'or',
+                                        style: context.text.bodySmall,
+                                      ),
+                                    ),
+                                    Expanded(
+                                      child: Divider(color: colors.outline),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: AppSpace.lg),
+                              ],
+                            )
+                          : const SizedBox(width: double.infinity),
+                    ),
+
+                    // ── Password / recovery field ────────────────────────────
+                    Shake(
+                      controller: _shake,
+                      child: AnimatedSwitcher(
+                        duration: d,
+                        child: _showRecovery
+                            ? TextField(
+                                key: const ValueKey('rk'),
+                                controller: _rkController,
+                                autofocus: true,
+                                onSubmitted: (_) => _unlock(),
+                                style: AppTypography.mono.copyWith(
+                                  color: colors.text,
+                                ),
+                                decoration: const InputDecoration(
+                                  labelText: 'Recovery key',
+                                  hintText: 'AAABB-CCCDD-…',
+                                  prefixIcon: Icon(AppIcons.recoveryKey),
+                                ),
+                              )
+                            : TextField(
+                                key: const ValueKey('pw'),
+                                controller: _pwController,
+                                obscureText: !_pwVisible,
+                                autofocus: !_biometricAvailable,
+                                onSubmitted: (_) => _unlock(),
+                                decoration: InputDecoration(
+                                  labelText: 'Password',
+                                  prefixIcon: const Icon(AppIcons.password),
+                                  suffixIcon: IconButton(
+                                    tooltip: _pwVisible
+                                        ? 'Hide password'
+                                        : 'Show password',
+                                    icon: Icon(
+                                      _pwVisible
+                                          ? AppIcons.visibility
+                                          : AppIcons.visibilityOff,
+                                    ),
+                                    onPressed: () => setState(
+                                      () => _pwVisible = !_pwVisible,
+                                    ),
+                                  ),
+                                ),
+                              ),
                       ),
                     ),
-                  if (_error != null) ...[
-                    const SizedBox(height: 8),
-                    Text(
-                      _error!,
-                      style: TextStyle(color: colors.danger, fontSize: 13),
-                      textAlign: TextAlign.center,
+                    AnimatedSize(
+                      duration: d,
+                      curve: AppCurves.standard,
+                      child: _error == null
+                          ? const SizedBox(width: double.infinity)
+                          : Padding(
+                              padding: const EdgeInsets.only(top: AppSpace.md),
+                              child: Semantics(
+                                liveRegion: true,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: AppSpace.md,
+                                    vertical: AppSpace.sm + 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: colors.dangerSubtle,
+                                    borderRadius: AppRadius.brMd,
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        AppIcons.errorOutline,
+                                        size: 18,
+                                        color: colors.danger,
+                                      ),
+                                      const SizedBox(width: AppSpace.sm),
+                                      Expanded(
+                                        child: Text(
+                                          _error!,
+                                          style: context.text.bodySmall!
+                                              .copyWith(color: colors.danger),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                    ),
+                    const SizedBox(height: AppSpace.xl),
+                    FilledButton(
+                      onPressed: _unlocking ? null : _unlock,
+                      child: _unlocking
+                          ? SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: colors.textMuted,
+                              ),
+                            )
+                          : const Text('Unlock'),
+                    ),
+                    const SizedBox(height: AppSpace.sm),
+                    TextButton(
+                      onPressed: () => setState(() {
+                        _showRecovery = !_showRecovery;
+                        _error = null;
+                      }),
+                      child: Text(
+                        _showRecovery ? 'Back to password' : 'Forgot password?',
+                      ),
                     ),
                   ],
-                  const SizedBox(height: 24),
-                  ElevatedButton(
-                    onPressed: _unlocking ? null : _unlock,
-                    child: _unlocking
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                        : const Text('Unlock'),
-                  ),
-                  const SizedBox(height: 16),
-                  TextButton(
-                    onPressed: () => setState(() {
-                      _showRecovery = !_showRecovery;
-                      _error = null;
-                    }),
-                    child: Text(
-                      _showRecovery ? 'Back to password' : 'Forgot password?',
-                    ),
-                  ),
-                  const SizedBox(height: 32),
-                ],
+                ),
               ),
             ),
           ),

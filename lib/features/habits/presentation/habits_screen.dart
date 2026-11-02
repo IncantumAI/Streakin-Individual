@@ -1,10 +1,13 @@
 // lib/features/habits/presentation/habits_screen.dart
-// Tab container for Today / Week / Month views.
+// Tab container for Today / Week views (segmented pill tabs).
 
 import 'package:streakin/core/design/icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:go_router/go_router.dart';
+import 'package:streakin/core/design/elevation.dart';
+import 'package:streakin/core/design/spacing.dart';
 import 'package:streakin/core/design/tokens.dart';
 import 'package:streakin/features/habits/presentation/today_view.dart';
 import 'package:streakin/features/habits/presentation/week_view.dart';
@@ -39,27 +42,58 @@ class _HabitsScreenState extends ConsumerState<HabitsScreen>
       backgroundColor: colors.bg,
       appBar: AppBar(
         title: const Text('Habits'),
-        bottom: TabBar(
-          controller: _tab,
-          labelColor: colors.brand,
-          unselectedLabelColor: colors.textMuted,
-          indicatorColor: colors.brand,
-          tabs: const [
-            Tab(text: 'Today'),
-            Tab(text: 'Week'),
-          ],
+        actions: [
+          IconButton(
+            icon: const Icon(AppIcons.calendarActive),
+            tooltip: 'Heatmaps',
+            onPressed: () => context.push('/habits/heatmaps'),
+          ),
+          const SizedBox(width: AppSpace.sm),
+        ],
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(52),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpace.lg,
+              0,
+              AppSpace.lg,
+              AppSpace.sm,
+            ),
+            child: Container(
+              height: 44,
+              padding: const EdgeInsets.all(AppSpace.xs),
+              decoration: BoxDecoration(
+                color: colors.surfaceAlt,
+                borderRadius: AppRadius.brMd,
+              ),
+              child: TabBar(
+                controller: _tab,
+                dividerHeight: 0,
+                indicatorSize: TabBarIndicatorSize.tab,
+                indicator: BoxDecoration(
+                  color: colors.surface,
+                  borderRadius: AppRadius.brSm,
+                  border: Border.all(color: colors.outline),
+                  boxShadow: AppElevation.floating(colors),
+                ),
+                tabs: const [
+                  Tab(text: 'Today'),
+                  Tab(text: 'Week'),
+                ],
+              ),
+            ),
+          ),
         ),
       ),
       body: TabBarView(
         controller: _tab,
         children: const [TodayView(), WeekView()],
       ),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: colors.brand,
-        foregroundColor: colors.onBrand,
+      floatingActionButton: FloatingActionButton.extended(
         onPressed: () => HabitForm.show(context),
         tooltip: 'Add habit',
-        child: const Icon(AppIcons.add),
+        icon: const Icon(AppIcons.add),
+        label: const Text('New habit'),
       ),
     );
   }

@@ -15,7 +15,9 @@ import 'package:go_router/go_router.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:window_manager/window_manager.dart';
 
+import 'package:streakin/core/design/spacing.dart';
 import 'package:streakin/core/design/tokens.dart';
+import 'package:streakin/shared/widgets/widgets.dart';
 import 'package:streakin/features/notes/application/note_providers.dart';
 import 'package:streakin/features/notes/domain/note.dart';
 import 'package:streakin/features/notes/domain/note_document.dart';
@@ -130,10 +132,37 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen>
     final colors = context.colors;
 
     return noteAsync.when(
-      loading: () => const Scaffold(
-        body: Center(child: CircularProgressIndicator.adaptive()),
+      loading: () => Scaffold(
+        backgroundColor: colors.bg,
+        appBar: AppBar(),
+        body: const Shimmer(
+          child: Padding(
+            padding: EdgeInsets.all(AppSpace.xl),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Skeleton.line(width: 220, height: 24),
+                SizedBox(height: AppSpace.xl),
+                Skeleton.line(),
+                SizedBox(height: AppSpace.md),
+                Skeleton.line(),
+                SizedBox(height: AppSpace.md),
+                Skeleton.line(width: 180),
+              ],
+            ),
+          ),
+        ),
       ),
-      error: (e, _) => Scaffold(body: Center(child: Text('Error: $e'))),
+      error: (e, st) => Scaffold(
+        backgroundColor: colors.bg,
+        appBar: AppBar(),
+        body: ErrorState(
+          error: e,
+          stackTrace: st,
+          title: 'Couldn’t open this note',
+          onRetry: () => ref.invalidate(noteProvider(widget.noteId)),
+        ),
+      ),
       data: (note) {
         if (note == null) {
           return Scaffold(
@@ -313,10 +342,10 @@ class _BacklinksPanel extends ConsumerWidget {
           ),
           Expanded(
             child: backlinksAsync.when(
-              loading: () =>
-                  const Center(child: CircularProgressIndicator.adaptive()),
-              error: (e, _) => Center(
-                child: Text('Error', style: TextStyle(color: colors.danger)),
+              loading: () => const SkeletonList(count: 2, showLeading: false),
+              error: (e, st) => Padding(
+                padding: const EdgeInsets.all(AppSpace.md),
+                child: ErrorState.inline(error: e, stackTrace: st),
               ),
               data: (links) {
                 if (links.isEmpty) {

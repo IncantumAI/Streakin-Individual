@@ -92,9 +92,6 @@ class _AttachmentThumb extends ConsumerWidget {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
       builder: (_) =>
           AttachmentPreviewSheet(attachment: attachment, noteId: noteId),
     );

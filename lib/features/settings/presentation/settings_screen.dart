@@ -11,12 +11,16 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:streakin/core/notifications/notification_reconciler.dart'
     show showTestNotification, openNotificationSettings;
 
+import 'package:streakin/app/brand.dart';
+import 'package:streakin/core/design/spacing.dart';
 import 'package:streakin/core/design/tokens.dart';
+import 'package:streakin/core/design/typography.dart';
 import 'package:streakin/core/platform/startup_registration.dart';
 import 'package:streakin/core/platform/tray_service.dart';
 import 'package:streakin/core/design/icons.dart';
 import 'package:streakin/core/storage/identifiers.dart';
 import 'package:streakin/features/settings/application/settings_providers.dart';
+import 'package:streakin/shared/widgets/widgets.dart';
 
 // ── Settings root ─────────────────────────────────────────────────────────────
 
@@ -31,199 +35,172 @@ class SettingsScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: colors.bg,
-      appBar: AppBar(
-        title: const Text('Settings'),
-        backgroundColor: colors.surface,
-      ),
-      body: ListView(
+      appBar: AppBar(title: const Text('Settings')),
+      body: ReadableListView(
         children: [
           // ── Profile header ───────────────────────────────────────────────
-          InkWell(
+          AppCard(
             onTap: () => context.push('/settings/profile'),
-            child: Container(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
-              color: colors.surface,
-              child: Row(
-                children: [
-                  CircleAvatar(
-                    radius: 28,
-                    backgroundColor: colors.brand,
-                    child: Text(
-                      initials,
-                      style: TextStyle(
-                        color: colors.onBrand,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                      ),
+            semanticLabel: 'Edit profile',
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 28,
+                  backgroundColor: colors.brand,
+                  child: Text(
+                    initials,
+                    style: context.text.titleMedium!.copyWith(
+                      color: colors.onBrand,
                     ),
                   ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          profile.name.isEmpty ? 'Set your name' : profile.name,
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: profile.name.isEmpty
-                                ? colors.textMuted
-                                : colors.text,
-                          ),
+                ),
+                const SizedBox(width: AppSpace.lg),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        profile.name.isEmpty ? 'Set your name' : profile.name,
+                        style: context.text.titleMedium!.copyWith(
+                          color: profile.name.isEmpty
+                              ? colors.textMuted
+                              : colors.text,
                         ),
-                        if (profile.username.isNotEmpty)
-                          Text(
-                            '@${profile.username}',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: colors.textMuted,
-                            ),
-                          ),
-                        if (profile.bio.isNotEmpty)
-                          Text(
-                            profile.bio,
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: colors.textMuted,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                      ],
-                    ),
+                      ),
+                      if (profile.username.isNotEmpty)
+                        Text(
+                          '@${profile.username}',
+                          style: context.text.bodySmall,
+                        ),
+                      if (profile.bio.isNotEmpty)
+                        Text(
+                          profile.bio,
+                          style: context.text.bodySmall,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                    ],
                   ),
-                  Icon(AppIcons.chevronRight, color: colors.textMuted),
-                ],
+                ),
+                Icon(AppIcons.chevronRight, color: colors.textMuted),
+              ],
+            ),
+          ),
+
+          SettingsGroup(
+            title: 'Personalisation',
+            children: [
+              SettingsTile.nav(
+                icon: AppIcons.paletteOutlined,
+                title: 'Appearance',
+                subtitle: 'Theme & display',
+                onTap: () => context.push('/settings/appearance'),
               ),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Divider(color: colors.outline, height: 1),
-
-          // ── Personalisation ──────────────────────────────────────────────
-          _SectionHeader('Personalisation', colors: colors),
-          _SettingsTile(
-            icon: AppIcons.paletteOutlined,
-            label: 'Appearance',
-            subtitle: 'Theme & display',
-            onTap: () => context.push('/settings/appearance'),
-            colors: colors,
-          ),
-          _SettingsTile(
-            icon: AppIcons.notification,
-            label: 'Notifications',
-            subtitle: 'Permissions & preferences',
-            onTap: () => context.push('/settings/notifications'),
-            colors: colors,
+              SettingsTile.nav(
+                icon: AppIcons.notification,
+                title: 'Notifications',
+                subtitle: 'Permissions & preferences',
+                onTap: () => context.push('/settings/notifications'),
+              ),
+            ],
           ),
 
-          // ── Security ─────────────────────────────────────────────────────
-          _SectionHeader('Security', colors: colors),
-          _SettingsTile(
-            icon: AppIcons.biometric,
-            label: 'Biometric Unlock',
-            subtitle: 'Face ID, fingerprint',
-            onTap: () => context.push('/settings/biometric'),
-            colors: colors,
-          ),
-          _SettingsTile(
-            icon: AppIcons.lock,
-            label: 'Auto-lock',
-            subtitle: 'Timeout & behaviour',
-            onTap: () => context.push('/settings/autolock'),
-            colors: colors,
-          ),
-          _SettingsTile(
-            icon: AppIcons.shieldOutlined,
-            label: 'Security',
-            subtitle: 'Password, vaults, recovery key',
-            onTap: () => context.push('/settings/security'),
-            colors: colors,
-          ),
-          _SettingsTile(
-            icon: AppIcons.storageOutlined,
-            label: 'Data',
-            subtitle: 'Storage, export & import, erase',
-            onTap: () => context.push('/settings/data'),
-            colors: colors,
-          ),
-
-          // ── Goals ─────────────────────────────────────────────────────────
-          _SectionHeader('Goals', colors: colors),
-          _SettingsTile(
-            icon: AppIcons.trackChangesOutlined,
-            label: 'Goal Reminders',
-            subtitle: 'Cadence, time & content',
-            onTap: () => context.push('/settings/goal-reminders'),
-            colors: colors,
+          SettingsGroup(
+            title: 'Security',
+            children: [
+              SettingsTile.nav(
+                icon: AppIcons.biometric,
+                title: 'Biometric unlock',
+                subtitle: 'Face ID, fingerprint',
+                onTap: () => context.push('/settings/biometric'),
+              ),
+              SettingsTile.nav(
+                icon: AppIcons.lock,
+                title: 'Auto-lock',
+                subtitle: 'Timeout & behaviour',
+                onTap: () => context.push('/settings/autolock'),
+              ),
+              SettingsTile.nav(
+                icon: AppIcons.shieldOutlined,
+                title: 'Security',
+                subtitle: 'Password, vaults, recovery key',
+                onTap: () => context.push('/settings/security'),
+              ),
+              SettingsTile.nav(
+                icon: AppIcons.storageOutlined,
+                title: 'Data',
+                subtitle: 'Storage, export & import, erase',
+                onTap: () => context.push('/settings/data'),
+              ),
+            ],
           ),
 
-          // ── General ──────────────────────────────────────────────────────
-          _SectionHeader('General', colors: colors),
-          _SettingsTile(
-            icon: AppIcons.calendarTodayOutlined,
-            label: 'Week & Day',
-            subtitle: 'Week start, day boundary',
-            onTap: () => context.push('/settings/week-day'),
-            colors: colors,
-          ),
-          if (Platform.isWindows || Platform.isLinux)
-            _SettingsTile(
-              icon: AppIcons.keyboardOutlined,
-              label: 'Keyboard shortcuts',
-              onTap: () => context.push('/settings/shortcuts'),
-              colors: colors,
-            ),
-          _SettingsTile(
-            icon: AppIcons.accessibilityNewOutlined,
-            label: 'Accessibility',
-            subtitle: 'Motion & haptics',
-            onTap: () => context.push('/settings/accessibility'),
-            colors: colors,
+          SettingsGroup(
+            title: 'Goals',
+            children: [
+              SettingsTile.nav(
+                icon: AppIcons.trackChangesOutlined,
+                title: 'Goal reminders',
+                subtitle: 'Cadence, time & content',
+                onTap: () => context.push('/settings/goal-reminders'),
+              ),
+            ],
           ),
 
-          // ── Support ──────────────────────────────────────────────────────
-          _SectionHeader('Support', colors: colors),
-          _SettingsTile(
-            icon: AppIcons.mailOutline,
-            label: 'Contact Us',
-            onTap: () => _launchUrl('mailto:hello@incantum.in'),
-            colors: colors,
-            showChevron: false,
-            trailingIcon: AppIcons.openInNew,
+          SettingsGroup(
+            title: 'General',
+            children: [
+              SettingsTile.nav(
+                icon: AppIcons.calendarTodayOutlined,
+                title: 'Week & day',
+                subtitle: 'Week start, day boundary',
+                onTap: () => context.push('/settings/week-day'),
+              ),
+              if (Platform.isWindows || Platform.isLinux)
+                SettingsTile.nav(
+                  icon: AppIcons.keyboardOutlined,
+                  title: 'Keyboard shortcuts',
+                  onTap: () => context.push('/settings/shortcuts'),
+                ),
+              SettingsTile.nav(
+                icon: AppIcons.accessibilityNewOutlined,
+                title: 'Accessibility',
+                subtitle: 'Motion & haptics',
+                onTap: () => context.push('/settings/accessibility'),
+              ),
+            ],
           ),
-          _SettingsTile(
-            icon: AppIcons.descriptionOutlined,
-            label: 'Terms of Service',
-            onTap: () => _launchUrl('https://incantum.in/terms'),
-            colors: colors,
-            showChevron: false,
-            trailingIcon: AppIcons.openInNew,
-          ),
-          _SettingsTile(
-            icon: AppIcons.privacyTipOutlined,
-            label: 'Privacy Policy',
-            onTap: () => _launchUrl('https://incantum.in/privacy'),
-            colors: colors,
-            showChevron: false,
-            trailingIcon: AppIcons.openInNew,
-          ),
-          _SettingsTile(
-            icon: AppIcons.habitDefault,
-            label: 'Rate the App',
-            onTap: () => _launchUrl(
-              'https://play.google.com/store/apps/details?id=in.incantum.streakin',
-            ),
-            colors: colors,
-            showChevron: false,
-            trailingIcon: AppIcons.openInNew,
+
+          SettingsGroup(
+            title: 'Support',
+            children: [
+              _ExternalTile(
+                icon: AppIcons.mailOutline,
+                title: 'Contact us',
+                onTap: () => _launchUrl('mailto:hello@incantum.in'),
+              ),
+              _ExternalTile(
+                icon: AppIcons.descriptionOutlined,
+                title: 'Terms of Service',
+                onTap: () => _launchUrl('https://incantum.in/terms'),
+              ),
+              _ExternalTile(
+                icon: AppIcons.privacyTipOutlined,
+                title: 'Privacy Policy',
+                onTap: () => _launchUrl('https://incantum.in/privacy'),
+              ),
+              _ExternalTile(
+                icon: AppIcons.habitDefault,
+                title: 'Rate the app',
+                onTap: () => _launchUrl(
+                  'https://play.google.com/store/apps/details?id=in.incantum.streakin',
+                ),
+              ),
+            ],
           ),
 
           // ── About ─────────────────────────────────────────────────────────
-          Divider(color: colors.outline, height: 1),
-          _AboutRow(colors: colors),
-          const SizedBox(height: 32),
+          const _AboutRow(),
         ],
       ),
     );
@@ -284,22 +261,15 @@ class _ProfileSettingsPageState extends ConsumerState<ProfileSettingsPage> {
       backgroundColor: colors.bg,
       appBar: AppBar(
         title: const Text('Profile'),
-        backgroundColor: colors.surface,
         actions: [
           TextButton(
             onPressed: _saving ? null : _save,
-            child: Text(
-              'Save',
-              style: TextStyle(
-                color: colors.brand,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
+            child: const Text('Save'),
           ),
+          const SizedBox(width: AppSpace.sm),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(20),
+      body: ReadableListView(
         children: [
           Center(
             child: Stack(
@@ -318,10 +288,8 @@ class _ProfileSettingsPageState extends ConsumerState<ProfileSettingsPage> {
                           : name[0].toUpperCase();
                       return Text(
                         initials,
-                        style: TextStyle(
+                        style: context.text.headlineLarge!.copyWith(
                           color: colors.onBrand,
-                          fontSize: 28,
-                          fontWeight: FontWeight.w600,
                         ),
                       );
                     },
@@ -330,7 +298,7 @@ class _ProfileSettingsPageState extends ConsumerState<ProfileSettingsPage> {
               ],
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: AppSpace.xl),
           _Field(
             controller: _nameCtrl,
             label: 'Name',
@@ -338,7 +306,7 @@ class _ProfileSettingsPageState extends ConsumerState<ProfileSettingsPage> {
             maxLength: 50,
             colors: colors,
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpace.lg),
           _Field(
             controller: _usernameCtrl,
             label: 'Username',
@@ -350,7 +318,7 @@ class _ProfileSettingsPageState extends ConsumerState<ProfileSettingsPage> {
             colors: colors,
             prefix: '@',
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpace.lg),
           _Field(
             controller: _bioCtrl,
             label: 'Bio',
@@ -390,57 +358,168 @@ class AppearanceSettingsPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.colors;
     final themeMode = ref.watch(themeModeProvider);
-    final reduced = ref.watch(reducedMotionProvider);
 
     return Scaffold(
       backgroundColor: colors.bg,
-      appBar: AppBar(
-        title: const Text('Appearance'),
-        backgroundColor: colors.surface,
-      ),
-      body: ListView(
+      appBar: AppBar(title: const Text('Appearance')),
+      body: ReadableListView(
         children: [
-          _SectionHeader('Theme', colors: colors),
-          RadioGroup<ThemeMode>(
-            groupValue: themeMode,
-            onChanged: (v) => ref.read(themeModeProvider.notifier).set(v!),
-            child: Column(
-              children: [
-                for (final e in {
-                  ThemeMode.light: ('Light', AppIcons.lightModeOutlined),
-                  ThemeMode.system: (
-                    'System default',
-                    AppIcons.brightnessAutoOutlined,
+          const SectionHeader('Theme'),
+          Row(
+            children: [
+              for (final e in {
+                ThemeMode.light: ('Light', AppIcons.lightModeOutlined),
+                ThemeMode.system: ('System', AppIcons.brightnessAutoOutlined),
+                ThemeMode.dark: ('Dark', AppIcons.darkModeOutlined),
+              }.entries) ...[
+                if (e.key != ThemeMode.light)
+                  const SizedBox(width: AppSpace.md),
+                Expanded(
+                  child: _ThemePreviewCard(
+                    label: e.value.$1,
+                    icon: e.value.$2,
+                    mode: e.key,
+                    selected: themeMode == e.key,
+                    onTap: () =>
+                        ref.read(themeModeProvider.notifier).set(e.key),
                   ),
-                  ThemeMode.dark: ('Dark', AppIcons.darkModeOutlined),
-                }.entries)
-                  RadioListTile<ThemeMode>(
-                    value: e.key,
-                    activeColor: colors.brand,
-                    secondary: Icon(e.value.$2, color: colors.brand),
-                    title: Text(
-                      e.value.$1,
-                      style: TextStyle(color: colors.text),
-                    ),
-                  ),
+                ),
               ],
-            ),
+            ],
           ),
-          Divider(color: colors.outline, height: 1),
-          _SectionHeader('Motion', colors: colors),
-          SwitchListTile.adaptive(
-            value: reduced,
-            onChanged: (v) => ref.read(reducedMotionProvider.notifier).set(v),
-            activeThumbColor: colors.brand,
-            secondary: Icon(AppIcons.animationOutlined, color: colors.brand),
-            title: Text('Reduce motion', style: TextStyle(color: colors.text)),
-            subtitle: Text(
-              'Fewer animations throughout the app',
-              style: TextStyle(color: colors.textMuted, fontSize: 12),
-            ),
-          ),
+          const _MotionFeedbackGroup(),
         ],
       ),
+    );
+  }
+}
+
+/// Mini mock of the app in the given theme.
+class _ThemePreviewCard extends StatelessWidget {
+  const _ThemePreviewCard({
+    required this.label,
+    required this.icon,
+    required this.mode,
+    required this.selected,
+    required this.onTap,
+  });
+  final String label;
+  final IconData icon;
+  final ThemeMode mode;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    const light = AppColorTokens.light;
+    const dark = AppColorTokens.dark;
+    Widget pane(AppColorTokens t) => Container(
+      color: t.bg,
+      padding: const EdgeInsets.all(AppSpace.sm),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            height: 8,
+            width: 28,
+            decoration: BoxDecoration(
+              color: t.brand,
+              borderRadius: AppRadius.brPill,
+            ),
+          ),
+          const SizedBox(height: AppSpace.sm),
+          for (var i = 0; i < 2; i++) ...[
+            Container(
+              height: 14,
+              decoration: BoxDecoration(
+                color: t.surface,
+                borderRadius: AppRadius.brXs,
+                border: Border.all(color: t.outline),
+              ),
+            ),
+            const SizedBox(height: AppSpace.xs),
+          ],
+        ],
+      ),
+    );
+    final preview = switch (mode) {
+      ThemeMode.light => pane(light),
+      ThemeMode.dark => pane(dark),
+      ThemeMode.system => Row(
+        children: [
+          Expanded(child: pane(light)),
+          Expanded(child: pane(dark)),
+        ],
+      ),
+    };
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: '$label theme',
+      excludeSemantics: true,
+      child: AppCard(
+        onTap: onTap,
+        padding: const EdgeInsets.all(AppSpace.sm),
+        borderColor: selected ? c.brand : null,
+        child: Column(
+          children: [
+            ClipRRect(
+              borderRadius: AppRadius.brSm,
+              child: SizedBox(height: 72, child: preview),
+            ),
+            const SizedBox(height: AppSpace.sm),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  selected ? AppIcons.checkCircleOutlined : icon,
+                  size: 16,
+                  color: selected ? c.brandText : c.textMuted,
+                ),
+                const SizedBox(width: AppSpace.xs),
+                Text(
+                  label,
+                  style: context.text.labelLarge!.copyWith(
+                    color: selected ? c.brandText : c.text,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Reduce motion + haptics (shown on Appearance and Accessibility pages).
+class _MotionFeedbackGroup extends ConsumerWidget {
+  const _MotionFeedbackGroup();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final reduced = ref.watch(reducedMotionProvider);
+    final haptics = ref.watch(hapticsEnabledProvider);
+    return SettingsGroup(
+      title: 'Motion & feedback',
+      footer: 'Reduce motion also follows your system accessibility setting.',
+      children: [
+        SettingsTile.toggle(
+          icon: AppIcons.animationOutlined,
+          title: 'Reduce motion',
+          subtitle: 'Fewer animations & transitions',
+          value: reduced,
+          onChanged: (v) => ref.read(reducedMotionProvider.notifier).set(v),
+        ),
+        SettingsTile.toggle(
+          icon: AppIcons.devices,
+          title: 'Haptics',
+          subtitle: 'Vibration feedback on taps and wins',
+          value: haptics,
+          onChanged: (v) => ref.read(hapticsEnabledProvider.notifier).set(v),
+        ),
+      ],
     );
   }
 }
@@ -469,24 +548,35 @@ class KeyboardShortcutsPage extends StatelessWidget {
     final colors = context.colors;
     return Scaffold(
       backgroundColor: colors.bg,
-      appBar: AppBar(
-        title: const Text('Keyboard shortcuts'),
-        backgroundColor: colors.surface,
-      ),
-      body: ListView(
+      appBar: AppBar(title: const Text('Keyboard shortcuts')),
+      body: ReadableListView(
         children: [
-          for (final r in rows)
-            ListTile(
-              dense: true,
-              title: Text(r.$2, style: TextStyle(color: colors.text)),
-              trailing: Text(
-                r.$1,
-                style: TextStyle(
-                  fontFamily: 'monospace',
-                  color: colors.textMuted,
+          SettingsGroup(
+            children: [
+              for (final r in rows)
+                SettingsTile(
+                  title: r.$2,
+                  trailing: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpace.sm,
+                      vertical: AppSpace.xxs + 1,
+                    ),
+                    decoration: BoxDecoration(
+                      color: colors.surfaceAlt,
+                      borderRadius: AppRadius.brXs,
+                      border: Border.all(color: colors.outline),
+                    ),
+                    child: Text(
+                      r.$1,
+                      style: AppTypography.mono.copyWith(
+                        fontSize: 12,
+                        color: colors.text,
+                      ),
+                    ),
+                  ),
                 ),
-              ),
-            ),
+            ],
+          ),
         ],
       ),
     );
@@ -501,113 +591,73 @@ class NotificationsSettingsPage extends ConsumerWidget {
     final colors = context.colors;
     return Scaffold(
       backgroundColor: colors.bg,
-      appBar: AppBar(
-        title: const Text('Notifications'),
-        backgroundColor: colors.surface,
-      ),
-      body: ListView(
+      appBar: AppBar(title: const Text('Notifications')),
+      body: ReadableListView(
         children: [
-          _SectionHeader('System', colors: colors),
-          ListTile(
-            leading: Icon(AppIcons.notification, color: colors.brand),
-            title: Text(
-              'Notification Permission',
-              style: TextStyle(color: colors.text),
-            ),
-            subtitle: Text(
-              'Manage in Android Settings → Apps → Streakin → Notifications',
-              style: TextStyle(color: colors.textMuted, fontSize: 12),
-            ),
-            trailing: const FilledButton.tonal(
-              onPressed: openNotificationSettings,
-              child: Text('Open'),
-            ),
+          SettingsGroup(
+            title: 'System',
+            children: [
+              const SettingsTile(
+                icon: AppIcons.notification,
+                title: 'Notification permission',
+                subtitle: 'Manage in Android Settings → Apps → Streakin → Notifications',
+                trailing: FilledButton.tonal(
+                  onPressed: openNotificationSettings,
+                  child: Text('Open'),
+                ),
+              ),
+              SettingsTile(
+                icon: AppIcons.notificationAddOutlined,
+                title: 'Test notification',
+                subtitle: 'Send a notification right now to check it works',
+                trailing: FilledButton.tonal(
+                  onPressed: () => _sendTest(context),
+                  child: const Text('Send'),
+                ),
+              ),
+              if (StartupRegistration.supported) const _TrayToggle(),
+            ],
           ),
-          ListTile(
-            leading: Icon(
-              AppIcons.notificationAddOutlined,
-              color: colors.brand,
-            ),
-            title: Text(
-              'Test notification',
-              style: TextStyle(color: colors.text),
-            ),
-            subtitle: Text(
-              'Send a notification right now to check it works',
-              style: TextStyle(color: colors.textMuted, fontSize: 12),
-            ),
-            trailing: FilledButton.tonal(
-              onPressed: () => _sendTest(context),
-              child: const Text('Send'),
-            ),
-          ),
-          if (StartupRegistration.supported) ...[
-            Divider(color: colors.outline, height: 1),
-            _TrayToggle(colors: colors),
-          ],
-          Divider(color: colors.outline, height: 1),
-          _SectionHeader('Reminders', colors: colors),
-          SwitchListTile.adaptive(
-            value: ref.watch(notifHabitsEnabledProvider),
-            onChanged: (v) =>
-                ref.read(notifHabitsEnabledProvider.notifier).set(v),
-            activeThumbColor: colors.brand,
-            secondary: Icon(AppIcons.habits, color: colors.brand),
-            title: Text(
-              'Habit reminders',
-              style: TextStyle(color: colors.text),
-            ),
-            subtitle: Text(
-              'Set per habit in Habits → Edit',
-              style: TextStyle(color: colors.textMuted, fontSize: 12),
-            ),
-          ),
-          SwitchListTile.adaptive(
-            value: ref.watch(notifLockInNudgeEnabledProvider),
-            onChanged: (v) =>
-                ref.read(notifLockInNudgeEnabledProvider.notifier).set(v),
-            activeThumbColor: colors.brand,
-            secondary: Icon(AppIcons.lockClockOutlined, color: colors.brand),
-            title: Text(
-              'Evening lock-in nudge',
-              style: TextStyle(color: colors.text),
-            ),
-            subtitle: Text(
-              'A reminder if habits are still open',
-              style: TextStyle(color: colors.textMuted, fontSize: 12),
-            ),
-          ),
-          SwitchListTile.adaptive(
-            value: ref.watch(notifMentionsEnabledProvider),
-            onChanged: (v) =>
-                ref.read(notifMentionsEnabledProvider.notifier).set(v),
-            activeThumbColor: colors.brand,
-            secondary: Icon(AppIcons.alternateEmail, color: colors.brand),
-            title: Text(
-              'Note @date reminders',
-              style: TextStyle(color: colors.text),
-            ),
-          ),
-          ListTile(
-            leading: Icon(AppIcons.trackChangesOutlined, color: colors.brand),
-            title: Text(
-              'Goal countdown reminders',
-              style: TextStyle(color: colors.text),
-            ),
-            trailing: Icon(AppIcons.chevronRight, color: colors.textMuted),
-            onTap: () => context.push('/settings/goal-reminders'),
-          ),
-          SwitchListTile.adaptive(
-            value: ref.watch(notifTodosEnabledProvider),
-            onChanged: (v) =>
-                ref.read(notifTodosEnabledProvider.notifier).set(v),
-            activeThumbColor: colors.brand,
-            secondary: Icon(AppIcons.checklistOutlined, color: colors.brand),
-            title: Text('Task reminders', style: TextStyle(color: colors.text)),
-            subtitle: Text(
-              'Set per task in Tasks → Edit',
-              style: TextStyle(color: colors.textMuted, fontSize: 12),
-            ),
+          SettingsGroup(
+            title: 'Reminders',
+            children: [
+              SettingsTile.toggle(
+                icon: AppIcons.habits,
+                title: 'Habit reminders',
+                subtitle: 'Set per habit in Habits → Edit',
+                value: ref.watch(notifHabitsEnabledProvider),
+                onChanged: (v) =>
+                    ref.read(notifHabitsEnabledProvider.notifier).set(v),
+              ),
+              SettingsTile.toggle(
+                icon: AppIcons.lockClockOutlined,
+                title: 'Evening lock-in nudge',
+                subtitle: 'A reminder if habits are still open',
+                value: ref.watch(notifLockInNudgeEnabledProvider),
+                onChanged: (v) =>
+                    ref.read(notifLockInNudgeEnabledProvider.notifier).set(v),
+              ),
+              SettingsTile.toggle(
+                icon: AppIcons.alternateEmail,
+                title: 'Note @date reminders',
+                value: ref.watch(notifMentionsEnabledProvider),
+                onChanged: (v) =>
+                    ref.read(notifMentionsEnabledProvider.notifier).set(v),
+              ),
+              SettingsTile.nav(
+                icon: AppIcons.trackChangesOutlined,
+                title: 'Goal countdown reminders',
+                onTap: () => context.push('/settings/goal-reminders'),
+              ),
+              SettingsTile.toggle(
+                icon: AppIcons.checklistOutlined,
+                title: 'Task reminders',
+                subtitle: 'Set per task in Tasks → Edit',
+                value: ref.watch(notifTodosEnabledProvider),
+                onChanged: (v) =>
+                    ref.read(notifTodosEnabledProvider.notifier).set(v),
+              ),
+            ],
           ),
         ],
       ),
@@ -635,8 +685,7 @@ class NotificationsSettingsPage extends ConsumerWidget {
 }
 
 class _TrayToggle extends StatefulWidget {
-  const _TrayToggle({required this.colors});
-  final AppColorTokens colors;
+  const _TrayToggle();
 
   @override
   State<_TrayToggle> createState() => _TrayToggleState();
@@ -655,23 +704,16 @@ class _TrayToggleState extends State<_TrayToggle> {
 
   @override
   Widget build(BuildContext context) {
-    return SwitchListTile.adaptive(
+    return SettingsTile.toggle(
+      icon: AppIcons.inboxOutlined,
+      title: 'Keep running in tray for reminders',
+      subtitle: 'Starts with your computer; data stays locked',
       value: _on,
       onChanged: (v) async {
         await StartupRegistration.setEnabled(v);
         TrayService.instance.keepInTray = v;
         if (mounted) setState(() => _on = v);
       },
-      activeThumbColor: widget.colors.brand,
-      secondary: Icon(AppIcons.inboxOutlined, color: widget.colors.brand),
-      title: Text(
-        'Keep running in tray for reminders',
-        style: TextStyle(color: widget.colors.text),
-      ),
-      subtitle: Text(
-        'Starts with your computer; data stays locked',
-        style: TextStyle(color: widget.colors.textMuted, fontSize: 12),
-      ),
     );
   }
 }
@@ -688,26 +730,21 @@ class BiometricSettingsPage extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: colors.bg,
-      appBar: AppBar(
-        title: const Text('Biometric Unlock'),
-        backgroundColor: colors.surface,
-      ),
+      appBar: AppBar(title: const Text('Biometric unlock')),
       body: FutureBuilder<bool>(
         future: _checkAvailable(),
         builder: (_, snap) {
           final available = snap.data ?? false;
-          return ListView(
+          return ReadableListView(
             children: [
-              _SectionHeader('Unlock Method', colors: colors),
-              if (!available)
+              if (!available && snap.connectionState == ConnectionState.done)
                 Padding(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.only(top: AppSpace.lg),
                   child: Container(
-                    padding: const EdgeInsets.all(12),
+                    padding: const EdgeInsets.all(AppSpace.md),
                     decoration: BoxDecoration(
-                      color: colors.warning.withAlpha(25),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: colors.warning.withAlpha(80)),
+                      color: colors.warningSubtle,
+                      borderRadius: AppRadius.brMd,
                     ),
                     child: Row(
                       children: [
@@ -716,40 +753,35 @@ class BiometricSettingsPage extends ConsumerWidget {
                           color: colors.warning,
                           size: 18,
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: AppSpace.sm),
                         Expanded(
                           child: Text(
                             'No biometric hardware found or not enrolled. Enrol in Android Settings → Security.',
-                            style: TextStyle(fontSize: 13, color: colors.text),
+                            style: context.text.bodySmall!.copyWith(
+                              color: colors.text,
+                            ),
                           ),
                         ),
                       ],
                     ),
                   ),
                 ),
-              SwitchListTile.adaptive(
-                value: enabled,
-                onChanged: available
-                    ? (v) => ref.read(biometricEnabledProvider.notifier).set(v)
-                    : null,
-                activeThumbColor: colors.brand,
-                secondary: Icon(AppIcons.biometric, color: colors.brand),
-                title: Text(
-                  'Unlock with biometrics',
-                  style: TextStyle(color: colors.text),
-                ),
-                subtitle: Text(
-                  'Use face or fingerprint instead of password',
-                  style: TextStyle(color: colors.textMuted, fontSize: 12),
-                ),
-              ),
-              Divider(color: colors.outline, height: 1),
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Text(
-                  'Your password is always available as a fallback.',
-                  style: TextStyle(fontSize: 12, color: colors.textMuted),
-                ),
+              SettingsGroup(
+                title: 'Unlock method',
+                footer: 'Your password is always available as a fallback.',
+                children: [
+                  SettingsTile.toggle(
+                    icon: AppIcons.biometric,
+                    title: 'Unlock with biometrics',
+                    subtitle: 'Use face or fingerprint instead of password',
+                    value: enabled,
+                    enabled: available,
+                    onChanged: available
+                        ? (v) =>
+                              ref.read(biometricEnabledProvider.notifier).set(v)
+                        : null,
+                  ),
+                ],
               ),
             ],
           );
@@ -791,34 +823,23 @@ class AutoLockSettingsPage extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: colors.bg,
-      appBar: AppBar(
-        title: const Text('Auto-lock'),
-        backgroundColor: colors.surface,
-      ),
-      body: ListView(
+      appBar: AppBar(title: const Text('Auto-lock')),
+      body: ReadableListView(
         children: [
-          _SectionHeader('Lock after inactivity', colors: colors),
           RadioGroup<int>(
             groupValue: currentMinutes,
             onChanged: (v) =>
                 ref.read(_lockTimeoutMinutesProvider.notifier).set(v!),
-            child: Column(
+            child: SettingsGroup(
+              title: 'Lock after inactivity',
+              footer: 'The app locks when moved to the background for longer than this duration.',
               children: [
                 for (final opt in _options)
                   RadioListTile<int>(
                     value: opt.$1.inDays > 1 ? 99999 : opt.$1.inMinutes,
-                    activeColor: colors.brand,
-                    title: Text(opt.$2, style: TextStyle(color: colors.text)),
+                    title: Text(opt.$2),
                   ),
               ],
-            ),
-          ),
-          Divider(color: colors.outline, height: 1),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Text(
-              'The app locks when moved to the background for longer than this duration.',
-              style: TextStyle(fontSize: 12, color: colors.textMuted),
             ),
           ),
         ],
@@ -865,109 +886,88 @@ class WeekDaySettingsPage extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: colors.bg,
-      appBar: AppBar(
-        title: const Text('Week & Day'),
-        backgroundColor: colors.surface,
-      ),
-      body: ListView(
+      appBar: AppBar(title: const Text('Week & day')),
+      body: ReadableListView(
         children: [
-          _SectionHeader('Week Start', colors: colors),
-          RadioGroup<int>(
-            groupValue: weekStart,
-            onChanged: (v) => ref.read(weekStartProvider.notifier).set(v!),
-            child: Column(
-              children: [
-                RadioListTile<int>(
-                  value: 1,
-                  activeColor: colors.brand,
-                  title: Text('Monday', style: TextStyle(color: colors.text)),
-                ),
-                RadioListTile<int>(
-                  value: 7,
-                  activeColor: colors.brand,
-                  title: Text('Sunday', style: TextStyle(color: colors.text)),
-                ),
-              ],
-            ),
-          ),
-          Divider(color: colors.outline, height: 1),
-          _SectionHeader('Day Boundary', colors: colors),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Text(
-              'Days end at midnight by default. Shift the boundary if your nights run past midnight.',
-              style: TextStyle(fontSize: 12, color: colors.textMuted),
-            ),
+          const SectionHeader('Week start'),
+          SegmentedButton<int>(
+            showSelectedIcon: false,
+            segments: const [
+              ButtonSegment(value: 1, label: Text('Monday')),
+              ButtonSegment(value: 7, label: Text('Sunday')),
+            ],
+            selected: {weekStart},
+            onSelectionChanged: (v) =>
+                ref.read(weekStartProvider.notifier).set(v.first),
           ),
           RadioGroup<int>(
             groupValue: boundaryMins,
             onChanged: (v) =>
                 ref.read(dayBoundaryMinutesProvider.notifier).set(v!),
-            child: Column(
+            child: SettingsGroup(
+              title: 'Day boundary',
+              footer: 'Days end at midnight by default. Shift the boundary if your nights run past midnight.',
               children: [
                 for (final mins in [0, 60, 120, 180, 240])
                   RadioListTile<int>(
                     value: mins,
-                    activeColor: colors.brand,
                     title: Text(
                       mins == 0
                           ? 'Midnight (00:00)'
                           : '0${mins ~/ 60}:00 (${mins ~/ 60}h after midnight)',
-                      style: TextStyle(color: colors.text),
                     ),
                   ),
               ],
             ),
           ),
-          Divider(color: colors.outline, height: 1),
-          _SectionHeader('Time', colors: colors),
-          SwitchListTile.adaptive(
-            value: ref.watch(timeFormat24hProvider),
-            onChanged: (v) => ref.read(timeFormat24hProvider.notifier).set(v),
-            activeThumbColor: colors.brand,
-            title: Text('24-hour time', style: TextStyle(color: colors.text)),
+          SettingsGroup(
+            title: 'Time',
+            children: [
+              SettingsTile.toggle(
+                icon: AppIcons.scheduleOutlined,
+                title: '24-hour time',
+                value: ref.watch(timeFormat24hProvider),
+                onChanged: (v) =>
+                    ref.read(timeFormat24hProvider.notifier).set(v),
+              ),
+              SettingsTile.nav(
+                icon: AppIcons.timerOutlined,
+                title: 'Default reminder time',
+                subtitle: 'Used for all-day items',
+                trailing: Text(
+                  _fmtMinutes(ref.watch(defaultReminderMinutesProvider)),
+                  style: context.text.labelLarge!.copyWith(
+                    color: colors.brandText,
+                    fontFeatures: AppTypography.tabular,
+                  ),
+                ),
+                onTap: () async {
+                  final cur = ref.read(defaultReminderMinutesProvider);
+                  final picked = await showTimePicker(
+                    context: context,
+                    initialTime: TimeOfDay(hour: cur ~/ 60, minute: cur % 60),
+                  );
+                  if (picked != null) {
+                    await ref
+                        .read(defaultReminderMinutesProvider.notifier)
+                        .set(picked.hour * 60 + picked.minute);
+                  }
+                },
+              ),
+            ],
           ),
-          ListTile(
-            title: Text(
-              'Default reminder time',
-              style: TextStyle(color: colors.text),
-            ),
-            subtitle: Text(
-              'Used for all-day items',
-              style: TextStyle(color: colors.textMuted, fontSize: 12),
-            ),
-            trailing: Text(
-              _fmtMinutes(ref.watch(defaultReminderMinutesProvider)),
-              style: TextStyle(color: colors.brand),
-            ),
-            onTap: () async {
-              final cur = ref.read(defaultReminderMinutesProvider);
-              final picked = await showTimePicker(
-                context: context,
-                initialTime: TimeOfDay(hour: cur ~/ 60, minute: cur % 60),
-              );
-              if (picked != null) {
-                await ref
-                    .read(defaultReminderMinutesProvider.notifier)
-                    .set(picked.hour * 60 + picked.minute);
-              }
-            },
-          ),
-          Divider(color: colors.outline, height: 1),
-          _SectionHeader('Lock-in', colors: colors),
-          SwitchListTile.adaptive(
-            value: ref.watch(countTodosForLockInProvider),
-            onChanged: (v) =>
-                ref.read(countTodosForLockInProvider.notifier).set(v),
-            activeThumbColor: colors.brand,
-            title: Text(
-              'Count to-dos for lock-in',
-              style: TextStyle(color: colors.text),
-            ),
-            subtitle: Text(
-              'Flagged tasks due today must be done before the day locks in',
-              style: TextStyle(color: colors.textMuted, fontSize: 12),
-            ),
+          SettingsGroup(
+            title: 'Lock-in',
+            children: [
+              SettingsTile.toggle(
+                icon: AppIcons.lockFill,
+                title: 'Count to-dos for lock-in',
+                subtitle: 'Flagged tasks due today must be done before the day locks in',
+                value: ref.watch(countTodosForLockInProvider),
+                onChanged: (v) =>
+                    ref.read(countTodosForLockInProvider.notifier).set(v),
+              ),
+            ],
           ),
         ],
       ),
@@ -986,30 +986,10 @@ class AccessibilitySettingsPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.colors;
-    final reduced = ref.watch(reducedMotionProvider);
-
     return Scaffold(
       backgroundColor: colors.bg,
-      appBar: AppBar(
-        title: const Text('Accessibility'),
-        backgroundColor: colors.surface,
-      ),
-      body: ListView(
-        children: [
-          _SectionHeader('Motion', colors: colors),
-          SwitchListTile.adaptive(
-            value: reduced,
-            onChanged: (v) => ref.read(reducedMotionProvider.notifier).set(v),
-            activeThumbColor: colors.brand,
-            secondary: Icon(AppIcons.animationOutlined, color: colors.brand),
-            title: Text('Reduce motion', style: TextStyle(color: colors.text)),
-            subtitle: Text(
-              'Fewer animations & transitions',
-              style: TextStyle(color: colors.textMuted, fontSize: 12),
-            ),
-          ),
-        ],
-      ),
+      appBar: AppBar(title: const Text('Accessibility')),
+      body: const ReadableListView(children: [_MotionFeedbackGroup()]),
     );
   }
 }
@@ -1022,61 +1002,60 @@ class GoalRemindersSettingsPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.colors;
+    final cadence = ref.watch(_goalCadenceProvider);
     return Scaffold(
       backgroundColor: colors.bg,
-      appBar: AppBar(
-        title: const Text('Goal Reminders'),
-        backgroundColor: colors.surface,
-      ),
-      body: ListView(
+      appBar: AppBar(title: const Text('Goal reminders')),
+      body: ReadableListView(
         children: [
-          _SectionHeader('Reminder cadence', colors: colors),
-          ...[
-            ('off', 'Off'),
-            ('daily', 'Daily'),
-            ('every2', 'Every 2 days'),
-            ('every3', 'Every 3 days'),
-            ('every5', 'Every 5 days'),
-            ('weekly', 'Weekly'),
-            ('milestones_only', 'Milestones only'),
-          ].map(
-            (opt) => _GoalReminderCadenceTile(
-              value: opt.$1,
-              label: opt.$2,
-              colors: colors,
+          RadioGroup<String>(
+            groupValue: cadence,
+            onChanged: (v) => ref.read(_goalCadenceProvider.notifier).set(v!),
+            child: SettingsGroup(
+              title: 'Reminder cadence',
+              children: [
+                for (final opt in const [
+                  ('off', 'Off'),
+                  ('daily', 'Daily'),
+                  ('every2', 'Every 2 days'),
+                  ('every3', 'Every 3 days'),
+                  ('every5', 'Every 5 days'),
+                  ('weekly', 'Weekly'),
+                  ('milestones_only', 'Milestones only'),
+                ])
+                  _GoalReminderCadenceTile(value: opt.$1, label: opt.$2),
+              ],
             ),
           ),
-          Divider(color: colors.outline, height: 1),
-          _SectionHeader('Options', colors: colors),
-          _GoalReminderToggle(
-            prefKey: AppIdentifiers.prefGoalFinalStretch,
-            label: 'Daily during final 7 days',
-            icon: AppIcons.timerOutlined,
-            colors: colors,
-          ),
-          _GoalReminderToggle(
-            prefKey: AppIdentifiers.prefGoalMilestoneAlerts,
-            label: 'Milestone alerts',
-            icon: AppIcons.milestone,
-            colors: colors,
-          ),
-          _GoalReminderToggle(
-            prefKey: AppIdentifiers.prefGoalCompletionAlert,
-            label: 'Completion alert',
-            icon: AppIcons.checkCircleOutlined,
-            colors: colors,
-          ),
-          _GoalReminderToggle(
-            prefKey: AppIdentifiers.prefGoalSuppressIfDone,
-            label: 'Skip if all habits done today',
-            icon: AppIcons.doNotDisturbAltOutlined,
-            colors: colors,
-          ),
-          _GoalReminderToggle(
-            prefKey: AppIdentifiers.prefGoalShowTitle,
-            label: 'Show goal title in notification',
-            icon: AppIcons.titleOutlined,
-            colors: colors,
+          const SettingsGroup(
+            title: 'Options',
+            children: [
+              _GoalReminderToggle(
+                prefKey: AppIdentifiers.prefGoalFinalStretch,
+                label: 'Daily during final 7 days',
+                icon: AppIcons.timerOutlined,
+              ),
+              _GoalReminderToggle(
+                prefKey: AppIdentifiers.prefGoalMilestoneAlerts,
+                label: 'Milestone alerts',
+                icon: AppIcons.milestone,
+              ),
+              _GoalReminderToggle(
+                prefKey: AppIdentifiers.prefGoalCompletionAlert,
+                label: 'Completion alert',
+                icon: AppIcons.checkCircleOutlined,
+              ),
+              _GoalReminderToggle(
+                prefKey: AppIdentifiers.prefGoalSuppressIfDone,
+                label: 'Skip if all habits done today',
+                icon: AppIcons.doNotDisturbAltOutlined,
+              ),
+              _GoalReminderToggle(
+                prefKey: AppIdentifiers.prefGoalShowTitle,
+                label: 'Show goal title in notification',
+                icon: AppIcons.titleOutlined,
+              ),
+            ],
           ),
         ],
       ),
@@ -1084,28 +1063,14 @@ class GoalRemindersSettingsPage extends ConsumerWidget {
   }
 }
 
-class _GoalReminderCadenceTile extends ConsumerWidget {
-  const _GoalReminderCadenceTile({
-    required this.value,
-    required this.label,
-    required this.colors,
-  });
+class _GoalReminderCadenceTile extends StatelessWidget {
+  const _GoalReminderCadenceTile({required this.value, required this.label});
   final String value;
   final String label;
-  final AppColorTokens colors;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final current = ref.watch(_goalCadenceProvider);
-    return RadioGroup<String>(
-      groupValue: current,
-      onChanged: (v) => ref.read(_goalCadenceProvider.notifier).set(v!),
-      child: RadioListTile<String>(
-        value: value,
-        activeColor: colors.brand,
-        title: Text(label, style: TextStyle(color: colors.text)),
-      ),
-    );
+  Widget build(BuildContext context) {
+    return RadioListTile<String>(value: value, title: Text(label));
   }
 }
 
@@ -1132,72 +1097,79 @@ class _GoalCadenceNotifier extends Notifier<String> {
   }
 }
 
-class _GoalReminderToggle extends ConsumerWidget {
+class _GoalReminderToggle extends StatefulWidget {
   const _GoalReminderToggle({
     required this.prefKey,
     required this.label,
     required this.icon,
-    required this.colors,
   });
   final String prefKey;
   final String label;
   final IconData icon;
-  final AppColorTokens colors;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return FutureBuilder<bool>(
-      future: _load(),
-      builder: (ctx, snap) {
-        final val = snap.data ?? true;
-        return SwitchListTile.adaptive(
-          value: val,
-          onChanged: _save,
-          activeThumbColor: colors.brand,
-          secondary: Icon(icon, color: colors.brand),
-          title: Text(label, style: TextStyle(color: colors.text)),
-        );
+  State<_GoalReminderToggle> createState() => _GoalReminderToggleState();
+}
+
+class _GoalReminderToggleState extends State<_GoalReminderToggle> {
+  bool _val = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _load().then((v) {
+      if (mounted) setState(() => _val = v);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SettingsTile.toggle(
+      icon: widget.icon,
+      title: widget.label,
+      value: _val,
+      onChanged: (v) {
+        setState(() => _val = v);
+        _save(v);
       },
     );
   }
 
   Future<bool> _load() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool(prefKey) ?? true;
+    return prefs.getBool(widget.prefKey) ?? true;
   }
 
   Future<void> _save(bool v) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(prefKey, v);
+    await prefs.setBool(widget.prefKey, v);
   }
 }
 
 // ── About row ─────────────────────────────────────────────────────────────────
 
 class _AboutRow extends ConsumerWidget {
-  const _AboutRow({required this.colors});
-  final AppColorTokens colors;
+  const _AboutRow();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return Column(
+    return SettingsGroup(
+      title: 'About',
       children: [
-        ListTile(
-          leading: Icon(AppIcons.helpOutline, color: colors.brand),
-          title: Text('FAQ', style: TextStyle(color: colors.text)),
-          trailing: Icon(AppIcons.openInNew, size: 16, color: colors.textMuted),
+        _ExternalTile(
+          icon: AppIcons.helpOutline,
+          title: 'FAQ',
           onTap: () => _launch('https://incantum.in/faq'),
         ),
-        ListTile(
-          leading: Icon(AppIcons.infoOutline, color: colors.brand),
-          title: Text('About Streakin', style: TextStyle(color: colors.text)),
-          trailing: Icon(AppIcons.chevronRight, color: colors.textMuted),
+        SettingsTile.nav(
+          icon: AppIcons.infoOutline,
+          title: 'About ${Brand.appName}',
           onTap: () => context.push('/settings/about'),
         ),
-        ListTile(
-          leading: Icon(AppIcons.newReleasesOutlined, color: colors.brand),
-          title: Text('App Version', style: TextStyle(color: colors.text)),
-          trailing: const _VersionBadge(),
+        const SettingsTile(
+          icon: AppIcons.newReleasesOutlined,
+          title: 'App version',
+          trailing: _VersionBadge(),
         ),
       ],
     );
@@ -1214,10 +1186,7 @@ class _VersionBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    return Text(
-      '1.0.0-alpha',
-      style: TextStyle(fontSize: 13, color: colors.textMuted),
-    );
+    return StatusPill('1.0.0-alpha', color: colors.brand);
   }
 }
 
@@ -1231,56 +1200,42 @@ class AboutPage extends StatelessWidget {
     final colors = context.colors;
     return Scaffold(
       backgroundColor: colors.bg,
-      appBar: AppBar(
-        title: const Text('About'),
-        backgroundColor: colors.surface,
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(24),
+      appBar: AppBar(title: const Text('About')),
+      body: ReadableListView(
         children: [
+          const SizedBox(height: AppSpace.xl),
           Center(
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(20),
-              child: Image.asset('assets/icon.png', width: 80, height: 80),
+              borderRadius: BorderRadius.circular(22),
+              child: Image.asset('assets/icon.png', width: 88, height: 88),
             ),
           ),
-          const SizedBox(height: 16),
-          Center(
-            child: Text(
-              'Streakin',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.w700,
-                color: colors.brand,
-              ),
-            ),
-          ),
-          Center(
-            child: Text(
-              'Version 1.0.0-alpha',
-              style: TextStyle(color: colors.textMuted, fontSize: 13),
-            ),
-          ),
-          const SizedBox(height: 24),
+          const SizedBox(height: AppSpace.lg),
+          Center(child: Text(Brand.appName, style: context.text.displaySmall)),
+          const SizedBox(height: AppSpace.xs),
+          const Center(child: _VersionBadge()),
+          const SizedBox(height: AppSpace.xl),
           Text(
             'A private, calm, beautiful place to build habits and think in notes.',
-            style: TextStyle(color: colors.text, fontSize: 15),
+            style: context.text.bodyLarge,
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 24),
-          Divider(color: colors.outline),
-          const SizedBox(height: 8),
-          Center(
-            child: Text(
-              'Built by Incantum · No telemetry · No cloud',
-              style: TextStyle(color: colors.textMuted, fontSize: 12),
-            ),
+          const SizedBox(height: AppSpace.xl),
+          const Wrap(
+            alignment: WrapAlignment.center,
+            spacing: AppSpace.sm,
+            runSpacing: AppSpace.sm,
+            children: [
+              StatusPill('No telemetry', icon: AppIcons.shieldOutlined),
+              StatusPill('No cloud', icon: AppIcons.lock),
+              StatusPill('Encrypted', icon: AppIcons.vault),
+            ],
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: AppSpace.xl),
           Center(
             child: Text(
-              'Your data stays yours',
-              style: TextStyle(color: colors.textMuted, fontSize: 12),
+              'Built by ${Brand.companyName} · Your data stays yours',
+              style: context.text.bodySmall,
             ),
           ),
         ],
@@ -1291,71 +1246,28 @@ class AboutPage extends StatelessWidget {
 
 // ── Shared widgets ────────────────────────────────────────────────────────────
 
-class _SectionHeader extends StatelessWidget {
-  const _SectionHeader(this.title, {required this.colors});
-  final String title;
-  final AppColorTokens colors;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 20, 16, 6),
-      child: Text(
-        title.toUpperCase(),
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-          color: colors.textMuted,
-          letterSpacing: 0.8,
-        ),
-      ),
-    );
-  }
-}
-
-class _SettingsTile extends StatelessWidget {
-  const _SettingsTile({
+/// Row that opens an external link.
+class _ExternalTile extends StatelessWidget {
+  const _ExternalTile({
     required this.icon,
-    required this.label,
+    required this.title,
     required this.onTap,
-    required this.colors,
-    this.subtitle,
-    this.showChevron = true,
-    this.trailingIcon,
   });
   final IconData icon;
-  final String label;
-  final String? subtitle;
+  final String title;
   final VoidCallback onTap;
-  final AppColorTokens colors;
-  final bool showChevron;
-  final IconData? trailingIcon;
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      leading: Container(
-        width: 36,
-        height: 36,
-        decoration: BoxDecoration(
-          color: colors.brand.withAlpha(20),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Icon(icon, color: colors.brand, size: 20),
-      ),
-      title: Text(label, style: TextStyle(color: colors.text, fontSize: 15)),
-      subtitle: subtitle != null
-          ? Text(
-              subtitle!,
-              style: TextStyle(color: colors.textMuted, fontSize: 12),
-            )
-          : null,
-      trailing: Icon(
-        trailingIcon ?? (showChevron ? AppIcons.chevronRight : null),
-        color: colors.textMuted,
-        size: 18,
-      ),
+    return SettingsTile(
+      icon: icon,
+      title: title,
       onTap: onTap,
+      trailing: Icon(
+        AppIcons.openInNew,
+        size: AppSizes.iconSm,
+        color: context.colors.textMuted,
+      ),
     );
   }
 }
@@ -1391,20 +1303,12 @@ class _Field extends StatelessWidget {
           children: [
             Text(
               label,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-                color: colors.textMuted,
-              ),
+              style: context.text.labelLarge!.copyWith(color: colors.textMuted),
             ),
-            if (!required)
-              Text(
-                ' (optional)',
-                style: TextStyle(fontSize: 12, color: colors.textMuted),
-              ),
+            if (!required) Text(' (optional)', style: context.text.bodySmall),
           ],
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: AppSpace.sm),
         TextField(
           controller: controller,
           maxLength: maxLength,

@@ -6,7 +6,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import 'package:streakin/core/design/elevation.dart';
+import 'package:streakin/core/design/motion.dart';
+import 'package:streakin/core/design/spacing.dart';
 import 'package:streakin/core/design/tokens.dart';
+import 'package:streakin/core/design/typography.dart';
 import 'package:streakin/core/time/local_date.dart';
 import 'package:streakin/features/settings/application/settings_providers.dart'
     show countTodosForLockInProvider;
@@ -14,6 +18,8 @@ import 'package:streakin/features/notes/notes_module.dart'
     show noteSourceRemovedProvider;
 import 'package:streakin/features/todos/application/todo_providers.dart';
 import 'package:streakin/features/todos/domain/todo.dart';
+import 'package:streakin/shared/feedback/haptics.dart';
+import 'package:streakin/shared/widgets/widgets.dart';
 
 // ── TodosScreen ───────────────────────────────────────────────────────────
 
@@ -48,23 +54,38 @@ class _TodosScreenState extends ConsumerState<TodosScreen>
     return Scaffold(
       backgroundColor: colors.bg,
       appBar: AppBar(
-        backgroundColor: colors.bg,
-        surfaceTintColor: Colors.transparent,
-        title: Text(
-          'Tasks',
-          style: TextStyle(
-            color: colors.text,
-            fontSize: 20,
-            fontWeight: FontWeight.w600,
+        title: const Text('Tasks'),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(52),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpace.lg,
+              0,
+              AppSpace.lg,
+              AppSpace.sm,
+            ),
+            child: Container(
+              height: 44,
+              padding: const EdgeInsets.all(AppSpace.xs),
+              decoration: BoxDecoration(
+                color: colors.surfaceAlt,
+                borderRadius: AppRadius.brMd,
+              ),
+              child: TabBar(
+                controller: _tab,
+                dividerHeight: 0,
+                indicatorSize: TabBarIndicatorSize.tab,
+                labelPadding: EdgeInsets.zero,
+                indicator: BoxDecoration(
+                  color: colors.surface,
+                  borderRadius: AppRadius.brSm,
+                  border: Border.all(color: colors.outline),
+                  boxShadow: AppElevation.floating(colors),
+                ),
+                tabs: _tabs.map((t) => Tab(text: t)).toList(),
+              ),
+            ),
           ),
-        ),
-        bottom: TabBar(
-          controller: _tab,
-          labelColor: colors.brand,
-          unselectedLabelColor: colors.textMuted,
-          indicatorColor: colors.brand,
-          indicatorSize: TabBarIndicatorSize.label,
-          tabs: _tabs.map((t) => Tab(text: t)).toList(),
         ),
       ),
       body: TabBarView(
@@ -76,12 +97,11 @@ class _TodosScreenState extends ConsumerState<TodosScreen>
           _DoneView(),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: colors.brand,
-        foregroundColor: colors.onBrand,
+      floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _openAddSheet(context),
         tooltip: 'Add task',
-        child: const Icon(AppIcons.add),
+        icon: const Icon(AppIcons.add),
+        label: const Text('New task'),
       ),
     );
   }
@@ -90,7 +110,8 @@ class _TodosScreenState extends ConsumerState<TodosScreen>
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.transparent,
+      backgroundColor: AppColors.transparent,
+      showDragHandle: false,
       builder: (_) => const _TaskFormSheet(),
     );
   }
@@ -106,11 +127,12 @@ class _TodayView extends ConsumerWidget {
     final async = ref.watch(todosTodayProvider);
     return async.when(
       loading: () => const _LoadingState(),
-      error: (e, _) => _ErrorState(error: e),
+      error: (e, st) => _ErrorState(error: e, stackTrace: st),
       data: (todos) => todos.isEmpty
           ? const _EmptyState(
               icon: AppIcons.checkCircleOutline,
-              message: 'Nothing due today — enjoy your day!',
+              title: 'Nothing due today',
+              message: 'Enjoy your day, or plan something for later.',
             )
           : _TodoList(todos: todos, showDate: false),
     );
@@ -127,11 +149,12 @@ class _UpcomingView extends ConsumerWidget {
     final async = ref.watch(todosUpcomingProvider);
     return async.when(
       loading: () => const _LoadingState(),
-      error: (e, _) => _ErrorState(error: e),
+      error: (e, st) => _ErrorState(error: e, stackTrace: st),
       data: (todos) => todos.isEmpty
           ? const _EmptyState(
               icon: AppIcons.eventOutlined,
-              message: 'No upcoming tasks.',
+              title: 'No upcoming tasks',
+              message: 'Tasks with a future due date land here.',
             )
           : _TodoList(todos: todos, showDate: true),
     );
@@ -148,11 +171,12 @@ class _AnytimeView extends ConsumerWidget {
     final async = ref.watch(todosAnytimeProvider);
     return async.when(
       loading: () => const _LoadingState(),
-      error: (e, _) => _ErrorState(error: e),
+      error: (e, st) => _ErrorState(error: e, stackTrace: st),
       data: (todos) => todos.isEmpty
           ? const _EmptyState(
               icon: AppIcons.inboxOutlined,
-              message: 'No tasks without a due date.',
+              title: 'Inbox zero',
+              message: 'Tasks without a due date show up here.',
             )
           : _TodoList(todos: todos, showDate: false),
     );
@@ -169,11 +193,12 @@ class _DoneView extends ConsumerWidget {
     final async = ref.watch(todosDoneProvider);
     return async.when(
       loading: () => const _LoadingState(),
-      error: (e, _) => _ErrorState(error: e),
+      error: (e, st) => _ErrorState(error: e, stackTrace: st),
       data: (todos) => todos.isEmpty
           ? const _EmptyState(
               icon: AppIcons.doneAll,
-              message: 'No completed tasks yet.',
+              title: 'No completed tasks yet',
+              message: 'Finished tasks are kept here for reference.',
             )
           : _TodoList(todos: todos, showDate: true, isDoneList: true),
     );
@@ -195,11 +220,23 @@ class _TodoList extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+    return ListView.separated(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpace.lg,
+        AppSpace.md,
+        AppSpace.lg,
+        96,
+      ),
       itemCount: todos.length,
-      itemBuilder: (context, i) =>
-          _TodoTile(todo: todos[i], showDate: showDate, isDoneList: isDoneList),
+      separatorBuilder: (_, _) => const SizedBox(height: AppSpace.sm),
+      itemBuilder: (context, i) => StaggeredEntrance(
+        index: i,
+        child: _TodoTile(
+          todo: todos[i],
+          showDate: showDate,
+          isDoneList: isDoneList,
+        ),
+      ),
     );
   }
 }
@@ -222,14 +259,29 @@ class _TodoTile extends ConsumerWidget {
     final colors = context.colors;
     final useCases = ref.read(todoUseCasesProvider);
 
+    final d = resolvedDuration(context, AppDurations.base);
+
     return Dismissible(
       key: ValueKey(todo.id),
       direction: DismissDirection.endToStart,
       background: Container(
         alignment: Alignment.centerRight,
-        padding: const EdgeInsets.only(right: 20),
-        color: colors.danger,
-        child: const Icon(AppIcons.delete, color: Colors.white),
+        padding: const EdgeInsets.only(right: AppSpace.xl),
+        decoration: BoxDecoration(
+          color: colors.dangerSubtle,
+          borderRadius: AppRadius.brLg,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Delete',
+              style: context.text.labelLarge!.copyWith(color: colors.danger),
+            ),
+            const SizedBox(width: AppSpace.sm),
+            Icon(AppIcons.delete, color: colors.danger),
+          ],
+        ),
       ),
       onDismissed: (_) async {
         await useCases.deleteTodo(todo.id);
@@ -254,62 +306,110 @@ class _TodoTile extends ConsumerWidget {
       child: Semantics(
         container: true,
         label: _a11ySummary(),
-        child: ListTile(
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 4,
+        child: AppCard(
+          onTap: () => _openEditSheet(context, ref),
+          padding: const EdgeInsets.fromLTRB(
+            AppSpace.xs,
+            AppSpace.xs,
+            AppSpace.lg,
+            AppSpace.xs,
           ),
-          leading: Semantics(
-            label: todo.isDone ? 'Mark task pending' : 'Mark task done',
-            child: GestureDetector(
-              onTap: () async {
-                if (todo.isDone) {
-                  await useCases.uncompleteTodo(todo.id);
-                } else {
-                  await useCases.completeTodo(todo.id);
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: const Text('Task completed'),
-                        duration: const Duration(seconds: 10),
-                        action: SnackBarAction(
-                          label: 'Undo',
-                          onPressed: () => useCases.uncompleteTodo(todo.id),
+          child: Row(
+            children: [
+              Semantics(
+                button: true,
+                checked: todo.isDone,
+                label: todo.isDone ? 'Mark task pending' : 'Mark task done',
+                child: InkResponse(
+                  radius: 24,
+                  onTap: () async {
+                    final haptics = ref.read(hapticsProvider);
+                    if (todo.isDone) {
+                      haptics.tap();
+                      await useCases.uncompleteTodo(todo.id);
+                    } else {
+                      haptics.success();
+                      await useCases.completeTodo(todo.id);
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: const Text('Task completed'),
+                            duration: const Duration(seconds: 10),
+                            action: SnackBarAction(
+                              label: 'Undo',
+                              onPressed: () => useCases.uncompleteTodo(todo.id),
+                            ),
+                          ),
+                        );
+                      }
+                    }
+                  },
+                  child: SizedBox.square(
+                    dimension: AppSizes.minTap,
+                    child: Center(
+                      child: AnimatedContainer(
+                        duration: d,
+                        curve: AppCurves.emphasized,
+                        width: 24,
+                        height: 24,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: todo.isDone
+                                ? colors.success
+                                : colors.outlineStrong,
+                            width: 2,
+                          ),
+                          color: todo.isDone
+                              ? colors.success
+                              : AppColors.transparent,
+                        ),
+                        child: AnimatedSwitcher(
+                          duration: d,
+                          transitionBuilder: (c, a) =>
+                              ScaleTransition(scale: a, child: c),
+                          child: todo.isDone
+                              ? Icon(
+                                  AppIcons.check,
+                                  key: const ValueKey('done'),
+                                  size: 14,
+                                  color: colors.surface,
+                                )
+                              : const SizedBox.shrink(),
                         ),
                       ),
-                    );
-                  }
-                }
-              },
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                width: 24,
-                height: 24,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: todo.isDone ? colors.success : colors.outline,
-                    width: 2,
+                    ),
                   ),
-                  color: todo.isDone ? colors.success : Colors.transparent,
                 ),
-                child: todo.isDone
-                    ? const Icon(AppIcons.check, size: 14, color: Colors.white)
-                    : null,
               ),
-            ),
+              const SizedBox(width: AppSpace.xs),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: AppSpace.sm),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      AnimatedDefaultTextStyle(
+                        duration: d,
+                        style: context.text.bodyLarge!.copyWith(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w500,
+                          color: todo.isDone ? colors.textMuted : colors.text,
+                          decoration: todo.isDone
+                              ? TextDecoration.lineThrough
+                              : TextDecoration.none,
+                          decorationColor: colors.textMuted,
+                        ),
+                        child: Text(todo.title),
+                      ),
+                      ?_buildSubtitle(context, ref, colors),
+                    ],
+                  ),
+                ),
+              ),
+              ?_buildPriorityDot(colors),
+            ],
           ),
-          title: Text(
-            todo.title,
-            style: TextStyle(
-              color: todo.isDone ? colors.textMuted : colors.text,
-              decoration: todo.isDone ? TextDecoration.lineThrough : null,
-              fontSize: 15,
-            ),
-          ),
-          subtitle: _buildSubtitle(context, ref, colors),
-          trailing: _buildPriorityDot(colors),
-          onTap: () => _openEditSheet(context, ref),
         ),
       ),
     );
@@ -376,11 +476,24 @@ class _TodoTile extends ConsumerWidget {
         todo.dueDate != null &&
         LocalDate.parse(todo.dueDate!) < LocalDate.today();
 
-    return Text(
-      parts.join(' · '),
-      style: TextStyle(
-        color: isOverdue ? colors.danger : colors.textMuted,
-        fontSize: 12,
+    return Padding(
+      padding: const EdgeInsets.only(top: AppSpace.xxs),
+      child: Row(
+        children: [
+          if (isOverdue) ...[
+            Icon(AppIcons.dueDate, size: 13, color: colors.danger),
+            const SizedBox(width: AppSpace.xs),
+          ],
+          Flexible(
+            child: Text(
+              isOverdue ? 'Overdue · ${parts.join(' · ')}' : parts.join(' · '),
+              style: context.text.bodySmall!.copyWith(
+                color: isOverdue ? colors.danger : colors.textMuted,
+                fontSize: 12,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -394,10 +507,11 @@ class _TodoTile extends ConsumerWidget {
     if (color == null) return null;
     return Semantics(
       label: 'Priority: ${todo.priority.name}',
-      child: Container(
-        width: 8,
-        height: 8,
-        decoration: BoxDecoration(shape: BoxShape.circle, color: color),
+      child: StatusPill(
+        todo.priority == TodoPriority.high ? 'High' : 'Medium',
+        tone: todo.priority == TodoPriority.high
+            ? PillTone.danger
+            : PillTone.warning,
       ),
     );
   }
@@ -406,7 +520,8 @@ class _TodoTile extends ConsumerWidget {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.transparent,
+      backgroundColor: AppColors.transparent,
+      showDragHandle: false,
       builder: (_) => _TaskFormSheet(existing: todo),
     );
   }
@@ -467,11 +582,23 @@ class _TaskFormSheetState extends ConsumerState<_TaskFormSheet> {
     final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
 
     return Container(
-      margin: const EdgeInsets.fromLTRB(8, 0, 8, 8),
-      padding: EdgeInsets.fromLTRB(20, 20, 20, 20 + bottomInset),
+      margin: const EdgeInsets.fromLTRB(
+        AppSpace.sm,
+        0,
+        AppSpace.sm,
+        AppSpace.sm,
+      ),
+      padding: EdgeInsets.fromLTRB(
+        AppSpace.xl,
+        AppSpace.xl,
+        AppSpace.xl,
+        AppSpace.xl + bottomInset,
+      ),
       decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(20),
+        color: colors.surfaceRaised,
+        borderRadius: AppRadius.brXl,
+        border: Border.all(color: colors.outline),
+        boxShadow: AppElevation.overlay(colors),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -482,11 +609,7 @@ class _TaskFormSheetState extends ConsumerState<_TaskFormSheet> {
             children: [
               Text(
                 isEdit ? 'Edit task' : 'New task',
-                style: TextStyle(
-                  color: colors.text,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                ),
+                style: context.text.headlineSmall,
               ),
               const Spacer(),
               if (isEdit)
@@ -727,21 +850,26 @@ class _PriorityChip extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        duration: resolvedDuration(context, AppDurations.base),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpace.md,
+          vertical: AppSpace.sm,
+        ),
         decoration: BoxDecoration(
-          color: selected ? color.withAlpha(30) : Colors.transparent,
+          color: selected
+              ? color.withValues(alpha: 0.12)
+              : AppColors.transparent,
           border: Border.all(
             color: selected ? color : colors.outline,
             width: 1.5,
           ),
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: AppRadius.brPill,
         ),
         child: Text(
           label,
-          style: TextStyle(
+          style: context.text.labelLarge!.copyWith(
             color: selected ? color : colors.textMuted,
-            fontSize: 12,
+            fontWeight: FontWeight.w500,
           ),
         ),
       ),
@@ -772,11 +900,18 @@ class _FieldButton extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpace.md,
+          vertical: AppSpace.md,
+        ),
         decoration: BoxDecoration(
           color: colors.surfaceAlt,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: colors.outline),
+          borderRadius: AppRadius.brMd,
+          border: Border.all(
+            color: hasValue
+                ? colors.brand.withValues(alpha: 0.5)
+                : colors.outline,
+          ),
         ),
         child: Row(
           children: [
@@ -785,9 +920,9 @@ class _FieldButton extends StatelessWidget {
             Expanded(
               child: Text(
                 label,
-                style: TextStyle(
+                style: context.text.bodyMedium!.copyWith(
+                  fontSize: 14,
                   color: hasValue ? colors.text : colors.textMuted,
-                  fontSize: 13,
                 ),
                 overflow: TextOverflow.ellipsis,
               ),
@@ -809,44 +944,36 @@ class _FieldButton extends StatelessWidget {
 class _LoadingState extends StatelessWidget {
   const _LoadingState();
   @override
-  Widget build(BuildContext context) =>
-      const Center(child: CircularProgressIndicator.adaptive());
+  Widget build(BuildContext context) => const SkeletonList();
 }
 
 class _ErrorState extends StatelessWidget {
-  const _ErrorState({required this.error});
+  const _ErrorState({required this.error, this.stackTrace});
   final Object error;
+  final StackTrace? stackTrace;
   @override
   Widget build(BuildContext context) {
-    final colors = context.colors;
-    return Center(
-      child: Text('Error: $error', style: TextStyle(color: colors.danger)),
+    return ErrorState(
+      error: error,
+      stackTrace: stackTrace,
+      title: 'Couldn’t load tasks',
     );
   }
 }
 
 class _EmptyState extends StatelessWidget {
-  const _EmptyState({required this.icon, required this.message});
+  const _EmptyState({
+    required this.icon,
+    required this.title,
+    required this.message,
+  });
   final IconData icon;
+  final String title;
   final String message;
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.colors;
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 64, color: colors.textMuted),
-          const SizedBox(height: 16),
-          Text(
-            message,
-            textAlign: TextAlign.center,
-            style: TextStyle(color: colors.textMuted, fontSize: 15),
-          ),
-        ],
-      ),
-    );
+    return EmptyState(icon: icon, title: title, message: message);
   }
 }
 
@@ -860,7 +987,8 @@ void showAddTaskSheet(
   showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
-    backgroundColor: Colors.transparent,
+    backgroundColor: AppColors.transparent,
+    showDragHandle: false,
     builder: (_) =>
         _TaskFormSheet(existing: existing, initialDueDate: initialDueDate),
   );

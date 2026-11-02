@@ -16,7 +16,10 @@ import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:streakin/app/router.dart' show AppRoutes;
+import 'package:streakin/core/design/motion.dart';
+import 'package:streakin/core/design/spacing.dart';
 import 'package:streakin/core/design/tokens.dart';
+import 'package:streakin/core/design/typography.dart';
 import 'package:streakin/core/errors/app_failure.dart';
 import 'package:streakin/core/platform/windows_capture_guard.dart';
 import 'package:streakin/core/security/erase_all_data_service.dart';
@@ -24,6 +27,7 @@ import 'package:streakin/core/security/password_strength.dart';
 import 'package:streakin/core/security/vault_manager.dart';
 import 'package:streakin/core/storage/identifiers.dart';
 import 'package:streakin/features/onboarding/application/onboarding_service.dart';
+import 'package:streakin/shared/widgets/widgets.dart';
 
 // ── Providers ─────────────────────────────────────────────────────────────────
 
@@ -64,22 +68,41 @@ class PasswordStrengthMeter extends StatelessWidget {
         : s.score == 2
         ? colors.warning
         : colors.success;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        LinearProgressIndicator(
-          value: (s.score + 1) / 5,
-          color: color,
-          backgroundColor: colors.outline,
-        ),
-        const SizedBox(height: 4),
-        Text(
-          password.isEmpty
-              ? 'Minimum ${PasswordStrength.minLength} characters'
-              : '${s.label} · would take ${s.crackTimeLabel} to crack',
-          style: TextStyle(fontSize: 12, color: colors.textMuted),
-        ),
-      ],
+    // Segments lit: 0 when empty, otherwise score + 1 of 5.
+    final lit = password.isEmpty ? 0 : s.score + 1;
+    final d = resolvedDuration(context, AppDurations.base);
+    return Semantics(
+      label: password.isEmpty ? null : 'Password strength: ${s.label}',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              for (var i = 0; i < 5; i++) ...[
+                if (i > 0) const SizedBox(width: AppSpace.xs),
+                Expanded(
+                  child: AnimatedContainer(
+                    duration: d,
+                    curve: AppCurves.standard,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: i < lit ? color : colors.surfaceAlt,
+                      borderRadius: AppRadius.brPill,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: AppSpace.xs + 2),
+          Text(
+            password.isEmpty
+                ? 'Minimum ${PasswordStrength.minLength} characters'
+                : '${s.label} · would take ${s.crackTimeLabel} to crack',
+            style: context.text.bodySmall,
+          ),
+        ],
+      ),
     );
   }
 }
@@ -100,11 +123,8 @@ class SecuritySettingsScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: colors.bg,
-      appBar: AppBar(
-        title: const Text('Security'),
-        backgroundColor: colors.surface,
-      ),
-      body: ListView(
+      appBar: AppBar(title: const Text('Security')),
+      body: ReadableListView(
         children: [
           if (Platform.isLinux)
             ref
@@ -112,148 +132,163 @@ class SecuritySettingsScreen extends ConsumerWidget {
                 .maybeWhen(
                   data: (ok) => ok
                       ? const SizedBox.shrink()
-                      : const MaterialBanner(
-                          content: Text(
-                            'No system keyring found (GNOME Keyring / KWallet). '
-                            'Install libsecret so quick-unlock data is protected. '
-                            'Biometrics are not available on Linux.',
+                      : Padding(
+                          padding: const EdgeInsets.only(top: AppSpace.lg),
+                          child: Container(
+                            padding: const EdgeInsets.all(AppSpace.md),
+                            decoration: BoxDecoration(
+                              color: colors.warningSubtle,
+                              borderRadius: AppRadius.brMd,
+                            ),
+                            child: Text(
+                              'No system keyring found (GNOME Keyring / KWallet). '
+                              'Install libsecret so quick-unlock data is protected. '
+                              'Biometrics are not available on Linux.',
+                              style: context.text.bodySmall!.copyWith(
+                                color: colors.text,
+                              ),
+                            ),
                           ),
-                          actions: [SizedBox.shrink()],
                         ),
                   orElse: () => const SizedBox.shrink(),
                 ),
-          _header('App lock', colors),
-          ListTile(
-            leading: Icon(AppIcons.password, color: colors.brand),
-            title: const Text('Change password'),
-            subtitle: const Text(
-              'Your data stays readable; biometrics keep working',
-            ),
-            onTap: () => _changePassword(context, ref),
-          ),
-          ListTile(
-            leading: Icon(AppIcons.biometric, color: colors.brand),
-            title: const Text('Biometric unlock'),
-            trailing: const Icon(AppIcons.chevronRight),
-            onTap: () => context.push('/settings/biometric'),
-          ),
-          ListTile(
-            leading: Icon(AppIcons.timerOutlined, color: colors.brand),
-            title: const Text('Auto-lock delay'),
-            trailing: const Icon(AppIcons.chevronRight),
-            onTap: () => context.push('/settings/autolock'),
-          ),
-          const Divider(height: 1),
-          _header('Vaults', colors),
-          for (final v in vaults)
-            ListTile(
-              leading: Icon(
-                unlocked.contains(v.id) ? AppIcons.lockOpen : AppIcons.lockFill,
-                color: colors.brand,
+          SettingsGroup(
+            title: 'App lock',
+            children: [
+              SettingsTile.nav(
+                icon: AppIcons.password,
+                title: 'Change password',
+                subtitle: 'Your data stays readable; biometrics keep working',
+                onTap: () => _changePassword(context, ref),
               ),
-              title: Text(v.name),
-              subtitle: Text(
-                unlocked.contains(v.id)
-                    ? 'Unlocked · auto-lock ${_idleLabel(v.autoLockSeconds)}'
-                    : 'Locked',
+              SettingsTile.nav(
+                icon: AppIcons.biometric,
+                title: 'Biometric unlock',
+                onTap: () => context.push('/settings/biometric'),
               ),
-              trailing: PopupMenuButton<String>(
-                onSelected: (a) => _vaultAction(context, ref, v, a),
-                itemBuilder: (_) => [
-                  if (unlocked.contains(v.id))
-                    const PopupMenuItem(value: 'lock', child: Text('Lock now'))
-                  else if (!v.usesAppCredential)
-                    const PopupMenuItem(value: 'unlock', child: Text('Unlock')),
-                  const PopupMenuItem(
-                    value: 'idle',
-                    child: Text('Auto-lock idle time'),
+              SettingsTile.nav(
+                icon: AppIcons.timerOutlined,
+                title: 'Auto-lock delay',
+                onTap: () => context.push('/settings/autolock'),
+              ),
+            ],
+          ),
+          SettingsGroup(
+            title: 'Vaults',
+            footer: 'Vaults add a second password to selected notes.',
+            children: [
+              for (final v in vaults)
+                SettingsTile(
+                  icon: unlocked.contains(v.id)
+                      ? AppIcons.lockOpen
+                      : AppIcons.lockFill,
+                  title: v.name,
+                  subtitle: unlocked.contains(v.id)
+                      ? 'Unlocked · auto-lock ${_idleLabel(v.autoLockSeconds)}'
+                      : 'Locked',
+                  trailing: PopupMenuButton<String>(
+                    tooltip: 'Vault options',
+                    icon: Icon(AppIcons.more, color: colors.textMuted),
+                    onSelected: (a) => _vaultAction(context, ref, v, a),
+                    itemBuilder: (_) => [
+                      if (unlocked.contains(v.id))
+                        const PopupMenuItem(
+                          value: 'lock',
+                          child: Text('Lock now'),
+                        )
+                      else if (!v.usesAppCredential)
+                        const PopupMenuItem(
+                          value: 'unlock',
+                          child: Text('Unlock'),
+                        ),
+                      const PopupMenuItem(
+                        value: 'idle',
+                        child: Text('Auto-lock idle time'),
+                      ),
+                      const PopupMenuItem(
+                        value: 'delete',
+                        child: Text('Delete vault'),
+                      ),
+                    ],
                   ),
-                  const PopupMenuItem(
-                    value: 'delete',
-                    child: Text('Delete vault'),
-                  ),
-                ],
+                ),
+              SettingsTile(
+                icon: AppIcons.addModeratorOutlined,
+                title: 'Create vault',
+                onTap: () => _createVault(context, ref),
               ),
-            ),
-          ListTile(
-            leading: Icon(AppIcons.addModeratorOutlined, color: colors.brand),
-            title: const Text('Create vault'),
-            onTap: () => _createVault(context, ref),
+            ],
           ),
-          const Divider(height: 1),
-          _header('Recovery key', colors),
-          ListTile(
-            leading: Icon(AppIcons.recoveryKey, color: colors.brand),
-            title: const Text('Verify recovery key'),
-            subtitle: Text(
-              days == null
-                  ? ''
-                  : days <= 0
-                  ? 'Verification is due'
-                  : 'Next reminder in $days days',
-            ),
-            onTap: () => _verifyRecovery(context, ref),
+          SettingsGroup(
+            title: 'Recovery key',
+            children: [
+              SettingsTile.nav(
+                icon: AppIcons.recoveryKey,
+                title: 'Verify recovery key',
+                subtitle: days == null
+                    ? null
+                    : days <= 0
+                    ? 'Verification is due'
+                    : 'Next reminder in $days days',
+                trailing: days != null && days <= 0
+                    ? const StatusPill('Due', tone: PillTone.warning)
+                    : null,
+                onTap: () => _verifyRecovery(context, ref),
+              ),
+              SettingsTile.nav(
+                icon: AppIcons.autorenew,
+                title: 'Regenerate recovery key',
+                subtitle: 'Requires your password; the old key stops working',
+                onTap: () => _regenerate(context, ref),
+              ),
+            ],
           ),
-          ListTile(
-            leading: Icon(AppIcons.autorenew, color: colors.brand),
-            title: const Text('Regenerate recovery key'),
-            subtitle: const Text(
-              'Requires your password; the old key stops working',
-            ),
-            onTap: () => _regenerate(context, ref),
+          SettingsGroup(
+            title: 'Privacy',
+            children: [
+              SettingsTile.toggle(
+                icon: AppIcons.eyeOff,
+                title: 'Block screenshots & screen recording',
+                subtitle: Platform.isLinux
+                    ? 'Not available on Linux (no capture-exclusion API).'
+                    : Platform.isWindows
+                    ? 'Uses Windows display affinity.'
+                    : 'Also blanks the app in the recent-apps view.',
+                value: capture,
+                onChanged: (v) =>
+                    ref.read(captureBlockedProvider.notifier).set(v),
+              ),
+            ],
           ),
-          const Divider(height: 1),
-          _header('Privacy', colors),
-          SwitchListTile.adaptive(
-            value: capture,
-            onChanged: (v) => ref.read(captureBlockedProvider.notifier).set(v),
-            title: const Text('Block screenshots & screen recording'),
-            subtitle: Text(
-              Platform.isLinux
-                  ? 'Not available on Linux (no capture-exclusion API).'
-                  : Platform.isWindows
-                  ? 'Uses Windows display affinity.'
-                  : 'Also blanks the app in the recent-apps view.',
-            ),
+          SettingsGroup(
+            title: 'Brute-force protection',
+            children: [
+              SettingsTile(
+                icon: AppIcons.deleteForeverOutlined,
+                destructive: true,
+                title: 'Wipe after failed attempts',
+                subtitle: wipe == 0
+                    ? 'Off'
+                    : 'All data is erased after $wipe consecutive failures',
+                trailing: DropdownButton<int>(
+                  value: wipe,
+                  underline: const SizedBox.shrink(),
+                  borderRadius: AppRadius.brMd,
+                  items: const [
+                    DropdownMenuItem(value: 0, child: Text('Off')),
+                    DropdownMenuItem(value: 5, child: Text('5')),
+                    DropdownMenuItem(value: 10, child: Text('10')),
+                    DropdownMenuItem(value: 20, child: Text('20')),
+                  ],
+                  onChanged: (v) => _setWipe(context, ref, v ?? 0),
+                ),
+              ),
+            ],
           ),
-          const Divider(height: 1),
-          _header('Brute-force protection', colors),
-          ListTile(
-            leading: Icon(AppIcons.deleteForeverOutlined, color: colors.danger),
-            title: const Text('Wipe after failed attempts'),
-            subtitle: Text(
-              wipe == 0
-                  ? 'Off'
-                  : 'All data is erased after $wipe consecutive failures',
-            ),
-            trailing: DropdownButton<int>(
-              value: wipe,
-              items: const [
-                DropdownMenuItem(value: 0, child: Text('Off')),
-                DropdownMenuItem(value: 5, child: Text('5')),
-                DropdownMenuItem(value: 10, child: Text('10')),
-                DropdownMenuItem(value: 20, child: Text('20')),
-              ],
-              onChanged: (v) => _setWipe(context, ref, v ?? 0),
-            ),
-          ),
-          const SizedBox(height: 32),
         ],
       ),
     );
   }
-
-  Widget _header(String t, AppColorTokens colors) => Padding(
-    padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-    child: Text(
-      t.toUpperCase(),
-      style: TextStyle(
-        fontSize: 12,
-        fontWeight: FontWeight.w600,
-        color: colors.textMuted,
-      ),
-    ),
-  );
 
   static String _idleLabel(int s) => s <= 0
       ? 'never'
@@ -301,14 +336,16 @@ class SecuritySettingsScreen extends ConsumerWidget {
                     labelText: 'Current password',
                   ),
                 ),
+                const SizedBox(height: AppSpace.md),
                 TextField(
                   controller: next,
                   obscureText: true,
                   onChanged: (_) => setState(() {}),
                   decoration: const InputDecoration(labelText: 'New password'),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpace.sm),
                 PasswordStrengthMeter(password: next.text),
+                const SizedBox(height: AppSpace.md),
                 TextField(
                   controller: confirm,
                   obscureText: true,
@@ -321,7 +358,9 @@ class SecuritySettingsScreen extends ConsumerWidget {
                     padding: const EdgeInsets.only(top: 8),
                     child: Text(
                       error!,
-                      style: TextStyle(color: ctx.colors.danger),
+                      style: ctx.text.bodySmall!.copyWith(
+                        color: ctx.colors.danger,
+                      ),
                     ),
                   ),
               ],
@@ -431,7 +470,22 @@ class SecuritySettingsScreen extends ConsumerWidget {
         barrierDismissible: false,
         builder: (ctx) => AlertDialog(
           title: const Text('New recovery key'),
-          content: SelectableText(groups),
+          content: Container(
+            padding: const EdgeInsets.all(AppSpace.lg),
+            decoration: BoxDecoration(
+              color: ctx.colors.surfaceAlt,
+              borderRadius: AppRadius.brMd,
+            ),
+            child: SelectableText(
+              groups,
+              textAlign: TextAlign.center,
+              style: AppTypography.mono.copyWith(
+                color: ctx.colors.text,
+                letterSpacing: 1.2,
+                height: 1.8,
+              ),
+            ),
+          ),
           actions: [
             FilledButton(
               onPressed: () => Navigator.pop(ctx),
@@ -464,13 +518,14 @@ class SecuritySettingsScreen extends ConsumerWidget {
                 controller: name,
                 decoration: const InputDecoration(labelText: 'Vault name'),
               ),
+              const SizedBox(height: AppSpace.md),
               TextField(
                 controller: pw,
                 obscureText: true,
                 onChanged: (_) => setState(() {}),
                 decoration: const InputDecoration(labelText: 'Vault password'),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpace.sm),
               PasswordStrengthMeter(password: pw.text),
             ],
           ),
@@ -627,69 +682,71 @@ class DataSettingsScreen extends ConsumerWidget {
     final usage = ref.watch(_storageUsageProvider);
     return Scaffold(
       backgroundColor: colors.bg,
-      appBar: AppBar(
-        title: const Text('Data'),
-        backgroundColor: colors.surface,
-      ),
-      body: ListView(
+      appBar: AppBar(title: const Text('Data')),
+      body: ReadableListView(
         children: [
-          ListTile(
-            leading: Icon(AppIcons.swapHoriz, color: colors.brand),
-            title: const Text('Export / Import / Devices'),
-            trailing: const Icon(AppIcons.chevronRight),
-            onTap: () => context.push('/settings/sharing'),
+          SettingsGroup(
+            title: 'Transfer',
+            children: [
+              SettingsTile.nav(
+                icon: AppIcons.swapHoriz,
+                title: 'Export / Import / Devices',
+                onTap: () => context.push('/settings/sharing'),
+              ),
+            ],
           ),
-          const Divider(height: 1),
-          usage.when(
-            data: (u) => Column(
-              children: [
-                ListTile(
-                  title: const Text('Database'),
-                  trailing: Text(formatBytes(u.db)),
+          const SectionHeader('Storage'),
+          AppCard(
+            child: usage.when(
+              data: (u) => _StorageBreakdown(usage: u),
+              loading: () => const Shimmer(
+                child: Column(
+                  children: [
+                    Skeleton.box(height: 10, radius: AppRadius.pill),
+                    SizedBox(height: AppSpace.lg),
+                    Skeleton.line(),
+                    SizedBox(height: AppSpace.sm),
+                    Skeleton.line(),
+                  ],
                 ),
-                ListTile(
-                  title: const Text('Attachments'),
-                  trailing: Text(formatBytes(u.attachments)),
-                ),
-                ListTile(
-                  title: const Text('Caches'),
-                  trailing: Text(formatBytes(u.cache)),
-                ),
-              ],
+              ),
+              error: (e, st) => ErrorState.inline(
+                error: e,
+                stackTrace: st,
+                title: 'Usage unavailable',
+                onRetry: () => ref.invalidate(_storageUsageProvider),
+              ),
             ),
-            loading: () => const Padding(
-              padding: EdgeInsets.all(16),
-              child: Center(child: CircularProgressIndicator.adaptive()),
-            ),
-            error: (_, _) => const ListTile(title: Text('Usage unavailable')),
           ),
-          ListTile(
-            leading: Icon(
-              AppIcons.cleaningServicesOutlined,
-              color: colors.brand,
-            ),
-            title: const Text('Clear caches'),
-            onTap: () async {
-              await clearCaches();
-              ref.invalidate(_storageUsageProvider);
-              if (context.mounted) {
-                ScaffoldMessenger.of(
-                  context,
-                ).showSnackBar(const SnackBar(content: Text('Caches cleared')));
-              }
-            },
+          const SizedBox(height: AppSpace.md),
+          SettingsGroup(
+            children: [
+              SettingsTile(
+                icon: AppIcons.cleaningServicesOutlined,
+                title: 'Clear caches',
+                onTap: () async {
+                  await clearCaches();
+                  ref.invalidate(_storageUsageProvider);
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Caches cleared')),
+                    );
+                  }
+                },
+              ),
+            ],
           ),
-          const Divider(height: 1),
-          ListTile(
-            leading: Icon(AppIcons.deleteForever, color: colors.danger),
-            title: Text(
-              'Erase all data',
-              style: TextStyle(color: colors.danger),
-            ),
-            subtitle: const Text(
-              'Deletes everything on this device. Irreversible.',
-            ),
-            onTap: () => _erase(context, ref),
+          SettingsGroup(
+            title: 'Danger zone',
+            children: [
+              SettingsTile(
+                icon: AppIcons.deleteForever,
+                destructive: true,
+                title: 'Erase all data',
+                subtitle: 'Deletes everything on this device. Irreversible.',
+                onTap: () => _erase(context, ref),
+              ),
+            ],
           ),
         ],
       ),
@@ -732,6 +789,88 @@ class DataSettingsScreen extends ConsumerWidget {
   }
 }
 
+/// Stacked bar + legend for storage usage.
+class _StorageBreakdown extends StatelessWidget {
+  const _StorageBreakdown({required this.usage});
+  final _StorageUsage usage;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final parts = [
+      ('Database', usage.db, c.brand),
+      ('Attachments', usage.attachments, AppColors.celebBlue),
+      ('Caches', usage.cache, c.outlineStrong),
+    ];
+    final total = parts.fold<int>(0, (a, p) => a + p.$2);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.baseline,
+          textBaseline: TextBaseline.alphabetic,
+          children: [
+            Text(
+              formatBytes(total),
+              style: AppTypography.numeric.copyWith(
+                fontSize: 24,
+                color: c.text,
+              ),
+            ),
+            const SizedBox(width: AppSpace.sm),
+            Text('used on this device', style: context.text.bodySmall),
+          ],
+        ),
+        const SizedBox(height: AppSpace.md),
+        ClipRRect(
+          borderRadius: AppRadius.brPill,
+          child: SizedBox(
+            height: 10,
+            child: total == 0
+                ? ColoredBox(color: c.surfaceAlt)
+                : Row(
+                    children: [
+                      for (final p in parts)
+                        if (p.$2 > 0)
+                          Expanded(
+                            flex: (p.$2 * 1000 ~/ total).clamp(1, 1000),
+                            child: ColoredBox(color: p.$3),
+                          ),
+                    ],
+                  ),
+          ),
+        ),
+        const SizedBox(height: AppSpace.md),
+        for (final p in parts)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: AppSpace.xs),
+            child: Row(
+              children: [
+                Container(
+                  width: 10,
+                  height: 10,
+                  decoration: BoxDecoration(
+                    color: p.$3,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: AppSpace.sm),
+                Expanded(child: Text(p.$1, style: context.text.bodyMedium)),
+                Text(
+                  formatBytes(p.$2),
+                  style: context.text.labelLarge!.copyWith(
+                    color: c.textMuted,
+                    fontFeatures: AppTypography.tabular,
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+}
+
 // ── Shared dialogs ────────────────────────────────────────────────────────────
 
 Future<bool> _confirm(
@@ -753,7 +892,10 @@ Future<bool> _confirm(
         ),
         FilledButton(
           style: destructive
-              ? FilledButton.styleFrom(backgroundColor: ctx.colors.danger)
+              ? FilledButton.styleFrom(
+                  backgroundColor: ctx.colors.danger,
+                  foregroundColor: ctx.colors.surface,
+                )
               : null,
           onPressed: () => Navigator.pop(ctx, true),
           child: Text(confirmLabel),

@@ -4,10 +4,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:streakin/core/design/icons.dart';
+import 'package:streakin/core/design/spacing.dart';
 import 'package:streakin/core/design/tokens.dart';
+import 'package:streakin/core/design/typography.dart';
 import 'package:streakin/core/time/local_date.dart';
 import 'package:streakin/features/habits/application/habit_providers.dart';
 import 'package:streakin/features/habits/domain/habit.dart';
+import 'package:streakin/shared/widgets/widgets.dart';
 
 const heatmapWeeks = 16;
 
@@ -102,10 +106,13 @@ class HeatmapGrid extends StatelessWidget {
       margin: const EdgeInsets.all(1.5),
       decoration: BoxDecoration(
         color: future
-            ? Colors.transparent
+            ? AppColors.transparent
             : v == 0
-            ? colors.outline.withValues(alpha: 0.5)
+            ? colors.surfaceAlt
             : color.withValues(alpha: 0.25 + 0.75 * v),
+        border: date == today
+            ? Border.all(color: colors.text.withValues(alpha: 0.5))
+            : null,
         borderRadius: BorderRadius.circular(3),
       ),
     );
@@ -121,25 +128,31 @@ class HabitHeatmapsScreen extends ConsumerWidget {
     final habitsAsync = ref.watch(allHabitsProvider);
     return Scaffold(
       backgroundColor: colors.bg,
-      appBar: AppBar(title: const Text('Habit Heatmaps')),
+      appBar: AppBar(title: const Text('Habit heatmaps')),
       body: habitsAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (_, _) => const Center(child: Text('Could not load habits')),
+        loading: () => const SkeletonList(count: 3, showLeading: false),
+        error: (e, st) => ErrorState(
+          error: e,
+          stackTrace: st,
+          onRetry: () => ref.invalidate(allHabitsProvider),
+        ),
         data: (all) {
           final habits = all.where((h) => h.isActive).toList();
           if (habits.isEmpty) {
-            return Center(
-              child: Text(
-                'No habits yet.',
-                style: TextStyle(color: colors.textMuted),
-              ),
+            return const EmptyState(
+              icon: AppIcons.emptyHabits,
+              title: 'No habits yet',
+              message: 'Heatmaps fill in as you check in each day.',
             );
           }
           return ListView.separated(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(AppSpace.lg),
             itemCount: habits.length,
-            separatorBuilder: (_, _) => const SizedBox(height: 12),
-            itemBuilder: (_, i) => _HabitHeatmapCard(habit: habits[i]),
+            separatorBuilder: (_, _) => const SizedBox(height: AppSpace.md),
+            itemBuilder: (_, i) => StaggeredEntrance(
+              index: i,
+              child: _HabitHeatmapCard(habit: habits[i]),
+            ),
           );
         },
       ),
@@ -153,32 +166,38 @@ class _HabitHeatmapCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final colors = context.colors;
     final accent = AppColors.habitAccents[habit.accentIndex % 8];
     final data = ref.watch(habitHeatmapProvider([habit.id]));
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: colors.outline),
-      ),
+    return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            habit.name,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: colors.text,
-            ),
+          Row(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: 0.15),
+                  borderRadius: AppRadius.brSm,
+                ),
+                child: Icon(
+                  AppIcons.habitIcons[habit.iconIndex %
+                      AppIcons.habitIcons.length],
+                  size: 18,
+                  color: accent,
+                ),
+              ),
+              const SizedBox(width: AppSpace.md),
+              Expanded(
+                child: Text(habit.name, style: context.text.titleMedium),
+              ),
+            ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpace.md),
           data.when(
-            loading: () => const SizedBox(height: 120),
-            error: (_, _) => const SizedBox(height: 120),
+            loading: () => const SkeletonCard(),
+            error: (e, st) => ErrorState.inline(error: e, stackTrace: st),
             data: (values) => HeatmapGrid(
               values: values,
               today: ref.watch(todayProvider),

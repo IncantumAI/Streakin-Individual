@@ -25,6 +25,15 @@ class AppDurations {
   static const Duration vaultMorph = Duration(milliseconds: 400);
   static const Duration themeSwitch = Duration(milliseconds: 250);
   static const Duration pageTransition = Duration(milliseconds: 300);
+
+  // Micro-interactions
+  static const Duration press = Duration(milliseconds: 100);
+  static const Duration shake = Duration(milliseconds: 360);
+  static const Duration listItem = Duration(milliseconds: 200);
+
+  /// Per-item delay for staggered list entrances, capped at [staggerMax].
+  static const Duration stagger = Duration(milliseconds: 40);
+  static const Duration staggerMax = Duration(milliseconds: 400);
 }
 
 /// Curve tokens (spec §5.5).
@@ -33,6 +42,9 @@ class AppCurves {
 
   static const Curve enter = Curves.easeOutCubic;
   static const Curve exit = Curves.easeInCubic;
+  static const Curve standard = Curves.easeInOutCubic;
+  static const Curve emphasized = Curves.easeOutQuart;
+  static const Curve overshoot = Curves.easeOutBack;
 
   /// Spring for habit check animation.
   static const SpringDescription habitSpring = SpringDescription(

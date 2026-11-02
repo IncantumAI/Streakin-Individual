@@ -129,6 +129,35 @@ class ReducedMotionNotifier extends Notifier<bool> {
   }
 }
 
+// ── Haptics ───────────────────────────────────────────────────────────────────
+
+final hapticsEnabledProvider = NotifierProvider<HapticsEnabledNotifier, bool>(
+  HapticsEnabledNotifier.new,
+);
+
+class HapticsEnabledNotifier extends Notifier<bool> {
+  @override
+  bool build() {
+    _load();
+    return true;
+  }
+
+  Future<void> _load() async {
+    final prefs = await ref.read(sharedPrefsProvider.future);
+    final v = prefs.getString(AppIdentifiers.prefHapticsEnabled) ?? 'true';
+    state = v == 'true';
+  }
+
+  Future<void> set(bool enabled) async {
+    state = enabled;
+    final prefs = await ref.read(sharedPrefsProvider.future);
+    await prefs.setString(
+      AppIdentifiers.prefHapticsEnabled,
+      enabled ? 'true' : 'false',
+    );
+  }
+}
+
 // ── Onboarding done ───────────────────────────────────────────────────────────
 
 final onboardingDoneProvider = FutureProvider<bool>((ref) async {

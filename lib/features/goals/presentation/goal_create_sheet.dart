@@ -1,9 +1,13 @@
+import 'package:animations/animations.dart';
 import 'package:streakin/core/design/icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:streakin/core/design/motion.dart';
+import 'package:streakin/core/design/spacing.dart';
 import 'package:streakin/core/design/tokens.dart';
+import 'package:streakin/core/design/typography.dart';
 import 'package:streakin/core/storage/identifiers.dart';
 import 'package:streakin/core/time/local_date.dart';
 import 'package:streakin/features/goals/application/goal_lifecycle_service.dart';
@@ -16,6 +20,8 @@ void showGoalCreateSheet(BuildContext context, {Goal? existing}) {
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
+    showDragHandle: false,
+    backgroundColor: AppColors.transparent,
     builder: (_) => _GoalCreateSheet(existing: existing),
   );
 }
@@ -41,6 +47,7 @@ class _GoalCreateSheetState extends ConsumerState<_GoalCreateSheet> {
   final List<String> _linkedHabitIds = [];
   bool _saving = false;
   int _step = 0; // 0=goal, 1=time, 2=habits, 3=reminders, 4=confirm
+  bool _forward = true; // direction of the last step change
 
   @override
   void initState() {
@@ -87,8 +94,10 @@ class _GoalCreateSheetState extends ConsumerState<_GoalCreateSheet> {
       ),
       child: Container(
         decoration: BoxDecoration(
-          color: colors.surface,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          color: colors.surfaceRaised,
+          borderRadius: const BorderRadius.vertical(
+            top: Radius.circular(AppRadius.xl),
+          ),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -96,9 +105,31 @@ class _GoalCreateSheetState extends ConsumerState<_GoalCreateSheet> {
             _Handle(),
             _StepIndicator(step: _step, total: 5, colors: colors),
             Flexible(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
-                child: _buildStep(colors),
+              child: PageTransitionSwitcher(
+                duration: isMotionReduced(context)
+                    ? const Duration(milliseconds: 1)
+                    : AppDurations.pageTransition,
+                reverse: !_forward,
+                layoutBuilder: (entries) =>
+                    Stack(alignment: Alignment.topCenter, children: entries),
+                transitionBuilder: (child, primary, secondary) =>
+                    SharedAxisTransition(
+                      animation: primary,
+                      secondaryAnimation: secondary,
+                      transitionType: SharedAxisTransitionType.horizontal,
+                      fillColor: colors.surfaceRaised,
+                      child: child,
+                    ),
+                child: SingleChildScrollView(
+                  key: ValueKey(_step),
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpace.xl,
+                    AppSpace.md,
+                    AppSpace.xl,
+                    AppSpace.xl,
+                  ),
+                  child: _buildStep(colors),
+                ),
               ),
             ),
             _NavButtons(
@@ -106,8 +137,16 @@ class _GoalCreateSheetState extends ConsumerState<_GoalCreateSheet> {
               total: 5,
               canAdvance: _canAdvance,
               saving: _saving,
-              onBack: () => setState(() => _step--),
-              onNext: _step < 4 ? () => setState(() => _step++) : _save,
+              onBack: () => setState(() {
+                _forward = false;
+                _step--;
+              }),
+              onNext: _step < 4
+                  ? () => setState(() {
+                      _forward = true;
+                      _step++;
+                    })
+                  : _save,
               colors: colors,
             ),
           ],
@@ -233,8 +272,8 @@ class _Handle extends StatelessWidget {
           width: 36,
           height: 4,
           decoration: BoxDecoration(
-            color: colors.outline,
-            borderRadius: BorderRadius.circular(2),
+            color: colors.outlineStrong.withValues(alpha: 0.6),
+            borderRadius: AppRadius.brPill,
           ),
         ),
       ),
@@ -252,23 +291,45 @@ class _StepIndicator extends StatelessWidget {
   final int total;
   final AppColorTokens colors;
 
+  static const _labels = ['Goal', 'Timing', 'Habits', 'Reminders', 'Review'];
+
   @override
   Widget build(BuildContext context) {
+    final d = resolvedDuration(context, AppDurations.slow);
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-      child: Row(
-        children: List.generate(total, (i) {
-          return Expanded(
-            child: Container(
-              height: 3,
-              margin: const EdgeInsets.symmetric(horizontal: 2),
-              decoration: BoxDecoration(
-                color: i <= step ? colors.brand : colors.outline,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          );
-        }),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpace.xl,
+        AppSpace.xs,
+        AppSpace.xl,
+        0,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'STEP ${step + 1} OF $total · ${_labels[step.clamp(0, 4)].toUpperCase()}',
+            style: AppTypography.overline.copyWith(color: colors.textMuted),
+          ),
+          const SizedBox(height: AppSpace.sm),
+          Row(
+            children: List.generate(total, (i) {
+              return Expanded(
+                child: AnimatedContainer(
+                  duration: d,
+                  curve: AppCurves.emphasized,
+                  height: 4,
+                  margin: EdgeInsets.only(
+                    right: i < total - 1 ? AppSpace.xs : 0,
+                  ),
+                  decoration: BoxDecoration(
+                    color: i <= step ? colors.brand : colors.surfaceAlt,
+                    borderRadius: AppRadius.brPill,
+                  ),
+                ),
+              );
+            }),
+          ),
+        ],
       ),
     );
   }
@@ -294,8 +355,16 @@ class _NavButtons extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+    return Container(
+      padding: EdgeInsets.fromLTRB(
+        AppSpace.xl,
+        AppSpace.md,
+        AppSpace.xl,
+        AppSpace.md + MediaQuery.paddingOf(context).bottom,
+      ),
+      decoration: BoxDecoration(
+        border: Border(top: BorderSide(color: colors.outline)),
+      ),
       child: Row(
         children: [
           if (step > 0)
@@ -310,17 +379,13 @@ class _NavButtons extends StatelessWidget {
             flex: 2,
             child: FilledButton(
               onPressed: canAdvance && !saving ? onNext : null,
-              style: FilledButton.styleFrom(
-                backgroundColor: colors.brand,
-                foregroundColor: colors.onBrand,
-              ),
               child: saving
-                  ? const SizedBox(
+                  ? SizedBox(
                       width: 20,
                       height: 20,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        color: Colors.white,
+                        color: colors.textMuted,
                       ),
                     )
                   : Text(step < total - 1 ? 'Next' : 'Save'),
@@ -355,14 +420,7 @@ class _StepGoal extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'What are you working toward?',
-          style: TextStyle(
-            fontSize: 17,
-            fontWeight: FontWeight.w600,
-            color: colors.text,
-          ),
-        ),
+        Text('What are you working toward?', style: context.text.headlineSmall),
         const SizedBox(height: 16),
         TextField(
           controller: titleCtrl,
@@ -420,21 +478,27 @@ class _KindChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        decoration: BoxDecoration(
-          color: selected ? colors.brand.withAlpha(30) : Colors.transparent,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: selected ? colors.brand : colors.outline),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: selected ? colors.brand : colors.textMuted,
-            fontWeight: FontWeight.w500,
-            fontSize: 13,
+    return Semantics(
+      button: true,
+      selected: selected,
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: resolvedDuration(context, AppDurations.base),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpace.lg,
+            vertical: AppSpace.sm + 2,
+          ),
+          decoration: BoxDecoration(
+            color: selected ? colors.brandSubtle : AppColors.transparent,
+            borderRadius: AppRadius.brPill,
+            border: Border.all(color: selected ? colors.brand : colors.outline),
+          ),
+          child: Text(
+            label,
+            style: context.text.labelLarge!.copyWith(
+              color: selected ? colors.brandText : colors.textMuted,
+            ),
           ),
         ),
       ),
@@ -471,14 +535,7 @@ class _StepTime extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'When does it start?',
-          style: TextStyle(
-            fontSize: 17,
-            fontWeight: FontWeight.w600,
-            color: colors.text,
-          ),
-        ),
+        Text('When does it start?', style: context.text.headlineSmall),
         const SizedBox(height: 12),
         _DateRow(
           label: 'Start date',
@@ -527,7 +584,7 @@ class _StepTime extends StatelessWidget {
               padding: const EdgeInsets.only(top: 8),
               child: Text(
                 _preview(startDate, endDate!),
-                style: TextStyle(fontSize: 12, color: colors.textMuted),
+                style: context.text.bodySmall,
               ),
             ),
         ],
@@ -572,12 +629,16 @@ class _DateRow extends StatelessWidget {
           onChanged(LocalDate.fromDateTime(picked));
         }
       },
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: AppRadius.brMd,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpace.md,
+          vertical: AppSpace.md,
+        ),
         decoration: BoxDecoration(
+          color: colors.surfaceAlt,
           border: Border.all(color: colors.outline),
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: AppRadius.brMd,
         ),
         child: Row(
           children: [
@@ -587,7 +648,7 @@ class _DateRow extends StatelessWidget {
               color: colors.textMuted,
             ),
             const SizedBox(width: 8),
-            Text(label, style: TextStyle(color: colors.text, fontSize: 14)),
+            Text(label, style: context.text.bodyMedium!.copyWith(fontSize: 15)),
           ],
         ),
       ),
@@ -609,20 +670,28 @@ class _DurationChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: selected ? colors.brand : Colors.transparent,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: selected ? colors.brand : colors.outline),
-        ),
-        child: Text(
-          '$days days',
-          style: TextStyle(
-            color: selected ? colors.onBrand : colors.textMuted,
-            fontSize: 13,
+    return Semantics(
+      button: true,
+      selected: selected,
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: resolvedDuration(context, AppDurations.base),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpace.md,
+            vertical: AppSpace.sm,
+          ),
+          decoration: BoxDecoration(
+            color: selected ? colors.brand : AppColors.transparent,
+            borderRadius: AppRadius.brPill,
+            border: Border.all(color: selected ? colors.brand : colors.outline),
+          ),
+          child: Text(
+            '$days days',
+            style: context.text.labelLarge!.copyWith(
+              color: selected ? colors.onBrand : colors.textMuted,
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ),
       ),
@@ -650,18 +719,11 @@ class _StepHabits extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Link habits',
-          style: TextStyle(
-            fontSize: 17,
-            fontWeight: FontWeight.w600,
-            color: colors.text,
-          ),
-        ),
+        Text('Link habits', style: context.text.headlineSmall),
         const SizedBox(height: 4),
         Text(
           'Linked habits contribute to goal alignment.',
-          style: TextStyle(fontSize: 12, color: colors.textMuted),
+          style: context.text.bodySmall,
         ),
         const SizedBox(height: 16),
         habitsAsync.when(
@@ -706,7 +768,7 @@ class _StepHabits extends ConsumerWidget {
           ),
           subtitle: Text(
             'Include existing logs since the goal start date',
-            style: TextStyle(fontSize: 11, color: colors.textMuted),
+            style: context.text.bodySmall,
           ),
         ),
       ],
@@ -723,18 +785,11 @@ class _StepReminders extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Reminders',
-          style: TextStyle(
-            fontSize: 17,
-            fontWeight: FontWeight.w600,
-            color: colors.text,
-          ),
-        ),
+        Text('Reminders', style: context.text.headlineSmall),
         const SizedBox(height: 8),
         Text(
           'Configure detailed reminder settings in Settings → Goals after creating the goal.',
-          style: TextStyle(fontSize: 13, color: colors.textMuted),
+          style: context.text.bodySmall,
         ),
       ],
     );
@@ -765,14 +820,7 @@ class _StepConfirm extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Confirm',
-          style: TextStyle(
-            fontSize: 17,
-            fontWeight: FontWeight.w600,
-            color: colors.text,
-          ),
-        ),
+        Text('Confirm', style: context.text.headlineSmall),
         const SizedBox(height: 16),
         _ConfirmRow(label: 'Title', value: title, colors: colors),
         _ConfirmRow(
@@ -826,10 +874,7 @@ class _ConfirmRow extends StatelessWidget {
         children: [
           SizedBox(
             width: 100,
-            child: Text(
-              label,
-              style: TextStyle(fontSize: 13, color: colors.textMuted),
-            ),
+            child: Text(label, style: context.text.bodySmall),
           ),
           Expanded(
             child: Text(

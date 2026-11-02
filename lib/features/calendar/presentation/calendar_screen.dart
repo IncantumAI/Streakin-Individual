@@ -3,7 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:table_calendar/table_calendar.dart';
 
+import 'package:intl/intl.dart';
+import 'package:streakin/core/design/elevation.dart';
+import 'package:streakin/core/design/motion.dart';
+import 'package:streakin/core/design/spacing.dart';
 import 'package:streakin/core/design/tokens.dart';
+import 'package:streakin/core/design/typography.dart';
 import 'package:streakin/core/design/icons.dart';
 import 'package:streakin/core/time/hlc.dart';
 import 'package:streakin/core/time/local_date.dart';
@@ -17,7 +22,11 @@ import 'package:streakin/features/todos/application/todo_providers.dart';
 import 'package:streakin/features/todos/domain/todo.dart';
 import 'package:streakin/features/todos/presentation/todos_screen.dart'
     show showAddTaskSheet;
+import 'package:streakin/shared/widgets/widgets.dart';
 import 'package:uuid/uuid.dart';
+
+String _fmtDay(LocalDate d, [String pattern = 'EEEE, d MMMM']) =>
+    DateFormat(pattern).format(DateTime(d.year, d.month, d.day));
 
 class CalendarScreen extends ConsumerStatefulWidget {
   const CalendarScreen({super.key});
@@ -76,21 +85,60 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
       backgroundColor: colors.bg,
       appBar: AppBar(
         title: const Text('Calendar'),
-        bottom: TabBar(
-          controller: _tabController,
-          labelColor: colors.brand,
-          unselectedLabelColor: colors.textMuted,
-          indicatorColor: colors.brand,
-          tabs: const [
-            Tab(text: 'Month'),
-            Tab(text: 'Agenda'),
-          ],
+        actions: [
+          TextButton(
+            onPressed: () => setState(() {
+              _focusedDay = DateTime.now();
+              _selectedDay = _focusedDay;
+            }),
+            child: const Text('Today'),
+          ),
+          const SizedBox(width: AppSpace.sm),
+        ],
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(52),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpace.lg,
+              0,
+              AppSpace.lg,
+              AppSpace.sm,
+            ),
+            child: Container(
+              height: 44,
+              padding: const EdgeInsets.all(AppSpace.xs),
+              decoration: BoxDecoration(
+                color: colors.surfaceAlt,
+                borderRadius: AppRadius.brMd,
+              ),
+              child: TabBar(
+                controller: _tabController,
+                dividerHeight: 0,
+                indicatorSize: TabBarIndicatorSize.tab,
+                indicator: BoxDecoration(
+                  color: colors.surface,
+                  borderRadius: AppRadius.brSm,
+                  border: Border.all(color: colors.outline),
+                  boxShadow: AppElevation.floating(colors),
+                ),
+                tabs: const [
+                  Tab(text: 'Month'),
+                  Tab(text: 'Agenda'),
+                ],
+              ),
+            ),
+          ),
         ),
       ),
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpace.lg,
+              AppSpace.md,
+              AppSpace.lg,
+              AppSpace.xs,
+            ),
             child: Row(
               children: [
                 _LayerChip(
@@ -99,14 +147,14 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
                   selected: _showHabits,
                   onTap: () => setState(() => _showHabits = !_showHabits),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: AppSpace.sm),
                 _LayerChip(
                   label: 'Tasks',
                   color: colors.warning,
                   selected: _showTodos,
                   onTap: () => setState(() => _showTodos = !_showTodos),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: AppSpace.sm),
                 _LayerChip(
                   label: 'Notes',
                   color: colors.success,
@@ -153,8 +201,6 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        backgroundColor: colors.brand,
-        foregroundColor: colors.onBrand,
         tooltip: 'Create',
         onPressed: () => _showCreateMenu(context),
         child: const Icon(AppIcons.add),
@@ -164,20 +210,21 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
 
   void _showCreateMenu(BuildContext context) {
     final colors = context.colors;
-    showModalBottomSheet<void>(
-      context: context,
+    showAppBottomSheet<void>(
+      context,
+      title: 'Create',
+      isScrollControlled: false,
       builder: (_) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: Icon(AppIcons.habits, color: colors.brand),
+              leading: Icon(AppIcons.addTask, color: colors.warning),
               title: const Text('Add task'),
               subtitle: Text(
                 _selectedDay != null
-                    ? 'Due ${LocalDate.fromDateTime(_selectedDay!).toIso()}'
+                    ? 'Due ${_fmtDay(LocalDate.fromDateTime(_selectedDay!), 'EEE d MMM')}'
                     : 'No due date',
-                style: TextStyle(fontSize: 12, color: colors.textMuted),
               ),
               onTap: () {
                 Navigator.of(context).pop();
@@ -197,6 +244,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
                 await _createNote(context);
               },
             ),
+            const SizedBox(height: AppSpace.sm),
           ],
         ),
       ),
@@ -234,6 +282,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
+      showDragHandle: false,
+      backgroundColor: AppColors.transparent,
       builder: (_) => _DaySheet(
         date: date,
         showHabits: _showHabits,
@@ -271,40 +321,105 @@ class _MonthView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return TableCalendar(
-      firstDay: DateTime(2020),
-      lastDay: DateTime(2030),
-      focusedDay: focusedDay,
-      selectedDayPredicate: (d) => isSameDay(d, selectedDay),
-      headerStyle: const HeaderStyle(formatButtonVisible: false),
-      onDaySelected: onDaySelected,
-      onPageChanged: onPageChanged,
-      calendarStyle: CalendarStyle(
-        todayDecoration: BoxDecoration(
-          color: colors.brand,
-          shape: BoxShape.circle,
-        ),
-        selectedDecoration: BoxDecoration(
-          color: colors.brand.withAlpha(60),
-          shape: BoxShape.circle,
-        ),
+    final text = context.text;
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpace.md,
+        AppSpace.sm,
+        AppSpace.md,
+        96,
       ),
-      calendarBuilders: CalendarBuilders(
-        markerBuilder: (ctx, day, _) {
-          final iso = LocalDate.fromDateTime(day).toIso();
-          final dots = <Widget>[];
-          if (showNotes && noteMentions.containsKey(iso)) {
-            dots.add(_dot(colors.success));
-          }
-          if (showTodos && todoDates.contains(iso)) {
-            dots.add(_dot(colors.warning));
-          }
-          if (dots.isEmpty) return null;
-          return Positioned(
-            bottom: 1,
-            child: Row(mainAxisSize: MainAxisSize.min, children: dots),
-          );
-        },
+      child: AppCard(
+        padding: const EdgeInsets.fromLTRB(
+          AppSpace.sm,
+          AppSpace.xs,
+          AppSpace.sm,
+          AppSpace.md,
+        ),
+        child: TableCalendar(
+          firstDay: DateTime(2020),
+          lastDay: DateTime(2030),
+          focusedDay: focusedDay,
+          selectedDayPredicate: (d) => isSameDay(d, selectedDay),
+          rowHeight: 48,
+          daysOfWeekHeight: 28,
+          headerStyle: HeaderStyle(
+            formatButtonVisible: false,
+            titleCentered: true,
+            titleTextStyle: text.titleMedium!,
+            leftChevronIcon: Icon(
+              AppIcons.back,
+              size: AppSizes.iconMd,
+              color: colors.textMuted,
+            ),
+            rightChevronIcon: Icon(
+              AppIcons.chevronRight,
+              size: AppSizes.iconLg,
+              color: colors.textMuted,
+            ),
+          ),
+          daysOfWeekStyle: DaysOfWeekStyle(
+            weekdayStyle: AppTypography.overline.copyWith(
+              color: colors.textMuted,
+            ),
+            weekendStyle: AppTypography.overline.copyWith(
+              color: colors.textMuted,
+            ),
+          ),
+          onDaySelected: onDaySelected,
+          onPageChanged: onPageChanged,
+          calendarStyle: CalendarStyle(
+            cellMargin: const EdgeInsets.all(AppSpace.xs),
+            defaultTextStyle: text.bodyMedium!.copyWith(
+              fontSize: 15,
+              fontFeatures: AppTypography.tabular,
+            ),
+            weekendTextStyle: text.bodyMedium!.copyWith(
+              fontSize: 15,
+              color: colors.textMuted,
+              fontFeatures: AppTypography.tabular,
+            ),
+            outsideTextStyle: text.bodyMedium!.copyWith(
+              fontSize: 15,
+              color: colors.textMuted.withValues(alpha: 0.45),
+            ),
+            todayTextStyle: text.bodyMedium!.copyWith(
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              color: colors.brandText,
+            ),
+            selectedTextStyle: text.bodyMedium!.copyWith(
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              color: colors.onBrand,
+            ),
+            todayDecoration: BoxDecoration(
+              color: colors.brandSubtle,
+              shape: BoxShape.circle,
+            ),
+            selectedDecoration: BoxDecoration(
+              color: colors.brand,
+              shape: BoxShape.circle,
+            ),
+          ),
+          calendarBuilders: CalendarBuilders(
+            markerBuilder: (ctx, day, _) {
+              final iso = LocalDate.fromDateTime(day).toIso();
+              final dots = <Widget>[];
+              if (showNotes && noteMentions.containsKey(iso)) {
+                dots.add(_dot(colors.success));
+              }
+              if (showTodos && todoDates.contains(iso)) {
+                dots.add(_dot(colors.warning));
+              }
+              if (dots.isEmpty) return null;
+              return Positioned(
+                bottom: 2,
+                child: Row(mainAxisSize: MainAxisSize.min, children: dots),
+              );
+            },
+          ),
+        ),
       ),
     );
   }
@@ -359,37 +474,82 @@ class _AgendaView extends ConsumerWidget {
     }
 
     if (entries.isEmpty) {
-      return Center(
-        child: Text(
-          'Nothing upcoming in the next 30 days',
-          style: TextStyle(color: colors.textMuted),
-        ),
+      return const EmptyState(
+        icon: AppIcons.emptyCalendar,
+        title: 'Nothing coming up',
+        message: 'Tasks with due dates and @date note mentions for the next 30 days appear here.',
       );
     }
 
-    return ListView.separated(
-      padding: const EdgeInsets.all(16),
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpace.lg,
+        AppSpace.sm,
+        AppSpace.lg,
+        96,
+      ),
       itemCount: entries.length,
-      separatorBuilder: (_, _) => const Divider(height: 1),
       itemBuilder: (ctx, i) {
         final e = entries[i];
+        final newDay = i == 0 || entries[i - 1].date != e.date;
         final (icon, color) = switch (e.kind) {
           _Kind.todo => (AppIcons.habits, colors.warning),
           _Kind.note => (AppIcons.articleOutlined, colors.success),
         };
-        return ListTile(
-          leading: Icon(icon, color: color, size: 20),
-          title: e.kind == _Kind.note
-              ? _NoteEntryTitle(noteId: e.id)
-              : Text(
-                  e.label,
-                  style: TextStyle(color: colors.text, fontSize: 14),
+        final isToday = e.date == LocalDate.today();
+        return StaggeredEntrance(
+          index: i,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (newDay)
+                SectionHeader(
+                  isToday
+                      ? 'Today · ${_fmtDay(e.date, 'd MMM')}'
+                      : _fmtDay(e.date),
+                  padding: EdgeInsets.fromLTRB(
+                    AppSpace.xs,
+                    i == 0 ? AppSpace.sm : AppSpace.lg,
+                    AppSpace.xs,
+                    AppSpace.sm,
+                  ),
                 ),
-          subtitle: Text(
-            e.date.toIso(),
-            style: TextStyle(color: colors.textMuted, fontSize: 12),
+              Padding(
+                padding: const EdgeInsets.only(bottom: AppSpace.sm),
+                child: AppCard(
+                  padding: const EdgeInsets.all(AppSpace.md),
+                  onTap: e.kind == _Kind.note
+                      ? () => ctx.push('/notes/${e.id}')
+                      : () => ctx.go('/tasks'),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 4,
+                        height: 28,
+                        decoration: BoxDecoration(
+                          color: color,
+                          borderRadius: AppRadius.brPill,
+                        ),
+                      ),
+                      const SizedBox(width: AppSpace.md),
+                      Icon(icon, color: color, size: AppSizes.iconMd),
+                      const SizedBox(width: AppSpace.sm),
+                      Expanded(
+                        child: e.kind == _Kind.note
+                            ? _NoteEntryTitle(noteId: e.id)
+                            : Text(
+                                e.label,
+                                style: ctx.text.bodyMedium!.copyWith(
+                                  fontSize: 15,
+                                ),
+                              ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
-          onTap: e.kind == _Kind.note ? () => ctx.push('/notes/${e.id}') : null,
         );
       },
     );
@@ -469,44 +629,60 @@ class _DaySheet extends ConsumerWidget {
       expand: false,
       builder: (_, ctrl) => Container(
         decoration: BoxDecoration(
-          color: colors.surface,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          color: colors.surfaceRaised,
+          borderRadius: const BorderRadius.vertical(
+            top: Radius.circular(AppRadius.xl),
+          ),
         ),
         child: ListView(
           controller: ctrl,
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.fromLTRB(
+            AppSpace.xl,
+            AppSpace.md,
+            AppSpace.xl,
+            AppSpace.xl,
+          ),
           children: [
             Center(
               child: Container(
                 width: 36,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: colors.outline,
-                  borderRadius: BorderRadius.circular(2),
+                  color: colors.outlineStrong.withValues(alpha: 0.6),
+                  borderRadius: AppRadius.brPill,
                 ),
               ),
             ),
-            const SizedBox(height: 12),
-            Center(
-              child: Text(
-                '${date.day} / ${date.month} / ${date.year}',
-                style: TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w600,
-                  color: colors.text,
-                ),
-              ),
+            const SizedBox(height: AppSpace.lg),
+            Text(
+              date == LocalDate.today() ? 'Today' : _fmtDay(date, 'EEEE'),
+              style: context.text.bodySmall,
             ),
-            const SizedBox(height: 16),
+            Text(
+              _fmtDay(date, 'd MMMM yyyy'),
+              style: context.text.headlineSmall,
+            ),
+            const SizedBox(height: AppSpace.sm),
             if (showHabits) _HabitDaySection(date: date),
             if (showTodos) _TodoDaySection(date: date),
             if (showNotes) _NoteDaySection(date: date),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpace.lg),
           ],
         ),
       ),
     );
   }
+}
+
+/// Section label inside the day sheet.
+class _DaySectionTitle extends StatelessWidget {
+  const _DaySectionTitle(this.title);
+  final String title;
+  @override
+  Widget build(BuildContext context) => SectionHeader(
+    title,
+    padding: const EdgeInsets.fromLTRB(0, AppSpace.lg, 0, AppSpace.xs),
+  );
 }
 
 class _HabitDaySection extends ConsumerWidget {
@@ -526,15 +702,7 @@ class _HabitDaySection extends ConsumerWidget {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Habits',
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: colors.textMuted,
-              ),
-            ),
-            const SizedBox(height: 4),
+            const _DaySectionTitle('Habits'),
             ...habits.map(
               (h) => FutureBuilder<HabitLog?>(
                 future: repo.getLog(h.id, date),
@@ -549,13 +717,16 @@ class _HabitDaySection extends ConsumerWidget {
                       color: AppColors.habitAccents[h.accentIndex % 8],
                       size: 20,
                     ),
-                    title: Text(
-                      h.name,
-                      style: TextStyle(color: colors.text, fontSize: 14),
-                    ),
+                    title: Text(h.name, style: context.text.bodyMedium),
                     trailing: isDone
-                        ? Icon(AppIcons.check, color: colors.success)
-                        : Icon(AppIcons.todoCircle, color: colors.outline),
+                        ? Icon(
+                            AppIcons.checkCircleOutlined,
+                            color: colors.success,
+                          )
+                        : Icon(
+                            AppIcons.todoCircle,
+                            color: colors.outlineStrong,
+                          ),
                   );
                 },
               ),
@@ -589,15 +760,7 @@ class _TodoDaySection extends ConsumerWidget {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Tasks',
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: colors.textMuted,
-              ),
-            ),
-            const SizedBox(height: 4),
+            const _DaySectionTitle('Tasks'),
             ...forDay.map(
               (t) => ListTile(
                 dense: true,
@@ -612,15 +775,14 @@ class _TodoDaySection extends ConsumerWidget {
                   },
                   child: Icon(
                     t.isDone ? AppIcons.todoChecked : AppIcons.todoCircle,
-                    color: t.isDone ? colors.success : colors.outline,
-                    size: 20,
+                    color: t.isDone ? colors.success : colors.outlineStrong,
+                    size: 22,
                   ),
                 ),
                 title: Text(
                   t.title,
-                  style: TextStyle(
+                  style: context.text.bodyMedium!.copyWith(
                     color: t.isDone ? colors.textMuted : colors.text,
-                    fontSize: 14,
                     decoration: t.isDone ? TextDecoration.lineThrough : null,
                   ),
                 ),
@@ -640,7 +802,6 @@ class _NoteDaySection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final colors = context.colors;
     final monthRange = DateRange(
       start: LocalDate(date.year, date.month, 1),
       end: LocalDate(
@@ -662,15 +823,7 @@ class _NoteDaySection extends ConsumerWidget {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Notes',
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: colors.textMuted,
-              ),
-            ),
-            const SizedBox(height: 4),
+            const _DaySectionTitle('Notes'),
             ...noteIds.map((id) => _NoteEntryTile(noteId: id)),
             const SizedBox(height: 12),
           ],
@@ -692,10 +845,8 @@ class _NoteEntryTile extends ConsumerWidget {
       dense: true,
       contentPadding: EdgeInsets.zero,
       leading: Icon(AppIcons.articleOutlined, size: 18, color: colors.success),
-      title: Text(
-        titleAsync.value ?? 'Note',
-        style: TextStyle(fontSize: 14, color: colors.text),
-      ),
+      title: Text(titleAsync.value ?? 'Note', style: context.text.bodyMedium),
+      trailing: Icon(AppIcons.chevronRight, color: colors.textMuted),
       onTap: () => context.push('/notes/$noteId'),
     );
   }
@@ -707,11 +858,12 @@ class _NoteEntryTitle extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final colors = context.colors;
     final titleAsync = ref.watch(_noteTitleProvider(noteId));
     return Text(
       titleAsync.value ?? 'Note',
-      style: TextStyle(color: colors.text, fontSize: 14),
+      style: context.text.bodyMedium!.copyWith(fontSize: 15),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
     );
   }
 }
@@ -741,33 +893,49 @@ class _LayerChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: selected ? color.withAlpha(38) : Colors.transparent,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: selected ? color : color.withAlpha(100)),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 8,
-              height: 8,
-              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+    final c = context.colors;
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: '$label layer',
+      excludeSemantics: true,
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: resolvedDuration(context, AppDurations.base),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpace.md,
+            vertical: AppSpace.sm - 2,
+          ),
+          decoration: BoxDecoration(
+            color: selected ? color.withValues(alpha: 0.14) : c.surface,
+            borderRadius: AppRadius.brPill,
+            border: Border.all(
+              color: selected ? color.withValues(alpha: 0.6) : c.outline,
             ),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-                color: selected ? color : color.withAlpha(153),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AnimatedContainer(
+                duration: resolvedDuration(context, AppDurations.base),
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: selected ? color : c.outlineStrong,
+                  shape: BoxShape.circle,
+                ),
               ),
-            ),
-          ],
+              const SizedBox(width: AppSpace.xs + 2),
+              Text(
+                label,
+                style: context.text.labelLarge!.copyWith(
+                  fontWeight: FontWeight.w500,
+                  color: selected ? c.text : c.textMuted,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

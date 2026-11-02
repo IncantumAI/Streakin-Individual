@@ -9,10 +9,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:streakin/core/design/icons.dart';
+import 'package:streakin/core/design/spacing.dart';
 import 'package:streakin/core/design/tokens.dart';
+import 'package:streakin/core/design/typography.dart';
 import 'package:streakin/features/notes/application/note_providers.dart';
 import 'package:streakin/features/notes/domain/note_repository.dart';
 import 'package:streakin/features/notes/search/embedding_pipeline.dart';
+import 'package:streakin/shared/widgets/widgets.dart';
 
 /// Whether semantic search can run. False until a model is bundled.
 final embeddingModelProvider = Provider<EmbeddingModel>(
@@ -68,21 +72,39 @@ class _NoteSearchScreenState extends ConsumerState<NoteSearchScreen> {
     return Scaffold(
       backgroundColor: colors.bg,
       appBar: AppBar(
-        backgroundColor: colors.surface,
-        title: TextField(
-          controller: _ctrl,
-          autofocus: true,
-          onChanged: _onChanged,
-          decoration: InputDecoration(
-            hintText: 'Search notes',
-            border: InputBorder.none,
-            hintStyle: TextStyle(color: colors.textMuted),
+        titleSpacing: 0,
+        title: Padding(
+          padding: const EdgeInsets.only(right: AppSpace.md),
+          child: TextField(
+            controller: _ctrl,
+            autofocus: true,
+            onChanged: (q) {
+              setState(() {});
+              _onChanged(q);
+            },
+            textInputAction: TextInputAction.search,
+            decoration: InputDecoration(
+              hintText: 'Search notes',
+              prefixIcon: const Icon(AppIcons.search, size: AppSizes.iconMd),
+              isDense: true,
+              suffixIcon: _ctrl.text.isEmpty
+                  ? null
+                  : IconButton(
+                      tooltip: 'Clear',
+                      icon: const Icon(AppIcons.close, size: 18),
+                      onPressed: () {
+                        _ctrl.clear();
+                        setState(() {});
+                        _run('');
+                      },
+                    ),
+            ),
           ),
         ),
         actions: [
           if (semantic)
             Padding(
-              padding: const EdgeInsets.only(right: 8),
+              padding: const EdgeInsets.only(right: AppSpace.sm),
               child: FilterChip(
                 label: const Text('Meaning'),
                 selected: _meaning,
@@ -95,30 +117,78 @@ class _NoteSearchScreenState extends ConsumerState<NoteSearchScreen> {
         ],
       ),
       body: _searching
-          ? const Center(child: CircularProgressIndicator.adaptive())
+          ? const SkeletonList(count: 4, showLeading: false)
           : _results.isEmpty
-          ? Center(
-              child: Text(
-                _ctrl.text.isEmpty ? 'Type to search' : 'No matches',
-                style: TextStyle(color: colors.textMuted),
-              ),
-            )
+          ? (_ctrl.text.isEmpty
+                ? const EmptyState(
+                    icon: AppIcons.emptySearch,
+                    title: 'Search your notes',
+                    message: 'Find words across titles and content.',
+                  )
+                : EmptyState(
+                    icon: AppIcons.emptySearch,
+                    title: 'No matches',
+                    message: 'Nothing found for “${_ctrl.text.trim()}”.',
+                  ))
           : ListView.separated(
+              padding: const EdgeInsets.all(AppSpace.lg),
               itemCount: _results.length,
-              separatorBuilder: (_, _) => const Divider(height: 1),
+              separatorBuilder: (_, _) => const SizedBox(height: AppSpace.sm),
               itemBuilder: (_, i) {
                 final r = _results[i];
-                return ListTile(
-                  title: Text(r.title.isEmpty ? 'Untitled' : r.title),
-                  subtitle: Text(
-                    r.snippet.replaceAll('**', ''),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
+                return StaggeredEntrance(
+                  index: i,
+                  child: AppCard(
+                    onTap: () => context.push('/notes/${r.noteId}'),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          r.title.isEmpty ? 'Untitled' : r.title,
+                          style: context.text.titleSmall,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: AppSpace.xs),
+                        _Snippet(text: r.snippet),
+                      ],
+                    ),
                   ),
-                  onTap: () => context.push('/notes/${r.noteId}'),
                 );
               },
             ),
+    );
+  }
+}
+
+/// Renders an FTS snippet, highlighting `**matched**` segments.
+class _Snippet extends StatelessWidget {
+  const _Snippet({required this.text});
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final base = context.text.bodySmall!;
+    final parts = text.split('**');
+    return Text.rich(
+      TextSpan(
+        children: [
+          for (var i = 0; i < parts.length; i++)
+            TextSpan(
+              text: parts[i],
+              style: i.isOdd
+                  ? base.copyWith(
+                      color: c.text,
+                      fontWeight: FontWeight.w600,
+                      backgroundColor: c.brandSubtle,
+                    )
+                  : base,
+            ),
+        ],
+      ),
+      maxLines: 2,
+      overflow: TextOverflow.ellipsis,
     );
   }
 }

@@ -82,8 +82,7 @@ class AttachmentPreviewSheet extends ConsumerWidget {
             // Content
             Expanded(
               child: bytesAsync.when(
-                loading: () =>
-                    const Center(child: CircularProgressIndicator.adaptive()),
+                loading: () => const Center(child: CircularProgressIndicator()),
                 error: (e, _) => Center(
                   child: Text(
                     'Could not load preview.',

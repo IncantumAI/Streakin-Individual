@@ -107,7 +107,7 @@ class _DesktopLayoutState extends ConsumerState<_DesktopLayout> {
             cursor: SystemMouseCursors.resizeColumn,
             child: Container(
               width: 5,
-              color: Colors.transparent,
+              color: AppColors.transparent,
               child: VerticalDivider(width: 1, color: colors.outline),
             ),
           ),

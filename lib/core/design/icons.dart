@@ -49,6 +49,7 @@ class AppIcons {
   static const export_ = Icons.upload_outlined;
   static const import_ = Icons.download_outlined;
   static const share = Icons.share_outlined;
+  static const copy = Icons.content_copy_outlined;
   static const search = Icons.search;
   static const filter = Icons.filter_list;
   static const sort = Icons.sort;

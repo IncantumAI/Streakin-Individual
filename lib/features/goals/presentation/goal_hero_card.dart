@@ -3,15 +3,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:streakin/core/design/motion.dart';
+import 'package:streakin/core/design/spacing.dart';
 import 'package:streakin/core/design/tokens.dart';
+import 'package:streakin/core/design/typography.dart';
 import 'package:streakin/core/time/local_date.dart';
 import 'package:streakin/features/goals/application/goal_providers.dart';
 import 'package:streakin/features/goals/domain/goal.dart';
 import 'package:streakin/features/goals/domain/goal_clock.dart';
 import 'package:streakin/features/goals/domain/goal_repository.dart';
 import 'package:streakin/features/goals/presentation/goal_create_sheet.dart';
-import 'package:streakin/features/settings/application/settings_providers.dart'
-    show reducedMotionProvider;
+import 'package:streakin/shared/widgets/widgets.dart';
 
 class GoalHeroCard extends ConsumerWidget {
   const GoalHeroCard({super.key});
@@ -25,7 +27,7 @@ class GoalHeroCard extends ConsumerWidget {
     final isDismissed = dismissedAsync.value ?? false;
 
     return goalAsync.when(
-      loading: () => const _GoalCardShell(child: _LoadingContent()),
+      loading: () => const SkeletonCard(height: 132),
       error: (_, _) => const SizedBox.shrink(),
       data: (goal) {
         if (goal == null) {
@@ -47,77 +49,65 @@ class _NoGoalCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return _GoalCardShell(
+    return AppCard(
+      variant: AppCardVariant.brand,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(8),
+                width: 44,
+                height: 44,
                 decoration: BoxDecoration(
-                  color: colors.brand.withAlpha(20),
-                  borderRadius: BorderRadius.circular(10),
+                  color: colors.brand,
+                  borderRadius: AppRadius.brMd,
                 ),
                 child: Icon(
                   AppIcons.trackChangesOutlined,
-                  color: colors.brand,
+                  color: colors.onBrand,
                   size: 24,
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: AppSpace.md),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Primary Goal',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 0.6,
-                        color: colors.textMuted,
+                      'PRIMARY GOAL',
+                      style: AppTypography.overline.copyWith(
+                        color: colors.brandText,
                       ),
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: AppSpace.xxs),
                     Text(
-                      'Not set',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        color: colors.text,
-                      ),
+                      'What are you working towards?',
+                      style: context.text.titleMedium,
                     ),
                   ],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpace.md),
           Text(
-            'Set a primary goal to track your progress with a countdown, see how your daily habits are contributing to it, and get milestone notifications.',
-            style: TextStyle(
-              fontSize: 13,
-              color: colors.textMuted,
-              height: 1.4,
-            ),
+            'Set a primary goal to get a countdown, see how your daily habits contribute to it, and get milestone notifications.',
+            style: context.text.bodySmall!.copyWith(color: colors.text),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: AppSpace.lg),
           Row(
             children: [
               Expanded(
                 child: FilledButton.icon(
                   onPressed: () => showGoalCreateSheet(context),
-                  icon: const Icon(AppIcons.add, size: 16),
+                  icon: const Icon(AppIcons.add, size: AppSizes.iconMd),
                   label: const Text('Set my goal'),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: colors.brand,
-                    foregroundColor: colors.onBrand,
-                  ),
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: AppSpace.sm),
               TextButton(
+                style: TextButton.styleFrom(foregroundColor: colors.textMuted),
                 onPressed: () async {
                   final repo = ref.read(goalRepositoryStateProvider);
                   if (repo == null) return;
@@ -126,10 +116,7 @@ class _NoGoalCard extends ConsumerWidget {
                   );
                   ref.invalidate(heroPromptDismissedProvider);
                 },
-                child: Text(
-                  'Later',
-                  style: TextStyle(fontSize: 13, color: colors.textMuted),
-                ),
+                child: const Text('Later'),
               ),
             ],
           ),
@@ -152,103 +139,97 @@ class _ActiveGoalCard extends ConsumerWidget {
     final liveAsync = ref.watch(goalTodayLiveProvider);
     final alignment = alignAsync.value;
     final live = liveAsync.value;
-    final reducedMotion = ref.watch(reducedMotionProvider);
+    final reducedMotion = isMotionReduced(context);
 
     // Combine closed-day alignment with today's live stats for the chip
     final int? displayPct = _combinedPct(alignment, live);
 
-    return GestureDetector(
+    return AppCard(
       onTap: () => context.push('/goals/${clock.goal.id}'),
       onLongPress: () => _showQuickActions(context, ref),
-      child: _GoalCardShell(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Title row
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    clock.goal.title,
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                      color: colors.textMuted,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
+      onSecondaryTapDown: (_) => _showQuickActions(context, ref),
+      semanticLabel: 'Primary goal: ${clock.goal.title}',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Title row
+          Row(
+            children: [
+              Icon(
+                AppIcons.trackChangesOutlined,
+                size: AppSizes.iconSm,
+                color: colors.brandText,
+              ),
+              const SizedBox(width: AppSpace.xs + 2),
+              Expanded(
+                child: Text(
+                  clock.goal.title,
+                  style: context.text.titleSmall,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                if (clock.isFinalStretch)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 2,
+              ),
+              if (clock.isFinalStretch)
+                const StatusPill('Final week', tone: PillTone.warning),
+            ],
+          ),
+          const SizedBox(height: AppSpace.md),
+          // Main content row
+          Row(
+            children: [
+              // Ring + number
+              SizedBox(
+                width: 80,
+                height: 80,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    _GoalRing(
+                      progress: clock.progress ?? 0.0,
+                      color: colors.brand,
+                      track: colors.surfaceAlt,
+                      reducedMotion: reducedMotion,
                     ),
-                    decoration: BoxDecoration(
-                      color: colors.warning.withAlpha(30),
-                      borderRadius: BorderRadius.circular(8),
+                    _DayNumeral(
+                      clock: clock,
+                      colors: colors,
+                      reducedMotion: reducedMotion,
                     ),
-                    child: Text(
-                      'Final week',
-                      style: TextStyle(fontSize: 11, color: colors.warning),
-                    ),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            // Main content row
-            Row(
-              children: [
-                // Ring + number
-                SizedBox(
-                  width: 72,
-                  height: 72,
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      _GoalRing(
-                        progress: clock.progress ?? 0.0,
-                        color: colors.brand,
-                        reducedMotion: reducedMotion,
+                  ],
+                ),
+              ),
+              const SizedBox(width: AppSpace.lg),
+              // Right side info
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      clock.caption,
+                      style: context.text.bodyMedium!.copyWith(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
                       ),
-                      _DayNumeral(
-                        clock: clock,
+                    ),
+                    if (displayPct != null) ...[
+                      const SizedBox(height: AppSpace.sm),
+                      _AlignmentChip(pct: displayPct, colors: colors),
+                    ],
+                    if (live != null && live.scheduled > 0) ...[
+                      const SizedBox(height: AppSpace.sm),
+                      _LiveDots(
+                        done: live.done,
+                        total: live.scheduled,
                         colors: colors,
-                        reducedMotion: reducedMotion,
                       ),
                     ],
-                  ),
+                  ],
                 ),
-                const SizedBox(width: 16),
-                // Right side info
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        clock.caption,
-                        style: TextStyle(fontSize: 13, color: colors.textMuted),
-                      ),
-                      if (displayPct != null) ...[
-                        const SizedBox(height: 6),
-                        _AlignmentChip(pct: displayPct, colors: colors),
-                      ],
-                      if (live != null && live.scheduled > 0) ...[
-                        const SizedBox(height: 6),
-                        _LiveDots(
-                          done: live.done,
-                          total: live.scheduled,
-                          colors: colors,
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
+              ),
+              Icon(AppIcons.chevronRight, color: colors.textMuted),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -266,14 +247,16 @@ class _ActiveGoalCard extends ConsumerWidget {
 
   void _showQuickActions(BuildContext context, WidgetRef ref) {
     final colors = context.colors;
-    showModalBottomSheet<void>(
-      context: context,
+    showAppBottomSheet<void>(
+      context,
+      title: clock.goal.title,
+      isScrollControlled: false,
       builder: (_) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: Icon(AppIcons.edit, color: colors.brand),
+              leading: Icon(AppIcons.edit, color: colors.brandText),
               title: const Text('Edit goal'),
               onTap: () {
                 Navigator.of(context).pop();
@@ -286,18 +269,33 @@ class _ActiveGoalCard extends ConsumerWidget {
               onTap: () async {
                 Navigator.of(context).pop();
                 final svc = ref.read(goalLifecycleServiceProvider);
-                if (svc != null) await svc.completeEarly(clock.goal);
+                if (svc != null) {
+                  await svc.completeEarly(clock.goal);
+                  if (context.mounted) {
+                    context.celebrate(CelebrationKind.goalDone);
+                  }
+                }
               },
             ),
             ListTile(
               leading: Icon(AppIcons.cancelOutlined, color: colors.danger),
-              title: const Text('Abandon'),
+              title: Text('Abandon', style: TextStyle(color: colors.danger)),
               onTap: () async {
                 Navigator.of(context).pop();
+                final ok = await showConfirmDialog(
+                  context,
+                  title: 'Abandon this goal?',
+                  message:
+                      'It moves to your goal history. Habits stay as they are.',
+                  confirmLabel: 'Abandon',
+                  destructive: true,
+                );
+                if (!ok) return;
                 final svc = ref.read(goalLifecycleServiceProvider);
                 if (svc != null) await svc.abandon(clock.goal);
               },
             ),
+            const SizedBox(height: AppSpace.sm),
           ],
         ),
       ),
@@ -311,63 +309,25 @@ class _GoalRing extends StatelessWidget {
   const _GoalRing({
     required this.progress,
     required this.color,
+    required this.track,
     required this.reducedMotion,
   });
   final double progress;
   final Color color;
+  final Color track;
   final bool reducedMotion;
 
   @override
   Widget build(BuildContext context) {
-    if (reducedMotion) {
-      return CustomPaint(
-        painter: _RingPainter(progress: progress, color: color),
-        size: const Size(72, 72),
-      );
-    }
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0.0, end: progress),
-      duration: const Duration(milliseconds: 400),
-      curve: Curves.easeOut,
-      builder: (_, v, _) => CustomPaint(
-        painter: _RingPainter(progress: v, color: color),
-        size: const Size(72, 72),
-      ),
+    return ProgressRing(
+      value: progress,
+      size: 80,
+      stroke: 7,
+      color: color,
+      trackColor: track,
+      duration: reducedMotion ? Duration.zero : AppDurations.progressRing,
     );
   }
-}
-
-class _RingPainter extends CustomPainter {
-  const _RingPainter({required this.progress, required this.color});
-  final double progress;
-  final Color color;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
-    final radius = size.width / 2 - 4;
-    final bg = Paint()
-      ..color = color.withAlpha(30)
-      ..strokeWidth = 5
-      ..style = PaintingStyle.stroke;
-    final fg = Paint()
-      ..color = color
-      ..strokeWidth = 5
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
-    canvas.drawCircle(center, radius, bg);
-    final sweep = progress.clamp(0.0, 1.0) * 2 * 3.14159265;
-    canvas.drawArc(
-      Rect.fromCircle(center: center, radius: radius),
-      -3.14159265 / 2,
-      sweep,
-      false,
-      fg,
-    );
-  }
-
-  @override
-  bool shouldRepaint(_RingPainter old) => old.progress != progress;
 }
 
 class _DayNumeral extends StatelessWidget {
@@ -385,29 +345,39 @@ class _DayNumeral extends StatelessWidget {
     if (clock.phase == GoalPhase.finalDay) {
       return Text(
         '!',
-        style: TextStyle(
-          fontSize: 24,
-          fontWeight: FontWeight.w700,
-          color: colors.brand,
+        style: AppTypography.numeric.copyWith(
+          fontSize: 26,
+          color: colors.brandText,
         ),
       );
     }
     if (clock.phase == GoalPhase.ended) {
-      return Icon(AppIcons.check, color: colors.brand, size: 28);
+      return Icon(AppIcons.check, color: colors.brandText, size: 28);
     }
-    final label =
+    final countdown =
         clock.goal.kind == GoalKind.dated &&
-            clock.daysLeft != null &&
-            clock.phase == GoalPhase.active
-        ? '${clock.daysLeft}'
-        : '${clock.dayNumber}';
-    return Text(
-      label,
-      style: TextStyle(
-        fontSize: 22,
-        fontWeight: FontWeight.w700,
-        color: colors.brand,
-      ),
+        clock.daysLeft != null &&
+        clock.phase == GoalPhase.active;
+    final value = countdown ? clock.daysLeft! : clock.dayNumber;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        AnimatedCounter(
+          value: value,
+          duration: reducedMotion ? Duration.zero : AppDurations.streakCounter,
+          style: AppTypography.numeric.copyWith(
+            fontSize: 22,
+            color: colors.text,
+          ),
+        ),
+        Text(
+          countdown ? 'days left' : 'day',
+          style: context.text.labelMedium!.copyWith(
+            fontSize: 10,
+            color: colors.textMuted,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -419,16 +389,10 @@ class _AlignmentChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: colors.brand.withAlpha(20),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Text(
-        'Aligned $pct%',
-        style: TextStyle(fontSize: 11, color: colors.brand),
-      ),
+    return StatusPill(
+      'Aligned $pct%',
+      tone: PillTone.brand,
+      icon: AppIcons.trackChangesOutlined,
     );
   }
 }
@@ -445,50 +409,25 @@ class _LiveDots extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: List.generate(total, (i) {
-        final filled = i < done;
-        return AnimatedContainer(
-          duration: const Duration(milliseconds: 120),
-          width: 8,
-          height: 8,
-          margin: const EdgeInsets.only(right: 4),
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: filled ? colors.brand : colors.outline,
-          ),
-        );
-      }),
-    );
-  }
-}
-
-class _LoadingContent extends StatelessWidget {
-  const _LoadingContent();
-  @override
-  Widget build(BuildContext context) {
-    return const SizedBox(
-      height: 40,
-      child: Center(child: CircularProgressIndicator.adaptive()),
-    );
-  }
-}
-
-class _GoalCardShell extends StatelessWidget {
-  const _GoalCardShell({required this.child});
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: colors.outline),
+    return Semantics(
+      label: '$done of $total habits done today',
+      child: Wrap(
+        spacing: AppSpace.xs,
+        runSpacing: AppSpace.xs,
+        children: List.generate(total, (i) {
+          final filled = i < done;
+          return AnimatedContainer(
+            duration: resolvedDuration(context, AppDurations.base),
+            curve: AppCurves.emphasized,
+            width: filled ? 16 : 8,
+            height: 8,
+            decoration: BoxDecoration(
+              borderRadius: AppRadius.brPill,
+              color: filled ? colors.brand : colors.outline,
+            ),
+          );
+        }),
       ),
-      child: child,
     );
   }
 }

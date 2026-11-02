@@ -2,9 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:streakin/core/design/icons.dart';
+import 'package:streakin/core/design/spacing.dart';
 import 'package:streakin/core/design/tokens.dart';
+import 'package:streakin/core/design/typography.dart';
 import 'package:streakin/features/goals/application/goal_providers.dart';
 import 'package:streakin/features/goals/domain/goal.dart';
+import 'package:streakin/shared/widgets/widgets.dart';
 
 class GoalHistoryScreen extends ConsumerWidget {
   const GoalHistoryScreen({super.key});
@@ -16,26 +20,31 @@ class GoalHistoryScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: colors.bg,
-      appBar: AppBar(title: const Text('Past Goals')),
+      appBar: AppBar(title: const Text('Past goals')),
       body: historyAsync.when(
-        loading: () =>
-            const Center(child: CircularProgressIndicator.adaptive()),
-        error: (_, _) => const Center(child: Text('Could not load history')),
+        loading: () => const SkeletonList(count: 4, showLeading: false),
+        error: (e, st) => ErrorState(
+          error: e,
+          stackTrace: st,
+          title: 'Could not load history',
+          onRetry: () => ref.invalidate(goalHistoryProvider),
+        ),
         data: (goals) {
           if (goals.isEmpty) {
-            return Center(
-              child: Text(
-                'No past goals yet.',
-                style: TextStyle(color: colors.textMuted),
-              ),
+            return const EmptyState(
+              icon: AppIcons.trackChangesOutlined,
+              title: 'No past goals yet',
+              message: 'Completed and archived goals will show up here.',
             );
           }
           return ListView.separated(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(AppSpace.lg),
             itemCount: goals.length,
-            separatorBuilder: (_, _) => const SizedBox(height: 8),
-            itemBuilder: (ctx, i) =>
-                _GoalHistoryTile(goal: goals[i], colors: colors),
+            separatorBuilder: (_, _) => const SizedBox(height: AppSpace.md),
+            itemBuilder: (ctx, i) => StaggeredEntrance(
+              index: i,
+              child: _GoalHistoryTile(goal: goals[i], colors: colors),
+            ),
           );
         },
       ),
@@ -55,48 +64,44 @@ class _GoalHistoryTile extends ConsumerWidget {
       future: repo?.getSummary(goal.id),
       builder: (_, snap) {
         final summary = snap.data;
-        return InkWell(
+        return AppCard(
           onTap: () => context.push('/goals/${goal.id}'),
-          borderRadius: BorderRadius.circular(12),
-          child: Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: colors.surface,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: colors.outline),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(goal.title, style: context.text.titleMedium),
+                  ),
+                  const SizedBox(width: AppSpace.sm),
+                  _ReasonChip(reason: goal.archiveReason, colors: colors),
+                ],
+              ),
+              const SizedBox(height: AppSpace.xs),
+              Text(
+                '${goal.startDate.toIso()} → ${goal.endDate?.toIso() ?? 'open-ended'}',
+                style: context.text.bodySmall!.copyWith(
+                  fontFeatures: AppTypography.tabular,
+                ),
+              ),
+              if (summary != null) ...[
+                const SizedBox(height: AppSpace.md),
+                Wrap(
+                  spacing: AppSpace.sm,
+                  runSpacing: AppSpace.sm,
                   children: [
-                    Expanded(
-                      child: Text(
-                        goal.title,
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          color: colors.text,
-                        ),
-                      ),
+                    StatusPill('${summary.elapsedDays} days'),
+                    StatusPill(
+                      summary.alignmentPct != null
+                          ? '${summary.alignmentPct}% aligned'
+                          : 'No alignment data',
                     ),
-                    _ReasonChip(reason: goal.archiveReason, colors: colors),
+                    StatusPill('${summary.perfectDays} perfect days'),
                   ],
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  '${goal.startDate.toIso()} → ${goal.endDate?.toIso() ?? 'open-ended'}',
-                  style: TextStyle(fontSize: 12, color: colors.textMuted),
-                ),
-                if (summary != null) ...[
-                  const SizedBox(height: 6),
-                  Text(
-                    '${summary.elapsedDays} days · ${summary.alignmentPct != null ? '${summary.alignmentPct}% aligned' : 'No alignment data'} · ${summary.perfectDays} perfect days',
-                    style: TextStyle(fontSize: 12, color: colors.textMuted),
-                  ),
-                ],
               ],
-            ),
+            ],
           ),
         );
       },
@@ -111,20 +116,13 @@ class _ReasonChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final (label, color) = switch (reason) {
-      GoalArchiveReason.completed => ('Completed', colors.success),
-      GoalArchiveReason.completedEarly => ('Completed early', colors.success),
-      GoalArchiveReason.abandoned => ('Abandoned', colors.danger),
-      GoalArchiveReason.replaced => ('Replaced', colors.textMuted),
-      null => ('Archived', colors.textMuted),
+    final (label, tone) = switch (reason) {
+      GoalArchiveReason.completed => ('Completed', PillTone.success),
+      GoalArchiveReason.completedEarly => ('Completed early', PillTone.success),
+      GoalArchiveReason.abandoned => ('Abandoned', PillTone.danger),
+      GoalArchiveReason.replaced => ('Replaced', PillTone.neutral),
+      null => ('Archived', PillTone.neutral),
     };
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: color.withAlpha(25),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Text(label, style: TextStyle(fontSize: 11, color: color)),
-    );
+    return StatusPill(label, tone: tone);
   }
 }
