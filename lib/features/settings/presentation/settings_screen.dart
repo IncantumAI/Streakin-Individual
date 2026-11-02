@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -6,7 +8,12 @@ import 'package:local_auth/local_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import 'package:streakin/core/notifications/notification_reconciler.dart'
+    show showTestNotification, openNotificationSettings;
+
 import 'package:streakin/core/design/tokens.dart';
+import 'package:streakin/core/platform/startup_registration.dart';
+import 'package:streakin/core/platform/tray_service.dart';
 import 'package:streakin/core/design/icons.dart';
 import 'package:streakin/core/storage/identifiers.dart';
 import 'package:streakin/features/settings/application/settings_providers.dart';
@@ -44,9 +51,10 @@ class SettingsScreen extends ConsumerWidget {
                     child: Text(
                       initials,
                       style: TextStyle(
-                          color: colors.onBrand,
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600),
+                        color: colors.onBrand,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 14),
@@ -57,26 +65,35 @@ class SettingsScreen extends ConsumerWidget {
                         Text(
                           profile.name.isEmpty ? 'Set your name' : profile.name,
                           style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: profile.name.isEmpty
-                                  ? colors.textMuted
-                                  : colors.text),
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: profile.name.isEmpty
+                                ? colors.textMuted
+                                : colors.text,
+                          ),
                         ),
                         if (profile.username.isNotEmpty)
-                          Text('@${profile.username}',
-                              style: TextStyle(
-                                  fontSize: 13, color: colors.textMuted)),
+                          Text(
+                            '@${profile.username}',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: colors.textMuted,
+                            ),
+                          ),
                         if (profile.bio.isNotEmpty)
-                          Text(profile.bio,
-                              style: TextStyle(
-                                  fontSize: 12, color: colors.textMuted),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis),
+                          Text(
+                            profile.bio,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: colors.textMuted,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                       ],
                     ),
                   ),
-                  Icon(Icons.chevron_right, color: colors.textMuted),
+                  Icon(AppIcons.chevronRight, color: colors.textMuted),
                 ],
               ),
             ),
@@ -87,14 +104,14 @@ class SettingsScreen extends ConsumerWidget {
           // ── Personalisation ──────────────────────────────────────────────
           _SectionHeader('Personalisation', colors: colors),
           _SettingsTile(
-            icon: Icons.palette_outlined,
+            icon: AppIcons.paletteOutlined,
             label: 'Appearance',
             subtitle: 'Theme & display',
             onTap: () => context.push('/settings/appearance'),
             colors: colors,
           ),
           _SettingsTile(
-            icon: Icons.notifications_outlined,
+            icon: AppIcons.notification,
             label: 'Notifications',
             subtitle: 'Permissions & preferences',
             onTap: () => context.push('/settings/notifications'),
@@ -104,24 +121,38 @@ class SettingsScreen extends ConsumerWidget {
           // ── Security ─────────────────────────────────────────────────────
           _SectionHeader('Security', colors: colors),
           _SettingsTile(
-            icon: Icons.fingerprint,
+            icon: AppIcons.biometric,
             label: 'Biometric Unlock',
             subtitle: 'Face ID, fingerprint',
             onTap: () => context.push('/settings/biometric'),
             colors: colors,
           ),
           _SettingsTile(
-            icon: Icons.lock_outline,
+            icon: AppIcons.lock,
             label: 'Auto-lock',
             subtitle: 'Timeout & behaviour',
             onTap: () => context.push('/settings/autolock'),
+            colors: colors,
+          ),
+          _SettingsTile(
+            icon: AppIcons.shieldOutlined,
+            label: 'Security',
+            subtitle: 'Password, vaults, recovery key',
+            onTap: () => context.push('/settings/security'),
+            colors: colors,
+          ),
+          _SettingsTile(
+            icon: AppIcons.storageOutlined,
+            label: 'Data',
+            subtitle: 'Storage, export & import, erase',
+            onTap: () => context.push('/settings/data'),
             colors: colors,
           ),
 
           // ── Goals ─────────────────────────────────────────────────────────
           _SectionHeader('Goals', colors: colors),
           _SettingsTile(
-            icon: Icons.track_changes_outlined,
+            icon: AppIcons.trackChangesOutlined,
             label: 'Goal Reminders',
             subtitle: 'Cadence, time & content',
             onTap: () => context.push('/settings/goal-reminders'),
@@ -131,14 +162,21 @@ class SettingsScreen extends ConsumerWidget {
           // ── General ──────────────────────────────────────────────────────
           _SectionHeader('General', colors: colors),
           _SettingsTile(
-            icon: Icons.calendar_today_outlined,
+            icon: AppIcons.calendarTodayOutlined,
             label: 'Week & Day',
             subtitle: 'Week start, day boundary',
             onTap: () => context.push('/settings/week-day'),
             colors: colors,
           ),
+          if (Platform.isWindows || Platform.isLinux)
+            _SettingsTile(
+              icon: AppIcons.keyboardOutlined,
+              label: 'Keyboard shortcuts',
+              onTap: () => context.push('/settings/shortcuts'),
+              colors: colors,
+            ),
           _SettingsTile(
-            icon: Icons.accessibility_new_outlined,
+            icon: AppIcons.accessibilityNewOutlined,
             label: 'Accessibility',
             subtitle: 'Motion & haptics',
             onTap: () => context.push('/settings/accessibility'),
@@ -148,37 +186,38 @@ class SettingsScreen extends ConsumerWidget {
           // ── Support ──────────────────────────────────────────────────────
           _SectionHeader('Support', colors: colors),
           _SettingsTile(
-            icon: Icons.mail_outline,
+            icon: AppIcons.mailOutline,
             label: 'Contact Us',
             onTap: () => _launchUrl('mailto:hello@incantum.in'),
             colors: colors,
             showChevron: false,
-            trailingIcon: Icons.open_in_new,
+            trailingIcon: AppIcons.openInNew,
           ),
           _SettingsTile(
-            icon: Icons.description_outlined,
+            icon: AppIcons.descriptionOutlined,
             label: 'Terms of Service',
             onTap: () => _launchUrl('https://incantum.in/terms'),
             colors: colors,
             showChevron: false,
-            trailingIcon: Icons.open_in_new,
+            trailingIcon: AppIcons.openInNew,
           ),
           _SettingsTile(
-            icon: Icons.privacy_tip_outlined,
+            icon: AppIcons.privacyTipOutlined,
             label: 'Privacy Policy',
             onTap: () => _launchUrl('https://incantum.in/privacy'),
             colors: colors,
             showChevron: false,
-            trailingIcon: Icons.open_in_new,
+            trailingIcon: AppIcons.openInNew,
           ),
           _SettingsTile(
-            icon: Icons.star_outline,
+            icon: AppIcons.habitDefault,
             label: 'Rate the App',
             onTap: () => _launchUrl(
-                'https://play.google.com/store/apps/details?id=in.incantum.streakin'),
+              'https://play.google.com/store/apps/details?id=in.incantum.streakin',
+            ),
             colors: colors,
             showChevron: false,
-            trailingIcon: Icons.open_in_new,
+            trailingIcon: AppIcons.openInNew,
           ),
 
           // ── About ─────────────────────────────────────────────────────────
@@ -249,9 +288,13 @@ class _ProfileSettingsPageState extends ConsumerState<ProfileSettingsPage> {
         actions: [
           TextButton(
             onPressed: _saving ? null : _save,
-            child: Text('Save',
-                style: TextStyle(
-                    color: colors.brand, fontWeight: FontWeight.w600)),
+            child: Text(
+              'Save',
+              style: TextStyle(
+                color: colors.brand,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
         ],
       ),
@@ -264,19 +307,25 @@ class _ProfileSettingsPageState extends ConsumerState<ProfileSettingsPage> {
                 CircleAvatar(
                   radius: 40,
                   backgroundColor: colors.brand,
-                  child: Consumer(builder: (_, ref, __) {
-                    final p = ref.watch(profileProvider);
-                    final name = _nameCtrl.text.isNotEmpty
-                        ? _nameCtrl.text
-                        : p.username;
-                    final initials =
-                        name.isEmpty ? '?' : name[0].toUpperCase();
-                    return Text(initials,
+                  child: Consumer(
+                    builder: (_, ref, _) {
+                      final p = ref.watch(profileProvider);
+                      final name = _nameCtrl.text.isNotEmpty
+                          ? _nameCtrl.text
+                          : p.username;
+                      final initials = name.isEmpty
+                          ? '?'
+                          : name[0].toUpperCase();
+                      return Text(
+                        initials,
                         style: TextStyle(
-                            color: colors.onBrand,
-                            fontSize: 28,
-                            fontWeight: FontWeight.w600));
-                  }),
+                          color: colors.onBrand,
+                          fontSize: 28,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      );
+                    },
+                  ),
                 ),
               ],
             ),
@@ -296,7 +345,7 @@ class _ProfileSettingsPageState extends ConsumerState<ProfileSettingsPage> {
             hint: 'e.g. john_doe',
             maxLength: 30,
             inputFormatters: [
-              FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9_]'))
+              FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9_]')),
             ],
             colors: colors,
             prefix: '@',
@@ -318,7 +367,9 @@ class _ProfileSettingsPageState extends ConsumerState<ProfileSettingsPage> {
 
   Future<void> _save() async {
     setState(() => _saving = true);
-    await ref.read(profileProvider.notifier).save(
+    await ref
+        .read(profileProvider.notifier)
+        .save(
           name: _nameCtrl.text.trim(),
           username: _usernameCtrl.text.trim(),
           bio: _bioCtrl.text.trim(),
@@ -344,36 +395,49 @@ class AppearanceSettingsPage extends ConsumerWidget {
     return Scaffold(
       backgroundColor: colors.bg,
       appBar: AppBar(
-          title: const Text('Appearance'), backgroundColor: colors.surface),
+        title: const Text('Appearance'),
+        backgroundColor: colors.surface,
+      ),
       body: ListView(
         children: [
           _SectionHeader('Theme', colors: colors),
-          ...{
-            ThemeMode.light: ('Light', Icons.light_mode_outlined),
-            ThemeMode.system: ('System default', Icons.brightness_auto_outlined),
-            ThemeMode.dark: ('Dark', Icons.dark_mode_outlined),
-          }.entries.map((e) => RadioListTile<ThemeMode>(
-                value: e.key,
-                groupValue: themeMode,
-                onChanged: (v) =>
-                    ref.read(themeModeProvider.notifier).set(v!),
-                activeColor: colors.brand,
-                secondary: Icon(e.value.$2, color: colors.brand),
-                title: Text(e.value.$1,
-                    style: TextStyle(color: colors.text)),
-              )),
+          RadioGroup<ThemeMode>(
+            groupValue: themeMode,
+            onChanged: (v) => ref.read(themeModeProvider.notifier).set(v!),
+            child: Column(
+              children: [
+                for (final e in {
+                  ThemeMode.light: ('Light', AppIcons.lightModeOutlined),
+                  ThemeMode.system: (
+                    'System default',
+                    AppIcons.brightnessAutoOutlined,
+                  ),
+                  ThemeMode.dark: ('Dark', AppIcons.darkModeOutlined),
+                }.entries)
+                  RadioListTile<ThemeMode>(
+                    value: e.key,
+                    activeColor: colors.brand,
+                    secondary: Icon(e.value.$2, color: colors.brand),
+                    title: Text(
+                      e.value.$1,
+                      style: TextStyle(color: colors.text),
+                    ),
+                  ),
+              ],
+            ),
+          ),
           Divider(color: colors.outline, height: 1),
           _SectionHeader('Motion', colors: colors),
           SwitchListTile.adaptive(
             value: reduced,
-            onChanged: (v) =>
-                ref.read(reducedMotionProvider.notifier).set(v),
-            activeColor: colors.brand,
-            secondary: Icon(Icons.animation_outlined, color: colors.brand),
-            title: Text('Reduce motion',
-                style: TextStyle(color: colors.text)),
-            subtitle: Text('Fewer animations throughout the app',
-                style: TextStyle(color: colors.textMuted, fontSize: 12)),
+            onChanged: (v) => ref.read(reducedMotionProvider.notifier).set(v),
+            activeThumbColor: colors.brand,
+            secondary: Icon(AppIcons.animationOutlined, color: colors.brand),
+            title: Text('Reduce motion', style: TextStyle(color: colors.text)),
+            subtitle: Text(
+              'Fewer animations throughout the app',
+              style: TextStyle(color: colors.textMuted, fontSize: 12),
+            ),
           ),
         ],
       ),
@@ -383,8 +447,22 @@ class AppearanceSettingsPage extends ConsumerWidget {
 
 // ── Notifications page ────────────────────────────────────────────────────────
 
-class NotificationsSettingsPage extends StatelessWidget {
-  const NotificationsSettingsPage({super.key});
+/// Desktop shortcut reference (Spec §5.7).
+class KeyboardShortcutsPage extends StatelessWidget {
+  const KeyboardShortcutsPage({super.key});
+
+  static const rows = <(String, String)>[
+    ('Ctrl+N', 'New note'),
+    ('Ctrl+T', 'New task'),
+    ('Ctrl+K', 'Search notes'),
+    ('Ctrl+L', 'Lock the app'),
+    ('Ctrl+/', 'Slash menu (editor)'),
+    ('Ctrl+B / I / U', 'Bold / italic / underline (editor)'),
+    ('Ctrl+Z / Ctrl+Shift+Z', 'Undo / redo (editor)'),
+    ('F11', 'Toggle fullscreen'),
+    ('Esc', 'Close dialog / exit Zen'),
+    ('Tab / Shift+Tab', 'Move focus'),
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -392,60 +470,209 @@ class NotificationsSettingsPage extends StatelessWidget {
     return Scaffold(
       backgroundColor: colors.bg,
       appBar: AppBar(
-          title: const Text('Notifications'),
-          backgroundColor: colors.surface),
+        title: const Text('Keyboard shortcuts'),
+        backgroundColor: colors.surface,
+      ),
+      body: ListView(
+        children: [
+          for (final r in rows)
+            ListTile(
+              dense: true,
+              title: Text(r.$2, style: TextStyle(color: colors.text)),
+              trailing: Text(
+                r.$1,
+                style: TextStyle(
+                  fontFamily: 'monospace',
+                  color: colors.textMuted,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class NotificationsSettingsPage extends ConsumerWidget {
+  const NotificationsSettingsPage({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.colors;
+    return Scaffold(
+      backgroundColor: colors.bg,
+      appBar: AppBar(
+        title: const Text('Notifications'),
+        backgroundColor: colors.surface,
+      ),
       body: ListView(
         children: [
           _SectionHeader('System', colors: colors),
           ListTile(
-            leading: Icon(Icons.notifications_outlined, color: colors.brand),
-            title: Text('Notification Permission',
-                style: TextStyle(color: colors.text)),
+            leading: Icon(AppIcons.notification, color: colors.brand),
+            title: Text(
+              'Notification Permission',
+              style: TextStyle(color: colors.text),
+            ),
             subtitle: Text(
-                'Manage in Android Settings → Apps → Streakin → Notifications',
-                style: TextStyle(color: colors.textMuted, fontSize: 12)),
-            trailing: FilledButton.tonal(
-              onPressed: () => _openSettings(),
-              child: const Text('Open'),
+              'Manage in Android Settings → Apps → Streakin → Notifications',
+              style: TextStyle(color: colors.textMuted, fontSize: 12),
+            ),
+            trailing: const FilledButton.tonal(
+              onPressed: openNotificationSettings,
+              child: Text('Open'),
             ),
           ),
+          ListTile(
+            leading: Icon(
+              AppIcons.notificationAddOutlined,
+              color: colors.brand,
+            ),
+            title: Text(
+              'Test notification',
+              style: TextStyle(color: colors.text),
+            ),
+            subtitle: Text(
+              'Send a notification right now to check it works',
+              style: TextStyle(color: colors.textMuted, fontSize: 12),
+            ),
+            trailing: FilledButton.tonal(
+              onPressed: () => _sendTest(context),
+              child: const Text('Send'),
+            ),
+          ),
+          if (StartupRegistration.supported) ...[
+            Divider(color: colors.outline, height: 1),
+            _TrayToggle(colors: colors),
+          ],
           Divider(color: colors.outline, height: 1),
           _SectionHeader('Reminders', colors: colors),
-          ListTile(
-            leading: Icon(Icons.check_box_outlined, color: colors.brand),
-            title: Text('Habit reminders',
-                style: TextStyle(color: colors.text)),
-            subtitle: Text('Set per habit in Habits → Edit',
-                style: TextStyle(color: colors.textMuted, fontSize: 12)),
-            trailing: Icon(Icons.info_outline, color: colors.textMuted),
+          SwitchListTile.adaptive(
+            value: ref.watch(notifHabitsEnabledProvider),
+            onChanged: (v) =>
+                ref.read(notifHabitsEnabledProvider.notifier).set(v),
+            activeThumbColor: colors.brand,
+            secondary: Icon(AppIcons.habits, color: colors.brand),
+            title: Text(
+              'Habit reminders',
+              style: TextStyle(color: colors.text),
+            ),
+            subtitle: Text(
+              'Set per habit in Habits → Edit',
+              style: TextStyle(color: colors.textMuted, fontSize: 12),
+            ),
+          ),
+          SwitchListTile.adaptive(
+            value: ref.watch(notifLockInNudgeEnabledProvider),
+            onChanged: (v) =>
+                ref.read(notifLockInNudgeEnabledProvider.notifier).set(v),
+            activeThumbColor: colors.brand,
+            secondary: Icon(AppIcons.lockClockOutlined, color: colors.brand),
+            title: Text(
+              'Evening lock-in nudge',
+              style: TextStyle(color: colors.text),
+            ),
+            subtitle: Text(
+              'A reminder if habits are still open',
+              style: TextStyle(color: colors.textMuted, fontSize: 12),
+            ),
+          ),
+          SwitchListTile.adaptive(
+            value: ref.watch(notifMentionsEnabledProvider),
+            onChanged: (v) =>
+                ref.read(notifMentionsEnabledProvider.notifier).set(v),
+            activeThumbColor: colors.brand,
+            secondary: Icon(AppIcons.alternateEmail, color: colors.brand),
+            title: Text(
+              'Note @date reminders',
+              style: TextStyle(color: colors.text),
+            ),
           ),
           ListTile(
-            leading:
-                Icon(Icons.track_changes_outlined, color: colors.brand),
-            title: Text('Goal countdown reminders',
-                style: TextStyle(color: colors.text)),
-            trailing: Icon(Icons.chevron_right, color: colors.textMuted),
+            leading: Icon(AppIcons.trackChangesOutlined, color: colors.brand),
+            title: Text(
+              'Goal countdown reminders',
+              style: TextStyle(color: colors.text),
+            ),
+            trailing: Icon(AppIcons.chevronRight, color: colors.textMuted),
             onTap: () => context.push('/settings/goal-reminders'),
           ),
-          ListTile(
-            leading:
-                Icon(Icons.checklist_outlined, color: colors.brand),
-            title: Text('Task reminders',
-                style: TextStyle(color: colors.text)),
-            subtitle: Text('Set per task in Tasks → Edit',
-                style: TextStyle(color: colors.textMuted, fontSize: 12)),
-            trailing: Icon(Icons.info_outline, color: colors.textMuted),
+          SwitchListTile.adaptive(
+            value: ref.watch(notifTodosEnabledProvider),
+            onChanged: (v) =>
+                ref.read(notifTodosEnabledProvider.notifier).set(v),
+            activeThumbColor: colors.brand,
+            secondary: Icon(AppIcons.checklistOutlined, color: colors.brand),
+            title: Text('Task reminders', style: TextStyle(color: colors.text)),
+            subtitle: Text(
+              'Set per task in Tasks → Edit',
+              style: TextStyle(color: colors.textMuted, fontSize: 12),
+            ),
           ),
         ],
       ),
     );
   }
 
-  Future<void> _openSettings() async {
-    const uri = 'app-settings:';
-    if (await canLaunchUrl(Uri.parse(uri))) {
-      await launchUrl(Uri.parse(uri));
+  Future<void> _sendTest(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    bool ok;
+    try {
+      ok = await showTestNotification();
+    } catch (_) {
+      ok = false;
     }
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          ok
+              ? 'Test notification sent'
+              : 'Notifications are blocked. Tap Open to enable them.',
+        ),
+      ),
+    );
+  }
+}
+
+class _TrayToggle extends StatefulWidget {
+  const _TrayToggle({required this.colors});
+  final AppColorTokens colors;
+
+  @override
+  State<_TrayToggle> createState() => _TrayToggleState();
+}
+
+class _TrayToggleState extends State<_TrayToggle> {
+  bool _on = false;
+
+  @override
+  void initState() {
+    super.initState();
+    StartupRegistration.isEnabled().then((v) {
+      if (mounted) setState(() => _on = v);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SwitchListTile.adaptive(
+      value: _on,
+      onChanged: (v) async {
+        await StartupRegistration.setEnabled(v);
+        TrayService.instance.keepInTray = v;
+        if (mounted) setState(() => _on = v);
+      },
+      activeThumbColor: widget.colors.brand,
+      secondary: Icon(AppIcons.inboxOutlined, color: widget.colors.brand),
+      title: Text(
+        'Keep running in tray for reminders',
+        style: TextStyle(color: widget.colors.text),
+      ),
+      subtitle: Text(
+        'Starts with your computer; data stays locked',
+        style: TextStyle(color: widget.colors.textMuted, fontSize: 12),
+      ),
+    );
   }
 }
 
@@ -462,8 +689,9 @@ class BiometricSettingsPage extends ConsumerWidget {
     return Scaffold(
       backgroundColor: colors.bg,
       appBar: AppBar(
-          title: const Text('Biometric Unlock'),
-          backgroundColor: colors.surface),
+        title: const Text('Biometric Unlock'),
+        backgroundColor: colors.surface,
+      ),
       body: FutureBuilder<bool>(
         future: _checkAvailable(),
         builder: (_, snap) {
@@ -479,19 +707,20 @@ class BiometricSettingsPage extends ConsumerWidget {
                     decoration: BoxDecoration(
                       color: colors.warning.withAlpha(25),
                       borderRadius: BorderRadius.circular(8),
-                      border:
-                          Border.all(color: colors.warning.withAlpha(80)),
+                      border: Border.all(color: colors.warning.withAlpha(80)),
                     ),
                     child: Row(
                       children: [
-                        Icon(Icons.warning_amber_outlined,
-                            color: colors.warning, size: 18),
+                        Icon(
+                          AppIcons.warningAmberOutlined,
+                          color: colors.warning,
+                          size: 18,
+                        ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             'No biometric hardware found or not enrolled. Enrol in Android Settings → Security.',
-                            style:
-                                TextStyle(fontSize: 13, color: colors.text),
+                            style: TextStyle(fontSize: 13, color: colors.text),
                           ),
                         ),
                       ],
@@ -501,26 +730,25 @@ class BiometricSettingsPage extends ConsumerWidget {
               SwitchListTile.adaptive(
                 value: enabled,
                 onChanged: available
-                    ? (v) =>
-                        ref.read(biometricEnabledProvider.notifier).set(v)
+                    ? (v) => ref.read(biometricEnabledProvider.notifier).set(v)
                     : null,
-                activeColor: colors.brand,
-                secondary:
-                    Icon(Icons.fingerprint, color: colors.brand),
-                title: Text('Unlock with biometrics',
-                    style: TextStyle(color: colors.text)),
+                activeThumbColor: colors.brand,
+                secondary: Icon(AppIcons.biometric, color: colors.brand),
+                title: Text(
+                  'Unlock with biometrics',
+                  style: TextStyle(color: colors.text),
+                ),
                 subtitle: Text(
-                    'Use face or fingerprint instead of password',
-                    style: TextStyle(
-                        color: colors.textMuted, fontSize: 12)),
+                  'Use face or fingerprint instead of password',
+                  style: TextStyle(color: colors.textMuted, fontSize: 12),
+                ),
               ),
               Divider(color: colors.outline, height: 1),
               Padding(
                 padding: const EdgeInsets.all(16),
                 child: Text(
                   'Your password is always available as a fallback.',
-                  style:
-                      TextStyle(fontSize: 12, color: colors.textMuted),
+                  style: TextStyle(fontSize: 12, color: colors.textMuted),
                 ),
               ),
             ],
@@ -564,27 +792,27 @@ class AutoLockSettingsPage extends ConsumerWidget {
     return Scaffold(
       backgroundColor: colors.bg,
       appBar: AppBar(
-          title: const Text('Auto-lock'), backgroundColor: colors.surface),
+        title: const Text('Auto-lock'),
+        backgroundColor: colors.surface,
+      ),
       body: ListView(
         children: [
           _SectionHeader('Lock after inactivity', colors: colors),
-          ..._options.map((opt) {
-            final mins = opt.$1.inMinutes;
-            final isNever = opt.$1.inDays > 1;
-            final selected = isNever
-                ? currentMinutes >= 999 * 60
-                : currentMinutes == mins;
-            return RadioListTile<int>(
-              value: isNever ? 99999 : mins,
-              groupValue: currentMinutes,
-              onChanged: (v) => ref
-                  .read(_lockTimeoutMinutesProvider.notifier)
-                  .set(v!),
-              activeColor: colors.brand,
-              title: Text(opt.$2,
-                  style: TextStyle(color: colors.text)),
-            );
-          }),
+          RadioGroup<int>(
+            groupValue: currentMinutes,
+            onChanged: (v) =>
+                ref.read(_lockTimeoutMinutesProvider.notifier).set(v!),
+            child: Column(
+              children: [
+                for (final opt in _options)
+                  RadioListTile<int>(
+                    value: opt.$1.inDays > 1 ? 99999 : opt.$1.inMinutes,
+                    activeColor: colors.brand,
+                    title: Text(opt.$2, style: TextStyle(color: colors.text)),
+                  ),
+              ],
+            ),
+          ),
           Divider(color: colors.outline, height: 1),
           Padding(
             padding: const EdgeInsets.all(16),
@@ -599,8 +827,9 @@ class AutoLockSettingsPage extends ConsumerWidget {
   }
 }
 
-final _lockTimeoutMinutesProvider =
-    NotifierProvider<_LockTimeoutNotifier, int>(_LockTimeoutNotifier.new);
+final _lockTimeoutMinutesProvider = NotifierProvider<_LockTimeoutNotifier, int>(
+  _LockTimeoutNotifier.new,
+);
 
 class _LockTimeoutNotifier extends Notifier<int> {
   @override
@@ -637,25 +866,29 @@ class WeekDaySettingsPage extends ConsumerWidget {
     return Scaffold(
       backgroundColor: colors.bg,
       appBar: AppBar(
-          title: const Text('Week & Day'), backgroundColor: colors.surface),
+        title: const Text('Week & Day'),
+        backgroundColor: colors.surface,
+      ),
       body: ListView(
         children: [
           _SectionHeader('Week Start', colors: colors),
-          RadioListTile<int>(
-            value: 1,
+          RadioGroup<int>(
             groupValue: weekStart,
-            onChanged: (v) =>
-                ref.read(weekStartProvider.notifier).set(v!),
-            activeColor: colors.brand,
-            title: Text('Monday', style: TextStyle(color: colors.text)),
-          ),
-          RadioListTile<int>(
-            value: 7,
-            groupValue: weekStart,
-            onChanged: (v) =>
-                ref.read(weekStartProvider.notifier).set(v!),
-            activeColor: colors.brand,
-            title: Text('Sunday', style: TextStyle(color: colors.text)),
+            onChanged: (v) => ref.read(weekStartProvider.notifier).set(v!),
+            child: Column(
+              children: [
+                RadioListTile<int>(
+                  value: 1,
+                  activeColor: colors.brand,
+                  title: Text('Monday', style: TextStyle(color: colors.text)),
+                ),
+                RadioListTile<int>(
+                  value: 7,
+                  activeColor: colors.brand,
+                  title: Text('Sunday', style: TextStyle(color: colors.text)),
+                ),
+              ],
+            ),
           ),
           Divider(color: colors.outline, height: 1),
           _SectionHeader('Day Boundary', colors: colors),
@@ -666,23 +899,83 @@ class WeekDaySettingsPage extends ConsumerWidget {
               style: TextStyle(fontSize: 12, color: colors.textMuted),
             ),
           ),
-          ...[0, 60, 120, 180, 240].map((mins) {
-            final label = mins == 0
-                ? 'Midnight (00:00)'
-                : '0${mins ~/ 60}:00 (${mins ~/ 60}h after midnight)';
-            return RadioListTile<int>(
-              value: mins,
-              groupValue: boundaryMins,
-              onChanged: (v) =>
-                  ref.read(dayBoundaryMinutesProvider.notifier).set(v!),
-              activeColor: colors.brand,
-              title: Text(label, style: TextStyle(color: colors.text)),
-            );
-          }),
+          RadioGroup<int>(
+            groupValue: boundaryMins,
+            onChanged: (v) =>
+                ref.read(dayBoundaryMinutesProvider.notifier).set(v!),
+            child: Column(
+              children: [
+                for (final mins in [0, 60, 120, 180, 240])
+                  RadioListTile<int>(
+                    value: mins,
+                    activeColor: colors.brand,
+                    title: Text(
+                      mins == 0
+                          ? 'Midnight (00:00)'
+                          : '0${mins ~/ 60}:00 (${mins ~/ 60}h after midnight)',
+                      style: TextStyle(color: colors.text),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          Divider(color: colors.outline, height: 1),
+          _SectionHeader('Time', colors: colors),
+          SwitchListTile.adaptive(
+            value: ref.watch(timeFormat24hProvider),
+            onChanged: (v) => ref.read(timeFormat24hProvider.notifier).set(v),
+            activeThumbColor: colors.brand,
+            title: Text('24-hour time', style: TextStyle(color: colors.text)),
+          ),
+          ListTile(
+            title: Text(
+              'Default reminder time',
+              style: TextStyle(color: colors.text),
+            ),
+            subtitle: Text(
+              'Used for all-day items',
+              style: TextStyle(color: colors.textMuted, fontSize: 12),
+            ),
+            trailing: Text(
+              _fmtMinutes(ref.watch(defaultReminderMinutesProvider)),
+              style: TextStyle(color: colors.brand),
+            ),
+            onTap: () async {
+              final cur = ref.read(defaultReminderMinutesProvider);
+              final picked = await showTimePicker(
+                context: context,
+                initialTime: TimeOfDay(hour: cur ~/ 60, minute: cur % 60),
+              );
+              if (picked != null) {
+                await ref
+                    .read(defaultReminderMinutesProvider.notifier)
+                    .set(picked.hour * 60 + picked.minute);
+              }
+            },
+          ),
+          Divider(color: colors.outline, height: 1),
+          _SectionHeader('Lock-in', colors: colors),
+          SwitchListTile.adaptive(
+            value: ref.watch(countTodosForLockInProvider),
+            onChanged: (v) =>
+                ref.read(countTodosForLockInProvider.notifier).set(v),
+            activeThumbColor: colors.brand,
+            title: Text(
+              'Count to-dos for lock-in',
+              style: TextStyle(color: colors.text),
+            ),
+            subtitle: Text(
+              'Flagged tasks due today must be done before the day locks in',
+              style: TextStyle(color: colors.textMuted, fontSize: 12),
+            ),
+          ),
         ],
       ),
     );
   }
+
+  static String _fmtMinutes(int m) =>
+      '${(m ~/ 60).toString().padLeft(2, '0')}:${(m % 60).toString().padLeft(2, '0')}';
 }
 
 // ── Accessibility page ────────────────────────────────────────────────────────
@@ -698,23 +991,22 @@ class AccessibilitySettingsPage extends ConsumerWidget {
     return Scaffold(
       backgroundColor: colors.bg,
       appBar: AppBar(
-          title: const Text('Accessibility'),
-          backgroundColor: colors.surface),
+        title: const Text('Accessibility'),
+        backgroundColor: colors.surface,
+      ),
       body: ListView(
         children: [
           _SectionHeader('Motion', colors: colors),
           SwitchListTile.adaptive(
             value: reduced,
-            onChanged: (v) =>
-                ref.read(reducedMotionProvider.notifier).set(v),
-            activeColor: colors.brand,
-            secondary:
-                Icon(Icons.animation_outlined, color: colors.brand),
-            title: Text('Reduce motion',
-                style: TextStyle(color: colors.text)),
-            subtitle: Text('Fewer animations & transitions',
-                style:
-                    TextStyle(color: colors.textMuted, fontSize: 12)),
+            onChanged: (v) => ref.read(reducedMotionProvider.notifier).set(v),
+            activeThumbColor: colors.brand,
+            secondary: Icon(AppIcons.animationOutlined, color: colors.brand),
+            title: Text('Reduce motion', style: TextStyle(color: colors.text)),
+            subtitle: Text(
+              'Fewer animations & transitions',
+              style: TextStyle(color: colors.textMuted, fontSize: 12),
+            ),
           ),
         ],
       ),
@@ -733,8 +1025,9 @@ class GoalRemindersSettingsPage extends ConsumerWidget {
     return Scaffold(
       backgroundColor: colors.bg,
       appBar: AppBar(
-          title: const Text('Goal Reminders'),
-          backgroundColor: colors.surface),
+        title: const Text('Goal Reminders'),
+        backgroundColor: colors.surface,
+      ),
       body: ListView(
         children: [
           _SectionHeader('Reminder cadence', colors: colors),
@@ -746,38 +1039,43 @@ class GoalRemindersSettingsPage extends ConsumerWidget {
             ('every5', 'Every 5 days'),
             ('weekly', 'Weekly'),
             ('milestones_only', 'Milestones only'),
-          ].map((opt) => _GoalReminderCadenceTile(
-              value: opt.$1, label: opt.$2, colors: colors)),
+          ].map(
+            (opt) => _GoalReminderCadenceTile(
+              value: opt.$1,
+              label: opt.$2,
+              colors: colors,
+            ),
+          ),
           Divider(color: colors.outline, height: 1),
           _SectionHeader('Options', colors: colors),
           _GoalReminderToggle(
             prefKey: AppIdentifiers.prefGoalFinalStretch,
             label: 'Daily during final 7 days',
-            icon: Icons.timer_outlined,
+            icon: AppIcons.timerOutlined,
             colors: colors,
           ),
           _GoalReminderToggle(
             prefKey: AppIdentifiers.prefGoalMilestoneAlerts,
             label: 'Milestone alerts',
-            icon: Icons.emoji_events_outlined,
+            icon: AppIcons.milestone,
             colors: colors,
           ),
           _GoalReminderToggle(
             prefKey: AppIdentifiers.prefGoalCompletionAlert,
             label: 'Completion alert',
-            icon: Icons.check_circle_outlined,
+            icon: AppIcons.checkCircleOutlined,
             colors: colors,
           ),
           _GoalReminderToggle(
             prefKey: AppIdentifiers.prefGoalSuppressIfDone,
             label: 'Skip if all habits done today',
-            icon: Icons.do_not_disturb_alt_outlined,
+            icon: AppIcons.doNotDisturbAltOutlined,
             colors: colors,
           ),
           _GoalReminderToggle(
             prefKey: AppIdentifiers.prefGoalShowTitle,
             label: 'Show goal title in notification',
-            icon: Icons.title_outlined,
+            icon: AppIcons.titleOutlined,
             colors: colors,
           ),
         ],
@@ -787,8 +1085,11 @@ class GoalRemindersSettingsPage extends ConsumerWidget {
 }
 
 class _GoalReminderCadenceTile extends ConsumerWidget {
-  const _GoalReminderCadenceTile(
-      {required this.value, required this.label, required this.colors});
+  const _GoalReminderCadenceTile({
+    required this.value,
+    required this.label,
+    required this.colors,
+  });
   final String value;
   final String label;
   final AppColorTokens colors;
@@ -796,18 +1097,21 @@ class _GoalReminderCadenceTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final current = ref.watch(_goalCadenceProvider);
-    return RadioListTile<String>(
-      value: value,
+    return RadioGroup<String>(
       groupValue: current,
       onChanged: (v) => ref.read(_goalCadenceProvider.notifier).set(v!),
-      activeColor: colors.brand,
-      title: Text(label, style: TextStyle(color: colors.text)),
+      child: RadioListTile<String>(
+        value: value,
+        activeColor: colors.brand,
+        title: Text(label, style: TextStyle(color: colors.text)),
+      ),
     );
   }
 }
 
-final _goalCadenceProvider =
-    NotifierProvider<_GoalCadenceNotifier, String>(_GoalCadenceNotifier.new);
+final _goalCadenceProvider = NotifierProvider<_GoalCadenceNotifier, String>(
+  _GoalCadenceNotifier.new,
+);
 
 class _GoalCadenceNotifier extends Notifier<String> {
   @override
@@ -829,11 +1133,12 @@ class _GoalCadenceNotifier extends Notifier<String> {
 }
 
 class _GoalReminderToggle extends ConsumerWidget {
-  const _GoalReminderToggle(
-      {required this.prefKey,
-      required this.label,
-      required this.icon,
-      required this.colors});
+  const _GoalReminderToggle({
+    required this.prefKey,
+    required this.label,
+    required this.icon,
+    required this.colors,
+  });
   final String prefKey;
   final String label;
   final IconData icon;
@@ -847,8 +1152,8 @@ class _GoalReminderToggle extends ConsumerWidget {
         final val = snap.data ?? true;
         return SwitchListTile.adaptive(
           value: val,
-          onChanged: (v) => _save(v),
-          activeColor: colors.brand,
+          onChanged: _save,
+          activeThumbColor: colors.brand,
           secondary: Icon(icon, color: colors.brand),
           title: Text(label, style: TextStyle(color: colors.text)),
         );
@@ -878,23 +1183,20 @@ class _AboutRow extends ConsumerWidget {
     return Column(
       children: [
         ListTile(
-          leading: Icon(Icons.help_outline, color: colors.brand),
+          leading: Icon(AppIcons.helpOutline, color: colors.brand),
           title: Text('FAQ', style: TextStyle(color: colors.text)),
-          trailing: Icon(Icons.open_in_new, size: 16, color: colors.textMuted),
-          onTap: () =>
-              _launch('https://incantum.in/faq'),
+          trailing: Icon(AppIcons.openInNew, size: 16, color: colors.textMuted),
+          onTap: () => _launch('https://incantum.in/faq'),
         ),
         ListTile(
-          leading: Icon(Icons.info_outline, color: colors.brand),
-          title: Text('About Streakin',
-              style: TextStyle(color: colors.text)),
-          trailing: Icon(Icons.chevron_right, color: colors.textMuted),
+          leading: Icon(AppIcons.infoOutline, color: colors.brand),
+          title: Text('About Streakin', style: TextStyle(color: colors.text)),
+          trailing: Icon(AppIcons.chevronRight, color: colors.textMuted),
           onTap: () => context.push('/settings/about'),
         ),
         ListTile(
-          leading: Icon(Icons.new_releases_outlined, color: colors.brand),
-          title: Text('App Version',
-              style: TextStyle(color: colors.text)),
+          leading: Icon(AppIcons.newReleasesOutlined, color: colors.brand),
+          title: Text('App Version', style: TextStyle(color: colors.text)),
           trailing: const _VersionBadge(),
         ),
       ],
@@ -912,8 +1214,10 @@ class _VersionBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    return Text('1.0.0-alpha',
-        style: TextStyle(fontSize: 13, color: colors.textMuted));
+    return Text(
+      '1.0.0-alpha',
+      style: TextStyle(fontSize: 13, color: colors.textMuted),
+    );
   }
 }
 
@@ -927,8 +1231,10 @@ class AboutPage extends StatelessWidget {
     final colors = context.colors;
     return Scaffold(
       backgroundColor: colors.bg,
-      appBar:
-          AppBar(title: const Text('About'), backgroundColor: colors.surface),
+      appBar: AppBar(
+        title: const Text('About'),
+        backgroundColor: colors.surface,
+      ),
       body: ListView(
         padding: const EdgeInsets.all(24),
         children: [
@@ -940,15 +1246,20 @@ class AboutPage extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           Center(
-            child: Text('Streakin',
-                style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w700,
-                    color: colors.brand)),
+            child: Text(
+              'Streakin',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w700,
+                color: colors.brand,
+              ),
+            ),
           ),
           Center(
-            child: Text('Version 1.0.0-alpha',
-                style: TextStyle(color: colors.textMuted, fontSize: 13)),
+            child: Text(
+              'Version 1.0.0-alpha',
+              style: TextStyle(color: colors.textMuted, fontSize: 13),
+            ),
           ),
           const SizedBox(height: 24),
           Text(
@@ -960,13 +1271,17 @@ class AboutPage extends StatelessWidget {
           Divider(color: colors.outline),
           const SizedBox(height: 8),
           Center(
-            child: Text('Built by Incantum · No telemetry · No cloud',
-                style: TextStyle(color: colors.textMuted, fontSize: 12)),
+            child: Text(
+              'Built by Incantum · No telemetry · No cloud',
+              style: TextStyle(color: colors.textMuted, fontSize: 12),
+            ),
           ),
           const SizedBox(height: 4),
           Center(
-            child: Text('Your data stays yours',
-                style: TextStyle(color: colors.textMuted, fontSize: 12)),
+            child: Text(
+              'Your data stays yours',
+              style: TextStyle(color: colors.textMuted, fontSize: 12),
+            ),
           ),
         ],
       ),
@@ -988,10 +1303,11 @@ class _SectionHeader extends StatelessWidget {
       child: Text(
         title.toUpperCase(),
         style: TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
-            color: colors.textMuted,
-            letterSpacing: 0.8),
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: colors.textMuted,
+          letterSpacing: 0.8,
+        ),
       ),
     );
   }
@@ -1029,11 +1345,13 @@ class _SettingsTile extends StatelessWidget {
       ),
       title: Text(label, style: TextStyle(color: colors.text, fontSize: 15)),
       subtitle: subtitle != null
-          ? Text(subtitle!,
-              style: TextStyle(color: colors.textMuted, fontSize: 12))
+          ? Text(
+              subtitle!,
+              style: TextStyle(color: colors.textMuted, fontSize: 12),
+            )
           : null,
       trailing: Icon(
-        trailingIcon ?? (showChevron ? Icons.chevron_right : null),
+        trailingIcon ?? (showChevron ? AppIcons.chevronRight : null),
         color: colors.textMuted,
         size: 18,
       ),
@@ -1071,15 +1389,19 @@ class _Field extends StatelessWidget {
       children: [
         Row(
           children: [
-            Text(label,
-                style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    color: colors.textMuted)),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: colors.textMuted,
+              ),
+            ),
             if (!required)
-              Text(' (optional)',
-                  style:
-                      TextStyle(fontSize: 12, color: colors.textMuted)),
+              Text(
+                ' (optional)',
+                style: TextStyle(fontSize: 12, color: colors.textMuted),
+              ),
           ],
         ),
         const SizedBox(height: 6),

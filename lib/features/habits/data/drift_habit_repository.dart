@@ -25,6 +25,9 @@ class DriftHabitRepository implements HabitRepository {
   Stream<List<HabitLog>> watchLogs(String habitId, DateRange range) =>
       _dao.watchLogs(habitId, range);
   @override
+  Stream<List<HabitLog>> watchLogsForDate(LocalDate date) =>
+      _dao.watchLogsForDate(date);
+  @override
   Future<HabitLog?> getLog(String habitId, LocalDate date) =>
       _dao.getLog(habitId, date);
   @override
@@ -40,6 +43,7 @@ class DriftHabitRepository implements HabitRepository {
   Future<void> deleteDayLock(LocalDate date) => _dao.deleteDayLock(date);
   @override
   Future<Map<String, List<HabitLog>>> fetchLogsForHabits(
-          List<String> habitIds, DateRange range) =>
-      _dao.fetchLogsForHabits(habitIds, range);
+    List<String> habitIds,
+    DateRange range,
+  ) => _dao.fetchLogsForHabits(habitIds, range);
 }

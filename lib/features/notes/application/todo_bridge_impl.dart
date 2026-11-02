@@ -23,14 +23,10 @@ import 'package:streakin/core/time/hlc.dart';
 import 'package:streakin/features/notes/domain/note_document.dart';
 import 'package:streakin/features/notes/domain/note_repository.dart';
 import 'package:streakin/features/notes/domain/todo_bridge.dart';
-import 'package:streakin/features/todos/domain/todo.dart';
-import 'package:streakin/features/todos/domain/todo_repository.dart';
+import 'package:streakin/features/todos/todos_module.dart';
 
 class TodoBridgeImpl implements TodoBridge {
-  TodoBridgeImpl({
-    required this._noteRepo,
-    required this._todoRepo,
-  });
+  TodoBridgeImpl({required this._noteRepo, required this._todoRepo});
 
   final NoteRepository _noteRepo;
   final TodoRepository _todoRepo;
@@ -41,10 +37,12 @@ class TodoBridgeImpl implements TodoBridge {
 
   @override
   Future<void> promoteCheckbox(
-      String noteId, String blockId, String title) async {
+    String noteId,
+    String blockId,
+    String title,
+  ) async {
     // 1. Check not already linked.
-    final existing =
-        await _todoRepo.watchBySourceBlock(noteId, blockId).first;
+    final existing = await _todoRepo.watchBySourceBlock(noteId, blockId).first;
     if (existing != null) return; // already promoted
 
     // 2. Create the Todo.
@@ -61,8 +59,27 @@ class TodoBridgeImpl implements TodoBridge {
     );
     await _todoRepo.save(todo);
 
-    // 3. Write linkedTodoId into the block attrs and persist.
-    await _updateBlockAttrs(noteId, blockId, {'linkedTodoId': todoId});
+    // 3. Write linkedTodoId into the block attrs and persist. If that
+    //    fails, remove the task again so the two never diverge.
+    try {
+      await _updateBlockAttrs(noteId, blockId, {'linkedTodoId': todoId});
+    } catch (_) {
+      await _todoRepo.softDelete(todoId);
+      rethrow;
+    }
+  }
+
+  // ── setCheckboxDone ─────────────────────────────────────────────────────
+
+  @override
+  Future<void> setCheckboxDone(String noteId, String blockId, bool done) async {
+    final todo = await _todoRepo.watchBySourceBlock(noteId, blockId).first;
+    if (todo == null || todo.isDone == done) return;
+    if (done) {
+      await _todoRepo.complete(todo.id);
+    } else {
+      await _todoRepo.uncomplete(todo.id);
+    }
   }
 
   // ── demoteCheckbox ──────────────────────────────────────────────────────
@@ -92,7 +109,10 @@ class TodoBridgeImpl implements TodoBridge {
 
   /// Load the note body, update the target block's attrs, save back.
   Future<void> _updateBlockAttrs(
-      String noteId, String blockId, Map<String, dynamic> newAttrs) async {
+    String noteId,
+    String blockId,
+    Map<String, dynamic> newAttrs,
+  ) async {
     final note = await _noteRepo.watchNote(noteId).first;
     if (note == null || note.isDeleted) return;
 
@@ -123,14 +143,14 @@ class _TodoBridgeNotifier extends Notifier<TodoBridge?> {
 }
 
 final todoBridgeStateProvider =
-    NotifierProvider<_TodoBridgeNotifier, TodoBridge?>(
-        _TodoBridgeNotifier.new);
+    NotifierProvider<_TodoBridgeNotifier, TodoBridge?>(_TodoBridgeNotifier.new);
 
 final todoBridgeProvider = Provider<TodoBridge>((ref) {
   final bridge = ref.watch(todoBridgeStateProvider);
   if (bridge == null) {
     throw StateError(
-        'todoBridgeProvider: SessionScope has not set the bridge yet.');
+      'todoBridgeProvider: SessionScope has not set the bridge yet.',
+    );
   }
   return bridge;
 });

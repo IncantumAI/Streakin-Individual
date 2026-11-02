@@ -20,14 +20,16 @@ class _TodoRepositoryNotifier extends Notifier<TodoRepository?> {
 
 final todoRepositoryStateProvider =
     NotifierProvider<_TodoRepositoryNotifier, TodoRepository?>(
-        _TodoRepositoryNotifier.new);
+      _TodoRepositoryNotifier.new,
+    );
 
 /// Convenience provider — throws clearly if SessionScope has not yet set it.
 final todoRepositoryProvider = Provider<TodoRepository>((ref) {
   final repo = ref.watch(todoRepositoryStateProvider);
   if (repo == null) {
     throw UnimplementedError(
-        'todoRepositoryProvider must be set in SessionScope');
+      'todoRepositoryProvider must be set in SessionScope',
+    );
   }
   return repo;
 });
@@ -41,29 +43,28 @@ bool _isSqliteError(dynamic e) =>
 final todosTodayProvider = StreamProvider<List<Todo>>((ref) {
   final repo = ref.watch(todoRepositoryStateProvider);
   if (repo == null) return const Stream.empty();
-  return repo.watchToday().handleError(
-      (_) => <Todo>[], test: _isSqliteError);
+  return repo.watchToday().handleError((_) => <Todo>[], test: _isSqliteError);
 });
 
 final todosUpcomingProvider = StreamProvider<List<Todo>>((ref) {
   final repo = ref.watch(todoRepositoryStateProvider);
   if (repo == null) return const Stream.empty();
   return repo.watchUpcoming().handleError(
-      (_) => <Todo>[], test: _isSqliteError);
+    (_) => <Todo>[],
+    test: _isSqliteError,
+  );
 });
 
 final todosAnytimeProvider = StreamProvider<List<Todo>>((ref) {
   final repo = ref.watch(todoRepositoryStateProvider);
   if (repo == null) return const Stream.empty();
-  return repo.watchAnytime().handleError(
-      (_) => <Todo>[], test: _isSqliteError);
+  return repo.watchAnytime().handleError((_) => <Todo>[], test: _isSqliteError);
 });
 
 final todosDoneProvider = StreamProvider<List<Todo>>((ref) {
   final repo = ref.watch(todoRepositoryStateProvider);
   if (repo == null) return const Stream.empty();
-  return repo.watchDone().handleError(
-      (_) => <Todo>[], test: _isSqliteError);
+  return repo.watchDone().handleError((_) => <Todo>[], test: _isSqliteError);
 });
 
 // ── Use-cases ─────────────────────────────────────────────────────────────

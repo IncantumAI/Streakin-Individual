@@ -19,102 +19,134 @@ import 'package:streakin/features/notes/domain/folder.dart' as domain;
 import 'package:streakin/features/notes/domain/note.dart' as domain;
 import 'package:streakin/features/notes/domain/note_document.dart';
 import 'package:streakin/features/notes/domain/note_repository.dart';
+import 'package:streakin/features/notes/domain/vault_body_codec.dart';
 
 // ── Mappers ───────────────────────────────────────────────────────────────────
 
 // domain.Note → Drift companion
 extension _DomainNoteToCompanion on domain.Note {
   NotesCompanion toCompanion() => NotesCompanion(
-        id: Value(id),
-        folderId: Value(folderId),
-        title: Value(title),
-        templateKind: Value(templateKind.serialized),
-        body: Value(body),
-        isPinned: Value(isPinned),
-        vaultId: Value(vaultId),
-        createdAt: Value(createdAt.toIso8601String()),
-        updatedAt: Value(updatedAt.toIso8601String()),
-        hlc: Value(hlc),
-        deletedAt: Value(deletedAt?.toIso8601String()),
-      );
+    id: Value(id),
+    folderId: Value(folderId),
+    title: Value(title),
+    templateKind: Value(templateKind.serialized),
+    body: Value(body),
+    isPinned: Value(isPinned),
+    vaultId: Value(vaultId),
+    createdAt: Value(createdAt.toIso8601String()),
+    updatedAt: Value(updatedAt.toIso8601String()),
+    hlc: Value(hlc),
+    deletedAt: Value(deletedAt?.toIso8601String()),
+  );
 }
 
 // Drift row Note → domain.Note
 extension _NoteRowToDomain on Note {
   domain.Note toDomain() => domain.Note(
-        id: id,
-        folderId: folderId,
-        title: title,
-        templateKind: domain.NoteTemplateKindExt.fromString(templateKind),
-        body: body,
-        isPinned: isPinned,
-        vaultId: vaultId,
-        createdAt: DateTime.parse(createdAt),
-        updatedAt: DateTime.parse(updatedAt),
-        hlc: hlc,
-        deletedAt: deletedAt != null ? DateTime.parse(deletedAt!) : null,
-      );
+    id: id,
+    folderId: folderId,
+    title: title,
+    templateKind: domain.NoteTemplateKindExt.fromString(templateKind),
+    body: body,
+    isPinned: isPinned,
+    vaultId: vaultId,
+    createdAt: DateTime.parse(createdAt),
+    updatedAt: DateTime.parse(updatedAt),
+    hlc: hlc,
+    deletedAt: deletedAt != null ? DateTime.parse(deletedAt!) : null,
+  );
 }
 
 // domain.Folder → Drift companion
 extension _DomainFolderToCompanion on domain.Folder {
   FoldersCompanion toCompanion() => FoldersCompanion(
-        id: Value(id),
-        parentId: Value(parentId),
-        name: Value(name),
-        iconIndex: Value(iconIndex),
-        accentIndex: Value(accentIndex),
-        vaultId: Value(vaultId),
-        sortOrder: Value(sortOrder),
-        hlc: Value(hlc),
-        deletedAt: Value(deletedAt?.toIso8601String()),
-      );
+    id: Value(id),
+    parentId: Value(parentId),
+    name: Value(name),
+    iconIndex: Value(iconIndex),
+    accentIndex: Value(accentIndex),
+    vaultId: Value(vaultId),
+    sortOrder: Value(sortOrder),
+    hlc: Value(hlc),
+    deletedAt: Value(deletedAt?.toIso8601String()),
+  );
 }
 
 // Drift row Folder → domain.Folder
 extension _FolderRowToDomain on Folder {
   domain.Folder toDomain() => domain.Folder(
-        id: id,
-        parentId: parentId,
-        name: name,
-        iconIndex: iconIndex,
-        accentIndex: accentIndex,
-        vaultId: vaultId,
-        sortOrder: sortOrder,
-        hlc: hlc,
-        deletedAt: deletedAt != null ? DateTime.parse(deletedAt!) : null,
-      );
+    id: id,
+    parentId: parentId,
+    name: name,
+    iconIndex: iconIndex,
+    accentIndex: accentIndex,
+    vaultId: vaultId,
+    sortOrder: sortOrder,
+    hlc: hlc,
+    deletedAt: deletedAt != null ? DateTime.parse(deletedAt!) : null,
+  );
 }
 
 // Drift row Attachment → domain.Attachment
 extension _AttachmentRowToDomain on Attachment {
   domain.Attachment toDomain() => domain.Attachment(
-        id: id,
-        noteId: noteId,
-        kind: domain.AttachmentKindExt.fromString(kind),
-        mime: mime,
-        size: size,
-        sha256: sha256,
-        storageName: storageName,
-        createdAt: DateTime.parse(createdAt),
-      );
+    id: id,
+    noteId: noteId,
+    kind: domain.AttachmentKindExt.fromString(kind),
+    mime: mime,
+    size: size,
+    sha256: sha256,
+    storageName: storageName,
+    createdAt: DateTime.parse(createdAt),
+  );
 }
 
 // ── DriftNoteRepository ───────────────────────────────────────────────────────
 
 class DriftNoteRepository implements NoteRepository {
-  DriftNoteRepository(this._dao, this._fts);
+  DriftNoteRepository(this._dao, this._fts, {this._vault});
 
   final NoteDao _dao;
   final NoteFtsDao _fts;
+  final VaultBodyCodec? _vault;
+
+  // ── Vault guard (§8.6) ────────────────────────────────────────────────────
+  // Vault notes keep title + body as ciphertext at rest. While the vault is
+  // locked the note is invisible to every read path (lists, search, dashboard,
+  // backlinks); once unlocked it is decrypted transparently.
+
+  Future<domain.Note?> _open(domain.Note n) async {
+    final vid = n.vaultId;
+    if (vid == null) return n;
+    final codec = _vault;
+    if (codec == null || !codec.isUnlocked(vid)) return null;
+    try {
+      return n.copyWith(
+        title: await codec.decrypt(vid, n.title),
+        body: await codec.decrypt(vid, n.body),
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<List<domain.Note>> _openAll(List<Note> rows) async {
+    final out = <domain.Note>[];
+    for (final r in rows) {
+      final n = await _open(r.toDomain());
+      if (n != null) out.add(n);
+    }
+    return out;
+  }
 
   @override
   Stream<List<domain.Note>> watchFolder(String? folderId) =>
-      _dao.watchFolder(folderId).map((rows) => rows.map((r) => r.toDomain()).toList());
+      _dao.watchFolder(folderId).asyncMap(_openAll);
 
   @override
-  Stream<domain.Note?> watchNote(String id) =>
-      _dao.watchNote(id).map((r) => r?.toDomain());
+  Stream<domain.Note?> watchNote(String id) => _dao
+      .watchNote(id)
+      .asyncMap((r) async => r == null ? null : _open(r.toDomain()));
 
   @override
   Stream<List<domain.Folder>> watchFolders() =>
@@ -122,6 +154,8 @@ class DriftNoteRepository implements NoteRepository {
 
   @override
   Future<void> saveNote(domain.Note note) async {
+    final vid = note.vaultId;
+    if (vid != null) return _saveVaultNote(note, vid);
     await _dao.db.transaction(() async {
       await _dao.upsertNote(note.toCompanion());
 
@@ -133,11 +167,13 @@ class DriftNoteRepository implements NoteRepository {
       for (final link in links) {
         final dstNoteId = await _resolveLink(link.targetTitle);
         if (dstNoteId != null) {
-          linkCompanions.add(NoteLinksCompanion(
-            srcNoteId: Value(note.id),
-            dstNoteId: Value(dstNoteId),
-            blockId: Value(link.blockId),
-          ));
+          linkCompanions.add(
+            NoteLinksCompanion(
+              srcNoteId: Value(note.id),
+              dstNoteId: Value(dstNoteId),
+              blockId: Value(link.blockId),
+            ),
+          );
         }
       }
       await _dao.rebuildLinks(note.id, linkCompanions);
@@ -145,10 +181,7 @@ class DriftNoteRepository implements NoteRepository {
       // Rebuild note_tags
       final tags = doc.extractTags();
       final tagCompanions = tags
-          .map((t) => NoteTagsCompanion(
-                noteId: Value(note.id),
-                tag: Value(t),
-              ))
+          .map((t) => NoteTagsCompanion(noteId: Value(note.id), tag: Value(t)))
           .toList();
       await _dao.rebuildTags(note.id, tagCompanions);
 
@@ -159,8 +192,17 @@ class DriftNoteRepository implements NoteRepository {
           id: Value(const Uuid().v4()),
           noteId: Value(note.id),
           blockId: Value(m.blockId),
-          startsAt: Value(m.isoDate),
-          allDay: const Value(true),
+          startsAt: Value(
+            m.time == null ? m.isoDate : '${m.isoDate}T${m.time}',
+          ),
+          allDay: Value(m.time == null),
+          // Stable per mention so the reconciler can diff scheduled
+          // notifications (edit → reschedule, delete → cancel).
+          notifId: Value(
+            '${note.id}|${m.blockId}|${m.isoDate}|${m.time ?? ''}',
+          ),
+          vaultId: Value(note.vaultId),
+          genericLabel: Value(note.vaultId == null ? null : 'Reminder'),
         );
       }).toList();
       await _dao.rebuildDateMentions(note.id, mentionCompanions);
@@ -169,6 +211,44 @@ class DriftNoteRepository implements NoteRepository {
     // Update FTS index outside the transaction.
     final doc = NoteDocument.fromJson(note.body);
     await _fts.index(note.id, note.title, doc.toPlainText());
+  }
+
+  /// Vault notes: title/body stored as ciphertext; no links, tags or FTS
+  /// entries (they would leak structure); `@date` mentions keep only the
+  /// time plus a generic label.
+  Future<void> _saveVaultNote(domain.Note note, String vid) async {
+    final codec = _vault;
+    if (codec == null || !codec.isUnlocked(vid)) {
+      throw StateError('Vault is locked');
+    }
+    final doc = NoteDocument.fromJson(note.body);
+    final sealed = note.copyWith(
+      title: await codec.encrypt(vid, note.title),
+      body: await codec.encrypt(vid, note.body),
+    );
+    await _dao.db.transaction(() async {
+      await _dao.upsertNote(sealed.toCompanion());
+      await _dao.rebuildLinks(note.id, const []);
+      await _dao.rebuildTags(note.id, const []);
+      await _dao.rebuildDateMentions(note.id, [
+        for (final m in doc.extractDateMentions())
+          DateMentionsCompanion(
+            id: Value(const Uuid().v4()),
+            noteId: Value(note.id),
+            blockId: Value(m.blockId),
+            startsAt: Value(
+              m.time == null ? m.isoDate : '${m.isoDate}T${m.time}',
+            ),
+            allDay: Value(m.time == null),
+            notifId: Value(
+              '${note.id}|${m.blockId}|${m.isoDate}|${m.time ?? ''}',
+            ),
+            vaultId: Value(vid),
+            genericLabel: const Value('Reminder'),
+          ),
+      ]);
+    });
+    await _fts.remove(note.id);
   }
 
   Future<String?> _resolveLink(String titleOrId) async {
@@ -208,29 +288,29 @@ class DriftNoteRepository implements NoteRepository {
 
   @override
   Stream<List<domain.Note>> watchBacklinks(String noteId) =>
-      _dao.watchBacklinks(noteId).map((rows) => rows.map((r) => r.toDomain()).toList());
+      _dao.watchBacklinks(noteId).asyncMap(_openAll);
 
   @override
   Stream<List<domain.Note>> watchOutgoingLinks(String noteId) =>
-      _dao.watchOutgoingLinks(noteId).map((rows) => rows.map((r) => r.toDomain()).toList());
+      _dao.watchOutgoingLinks(noteId).asyncMap(_openAll);
 
   @override
   Stream<List<String>> watchTags() => _dao.watchTags();
 
   @override
   Stream<List<domain.Note>> watchNotesByTag(String tag) =>
-      _dao.watchNotesByTag(tag).map((rows) => rows.map((r) => r.toDomain()).toList());
+      _dao.watchNotesByTag(tag).asyncMap(_openAll);
 
   @override
   Future<domain.Note?> getById(String id) async {
     final row = await _dao.getById(id);
-    return row?.toDomain();
+    return row == null ? null : _open(row.toDomain());
   }
 
   @override
   Future<List<domain.Note>> searchByTitle(String query) async {
     final rows = await _dao.searchByTitle(query);
-    return rows.map((r) => r.toDomain()).toList();
+    return _openAll(rows);
   }
 }
 
@@ -248,16 +328,18 @@ class DriftAttachmentRepository implements AttachmentRepository {
   ) async {
     final file = await _blobFile(attachment.storageName);
     await file.writeAsBytes(encryptedBlob);
-    await _dao.insert(AttachmentsCompanion(
-      id: Value(attachment.id),
-      noteId: Value(attachment.noteId),
-      kind: Value(attachment.kind.serialized),
-      mime: Value(attachment.mime),
-      size: Value(attachment.size),
-      sha256: Value(attachment.sha256),
-      storageName: Value(attachment.storageName),
-      createdAt: Value(attachment.createdAt.toIso8601String()),
-    ));
+    await _dao.insert(
+      AttachmentsCompanion(
+        id: Value(attachment.id),
+        noteId: Value(attachment.noteId),
+        kind: Value(attachment.kind.serialized),
+        mime: Value(attachment.mime),
+        size: Value(attachment.size),
+        sha256: Value(attachment.sha256),
+        storageName: Value(attachment.storageName),
+        createdAt: Value(attachment.createdAt.toIso8601String()),
+      ),
+    );
   }
 
   @override
@@ -266,7 +348,7 @@ class DriftAttachmentRepository implements AttachmentRepository {
     final rows = await _dao.allStorageNamesForId(id);
     for (final name in rows) {
       final file = await _blobFile(name);
-      if (await file.exists()) await file.delete();
+      if (file.existsSync()) await file.delete();
     }
     await _dao.delete_(id);
   }
@@ -287,13 +369,14 @@ class DriftAttachmentRepository implements AttachmentRepository {
   }
 
   @override
-  Stream<List<domain.Attachment>> watchForNote(String noteId) =>
-      _dao.watchForNote(noteId).map((rows) => rows.map((r) => r.toDomain()).toList());
+  Stream<List<domain.Attachment>> watchForNote(String noteId) => _dao
+      .watchForNote(noteId)
+      .map((rows) => rows.map((r) => r.toDomain()).toList());
 
   @override
   Future<void> orphanSweep() async {
     final dir = await _attachmentsDir();
-    if (!await dir.exists()) return;
+    if (!dir.existsSync()) return;
     final knownNames = Set<String>.from(await _dao.allStorageNames());
     await for (final entity in dir.list()) {
       if (entity is File) {
@@ -308,7 +391,7 @@ class DriftAttachmentRepository implements AttachmentRepository {
   Future<Directory> _attachmentsDir() async {
     final base = await getApplicationSupportDirectory();
     final dir = Directory(p.join(base.path, 'attachments'));
-    if (!await dir.exists()) await dir.create(recursive: true);
+    if (!dir.existsSync()) await dir.create(recursive: true);
     return dir;
   }
 
@@ -335,11 +418,15 @@ class DriftFtsRepository implements FtsRepository {
   @override
   Future<List<FtsResult>> search(String query, {String? folderId}) async {
     final rows = await _dao.search(query, folderId: folderId);
-    return rows.map((r) => FtsResult(
-          noteId: r['id'] as String,
-          title: r['title'] as String,
-          snippet: r['snip'] as String? ?? '',
-          rank: (r['rank'] as num?)?.toDouble() ?? 0.0,
-        )).toList();
+    return rows
+        .map(
+          (r) => FtsResult(
+            noteId: r['id'] as String,
+            title: r['title'] as String,
+            snippet: r['snip'] as String? ?? '',
+            rank: (r['rank'] as num?)?.toDouble() ?? 0.0,
+          ),
+        )
+        .toList();
   }
 }

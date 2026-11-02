@@ -5,10 +5,13 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:streakin/core/design/icons.dart';
+import 'package:streakin/core/design/tokens.dart';
 import 'package:streakin/core/security/lock_controller.dart';
 import 'package:streakin/features/calendar/presentation/calendar_screen.dart';
 import 'package:streakin/features/dashboard/presentation/dashboard_screen.dart';
 import 'package:streakin/features/habits/presentation/habits_screen.dart';
+import 'package:streakin/features/habits/presentation/habit_heatmap.dart';
 import 'package:streakin/features/notes/presentation/notes_screen.dart';
 import 'package:streakin/features/notes/presentation/note_editor_screen.dart';
 import 'package:streakin/features/onboarding/presentation/lock_screen.dart';
@@ -24,9 +27,17 @@ import 'package:streakin/features/settings/presentation/settings_screen.dart'
         WeekDaySettingsPage,
         AccessibilitySettingsPage,
         GoalRemindersSettingsPage,
-        AboutPage;
+        AboutPage,
+        KeyboardShortcutsPage;
 import 'package:streakin/features/todos/presentation/todos_screen.dart';
 import 'package:streakin/features/notes/graph/graph_screen.dart';
+import 'package:streakin/features/notes/presentation/note_search_screen.dart';
+import 'package:streakin/features/settings/presentation/security_settings_screen.dart'
+    show SecuritySettingsScreen, DataSettingsScreen;
+import 'package:streakin/features/sharing/presentation/sharing_settings_screen.dart'
+    show SharingSettingsScreen;
+import 'package:streakin/features/zen/presentation/zen_screen.dart'
+    show ZenScreen, FocusZenScreen;
 import 'package:streakin/features/goals/goals_module.dart'
     show GoalDetailScreen, GoalHistoryScreen;
 import 'package:streakin/app/shell/app_shell.dart';
@@ -56,8 +67,9 @@ class _SplashReadyNotifier extends Notifier<bool> {
   void reset() => state = false;
 }
 
-final splashReadyProvider =
-    NotifierProvider<_SplashReadyNotifier, bool>(_SplashReadyNotifier.new);
+final splashReadyProvider = NotifierProvider<_SplashReadyNotifier, bool>(
+  _SplashReadyNotifier.new,
+);
 
 // Alias used by _RouterListenable for compatibility.
 final splashAnimationProvider = splashReadyProvider;
@@ -87,7 +99,9 @@ final routerProvider = Provider<GoRouter>((ref) {
       // Set up, but locked — go to lock screen (except public routes).
       if (isLocked) {
         if (loc == AppRoutes.lock || loc == AppRoutes.onboarding) return null;
-        final returnTo = Uri.encodeComponent(loc == AppRoutes.splash ? AppRoutes.home : loc);
+        final returnTo = Uri.encodeComponent(
+          loc == AppRoutes.splash ? AppRoutes.home : loc,
+        );
         return '${AppRoutes.lock}?from=$returnTo';
       }
 
@@ -101,10 +115,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       return null;
     },
     routes: [
-      GoRoute(
-        path: AppRoutes.splash,
-        builder: (_, _) => const _SplashScreen(),
-      ),
+      GoRoute(path: AppRoutes.splash, builder: (_, _) => const _SplashScreen()),
       GoRoute(
         path: AppRoutes.onboarding,
         builder: (_, _) => const OnboardingScreen(),
@@ -152,9 +163,32 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/settings/goal-reminders',
         builder: (_, _) => const GoalRemindersSettingsPage(),
       ),
+      GoRoute(path: '/settings/about', builder: (_, _) => const AboutPage()),
       GoRoute(
-        path: '/settings/about',
-        builder: (_, _) => const AboutPage(),
+        path: '/settings/shortcuts',
+        builder: (_, _) => const KeyboardShortcutsPage(),
+      ),
+      GoRoute(
+        path: '/settings/security',
+        builder: (_, _) => const SecuritySettingsScreen(),
+      ),
+      GoRoute(
+        path: '/settings/data',
+        builder: (_, _) => const DataSettingsScreen(),
+      ),
+      GoRoute(
+        path: '/settings/sharing',
+        builder: (_, _) => const SharingSettingsScreen(),
+      ),
+      GoRoute(path: '/zen', builder: (_, _) => const ZenScreen()),
+      GoRoute(
+        path: '/zen/focus',
+        builder: (_, state) =>
+            FocusZenScreen(habitId: state.uri.queryParameters['habit']),
+      ),
+      GoRoute(
+        path: '/habits/heatmaps',
+        builder: (_, _) => const HabitHeatmapsScreen(),
       ),
       GoRoute(
         path: '/goals/history',
@@ -167,33 +201,67 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/notes/graph',
-        builder: (_, _) => const GraphScreen(),
+        builder: (_, state) => GraphScreen(
+          focusNoteId: state.uri.queryParameters['note'],
+          depth: int.tryParse(state.uri.queryParameters['depth'] ?? '') ?? 1,
+        ),
+      ),
+      GoRoute(
+        path: '/notes/search',
+        builder: (_, _) => const NoteSearchScreen(),
       ),
       GoRoute(
         path: '/notes/:noteId',
         name: 'note-editor',
         builder: (context, state) => NoteEditorScreen(
           noteId: state.pathParameters['noteId']!,
+          zen: state.uri.queryParameters['zen'] == '1',
         ),
       ),
       StatefulShellRoute.indexedStack(
-        builder: (context, state, shell) => SessionScope(child: AppShell(shell: shell)),
+        builder: (context, state, shell) =>
+            SessionScope(child: AppShell(shell: shell)),
         branches: [
-          StatefulShellBranch(routes: [
-            GoRoute(path: AppRoutes.home, builder: (_, _) => const DashboardScreen()),
-          ]),
-          StatefulShellBranch(routes: [
-            GoRoute(path: AppRoutes.habits, builder: (_, _) => const HabitsScreen()),
-          ]),
-          StatefulShellBranch(routes: [
-            GoRoute(path: AppRoutes.notes, builder: (_, _) => const NotesScreen()),
-          ]),
-          StatefulShellBranch(routes: [
-            GoRoute(path: AppRoutes.calendar, builder: (_, _) => const CalendarScreen()),
-          ]),
-          StatefulShellBranch(routes: [
-            GoRoute(path: AppRoutes.tasks, builder: (_, _) => const TodosScreen()),
-          ]),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.home,
+                builder: (_, _) => const DashboardScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.habits,
+                builder: (_, _) => const HabitsScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.notes,
+                builder: (_, _) => const NotesScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.calendar,
+                builder: (_, _) => const CalendarScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.tasks,
+                builder: (_, _) => const TodosScreen(),
+              ),
+            ],
+          ),
         ],
       ),
     ],
@@ -207,7 +275,7 @@ final routerProvider = Provider<GoRouter>((ref) {
 /// Animated splash screen shown while onboarding status loads.
 ///
 /// Features:
-///  • Radial-gradient purple background (top-centre bright → deep dark).
+///  • Radial-gradient orange background (top-centre bright → deep dark).
 ///  • App icon fades + scales in with an easeOutBack spring.
 ///  • A ring of 12 orbit dots continuously rotates with a comet-shimmer.
 ///  • The entire icon+text block subtly pulses once the fade-in completes.
@@ -245,17 +313,19 @@ class _SplashScreenState extends ConsumerState<_SplashScreen>
       duration: const Duration(milliseconds: 700),
     );
     _fadeAnim = CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeOut);
-    _scaleAnim = Tween<double>(begin: 0.55, end: 1.0).animate(
-      CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeOutBack),
-    );
+    _scaleAnim = Tween<double>(
+      begin: 0.55,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeOutBack));
 
     _pulseCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1400),
     );
-    _pulseAnim = Tween<double>(begin: 1.0, end: 1.06).animate(
-      CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut),
-    );
+    _pulseAnim = Tween<double>(
+      begin: 1.0,
+      end: 1.06,
+    ).animate(CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut));
 
     _orbitCtrl = AnimationController(
       vsync: this,
@@ -283,9 +353,9 @@ class _SplashScreenState extends ConsumerState<_SplashScreen>
 
   @override
   Widget build(BuildContext context) {
-    const brandPurple     = Color(0xFF6E56CF);
-    const brandPurpleMid  = Color(0xFF5244B0);
-    const brandPurpleDark = Color(0xFF2D1F6E);
+    const brandOrange = AppColors.celebBrand;
+    const brandOrangeMid = AppColors.splashOrangeMid;
+    const brandOrangeDark = AppColors.splashOrangeDark;
 
     return Scaffold(
       body: Container(
@@ -295,7 +365,7 @@ class _SplashScreenState extends ConsumerState<_SplashScreen>
           gradient: RadialGradient(
             center: Alignment(0.0, -0.3),
             radius: 1.35,
-            colors: [brandPurple, brandPurpleMid, brandPurpleDark],
+            colors: [brandOrange, brandOrangeMid, brandOrangeDark],
             stops: [0.0, 0.40, 1.0],
           ),
         ),
@@ -307,10 +377,8 @@ class _SplashScreenState extends ConsumerState<_SplashScreen>
                 scale: _scaleAnim,
                 child: AnimatedBuilder(
                   animation: _pulseAnim,
-                  builder: (context, child) => Transform.scale(
-                    scale: _pulseAnim.value,
-                    child: child,
-                  ),
+                  builder: (context, child) =>
+                      Transform.scale(scale: _pulseAnim.value, child: child),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -323,8 +391,10 @@ class _SplashScreenState extends ConsumerState<_SplashScreen>
                           children: [
                             // Rotating orbit ring with comet shimmer.
                             AnimatedBuilder(
-                              animation: Listenable.merge(
-                                  [_orbitCtrl, _shimmerCtrl]),
+                              animation: Listenable.merge([
+                                _orbitCtrl,
+                                _shimmerCtrl,
+                              ]),
                               builder: (_, _) => Transform.rotate(
                                 angle: _orbitCtrl.value * 2 * math.pi,
                                 child: CustomPaint(
@@ -354,7 +424,7 @@ class _SplashScreenState extends ConsumerState<_SplashScreen>
                                     offset: const Offset(0, 10),
                                   ),
                                   BoxShadow(
-                                    color: brandPurple.withAlpha(130),
+                                    color: brandOrange.withAlpha(130),
                                     blurRadius: 40,
                                     spreadRadius: -4,
                                   ),
@@ -369,7 +439,7 @@ class _SplashScreenState extends ConsumerState<_SplashScreen>
                                   fit: BoxFit.cover,
                                   // Fallback in case the asset somehow fails.
                                   errorBuilder: (_, _, _) => const Icon(
-                                    Icons.bolt_rounded,
+                                    AppIcons.boltRounded,
                                     size: 56,
                                     color: Colors.white,
                                   ),
@@ -423,14 +493,14 @@ class _OrbitRingPainter extends CustomPainter {
   const _OrbitRingPainter({required this.shimmerAngle});
   final double shimmerAngle;
 
-  static const _dotCount  = 12;
+  static const _dotCount = 12;
   static const _dotRadius = 2.5;
 
   @override
   void paint(Canvas canvas, Size size) {
-    final cx     = size.width  / 2;
-    final cy     = size.height / 2;
-    final radius = size.width  / 2 - 5.0;
+    final cx = size.width / 2;
+    final cy = size.height / 2;
+    final radius = size.width / 2 - 5.0;
 
     for (int i = 0; i < _dotCount; i++) {
       final angle = (i / _dotCount) * 2 * math.pi;
@@ -444,7 +514,7 @@ class _OrbitRingPainter extends CustomPainter {
 
       // Brightness peaks at the comet head, falls off over half a circle.
       final brightness = (1.0 - normalised / math.pi).clamp(0.0, 1.0);
-      final alpha      = (55 + brightness * 200).round().clamp(0, 255);
+      final alpha = (55 + brightness * 200).round().clamp(0, 255);
 
       canvas.drawCircle(
         Offset(x, y),
@@ -455,14 +525,13 @@ class _OrbitRingPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_OrbitRingPainter old) =>
-      old.shimmerAngle != shimmerAngle;
+  bool shouldRepaint(_OrbitRingPainter old) => old.shimmerAngle != shimmerAngle;
 }
 
 /// Three dots that bounce with a sinusoidal wave, offset by 120° each.
 class _LoadingDots extends AnimatedWidget {
   const _LoadingDots({required AnimationController controller})
-      : super(listenable: controller);
+    : super(listenable: controller);
 
   @override
   Widget build(BuildContext context) {
@@ -470,9 +539,9 @@ class _LoadingDots extends AnimatedWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: List.generate(3, (i) {
-        final phase  = (t + i / 3.0) % 1.0;
+        final phase = (t + i / 3.0) % 1.0;
         final bounce = math.sin(phase * math.pi); // 0 → 1 → 0
-        final alpha  = (100 + bounce * 155).round();
+        final alpha = (100 + bounce * 155).round();
         return Padding(
           padding: const EdgeInsets.symmetric(horizontal: 3),
           child: Transform.translate(

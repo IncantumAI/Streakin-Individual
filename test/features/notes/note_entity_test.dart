@@ -11,14 +11,14 @@ void main() {
 
   group('Note entity', () {
     Note note0({String id = 'n1', DateTime? deletedAt}) => Note(
-          id: id,
-          title: 'Test Note',
-          body: '[]',
-          createdAt: now,
-          updatedAt: now,
-          hlc: '1728129600000-0-test',
-          deletedAt: deletedAt,
-        );
+      id: id,
+      title: 'Test Note',
+      body: '[]',
+      createdAt: now,
+      updatedAt: now,
+      hlc: '1728129600000-0-test',
+      deletedAt: deletedAt,
+    );
 
     test('isDeleted is false when deletedAt is null', () {
       expect(note0().isDeleted, isFalse);
@@ -63,7 +63,10 @@ void main() {
     });
 
     test('Unknown templateKind string falls back to blank', () {
-      expect(NoteTemplateKindExt.fromString('unknown_future'), NoteTemplateKind.blank);
+      expect(
+        NoteTemplateKindExt.fromString('unknown_future'),
+        NoteTemplateKind.blank,
+      );
     });
   });
 
@@ -111,15 +114,15 @@ void main() {
 
   group('Attachment entity', () {
     Attachment attachment({String kind = 'png'}) => Attachment(
-          id: 'a1',
-          noteId: 'n1',
-          kind: AttachmentKindExt.fromString(kind),
-          mime: 'image/png',
-          size: 1024,
-          sha256: 'abc123',
-          storageName: 'uuid-file.bin',
-          createdAt: now,
-        );
+      id: 'a1',
+      noteId: 'n1',
+      kind: AttachmentKindExt.fromString(kind),
+      mime: 'image/png',
+      size: 1024,
+      sha256: 'abc123',
+      storageName: 'uuid-file.bin',
+      createdAt: now,
+    );
 
     test('AttachmentKind serialisation round-trip', () {
       for (final kind in AttachmentKind.values) {

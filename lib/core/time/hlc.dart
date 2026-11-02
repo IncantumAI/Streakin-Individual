@@ -12,7 +12,9 @@ class Hlc implements Comparable<Hlc> {
   static String _node = '0000';
 
   static void init(String nodeId) {
-    _node = nodeId.length >= 4 ? nodeId.substring(0, 4) : nodeId.padLeft(4, '0');
+    _node = nodeId.length >= 4
+        ? nodeId.substring(0, 4)
+        : nodeId.padLeft(4, '0');
   }
 
   static Hlc now() {

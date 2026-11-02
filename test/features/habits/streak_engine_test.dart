@@ -30,8 +30,11 @@ Habit _habit({
   );
 }
 
-HabitLog _log(String habitId, LocalDate date,
-    {HabitLogStatus status = HabitLogStatus.done}) {
+HabitLog _log(
+  String habitId,
+  LocalDate date, {
+  HabitLogStatus status = HabitLogStatus.done,
+}) {
   return HabitLog(
     id: _uuid.v4(),
     habitId: habitId,
@@ -78,8 +81,7 @@ void main() {
   group('currentStreak', () {
     test('7 consecutive completions → streak = 7', () {
       final h = _habit();
-      final logs = List.generate(
-          7, (i) => _log(h.id, today.subtractDays(i)));
+      final logs = List.generate(7, (i) => _log(h.id, today.subtractDays(i)));
       expect(engine.currentStreak(h, logs, today), 7);
     });
 
@@ -87,7 +89,9 @@ void main() {
       final h = _habit();
       // Completed yesterday and 5 days before, but not today (pending)
       final logs = List.generate(
-          6, (i) => _log(h.id, today.subtractDays(i + 1)));
+        6,
+        (i) => _log(h.id, today.subtractDays(i + 1)),
+      );
       expect(engine.currentStreak(h, logs, today), 6);
     });
 
@@ -187,9 +191,15 @@ void main() {
       final h = _habit();
       // 10 consecutive then gap then 5 consecutive
       final logs = [
-        ...List.generate(10, (i) => _log(h.id, const LocalDate(2026, 1, 10).subtractDays(i))),
+        ...List.generate(
+          10,
+          (i) => _log(h.id, const LocalDate(2026, 1, 10).subtractDays(i)),
+        ),
         // gap Jan 11-15
-        ...List.generate(5, (i) => _log(h.id, const LocalDate(2026, 1, 20).subtractDays(i))),
+        ...List.generate(
+          5,
+          (i) => _log(h.id, const LocalDate(2026, 1, 20).subtractDays(i)),
+        ),
       ];
       expect(engine.bestStreak(h, logs), 10);
     });
@@ -209,7 +219,10 @@ void main() {
       final h1 = _habit();
       final h2 = _habit();
       final dayLocks = List.generate(
-          5, (i) => DayLock(localDate: today.subtractDays(i), lockedAt: DateTime.now()));
+        5,
+        (i) =>
+            DayLock(localDate: today.subtractDays(i), lockedAt: DateTime.now()),
+      );
       final logsByHabit = {
         h1.id: List.generate(5, (i) => _log(h1.id, today.subtractDays(i))),
         h2.id: List.generate(5, (i) => _log(h2.id, today.subtractDays(i))),
@@ -237,8 +250,7 @@ void main() {
       // Build 5 DayLocks for Mon-Fri of last week
       const friday = LocalDate(2026, 10, 2);
       const monday = LocalDate(2026, 9, 28);
-      final dayLocks = const DateRange(start: monday, end: friday)
-          .dates
+      final dayLocks = const DateRange(start: monday, end: friday).dates
           .map((d) => DayLock(localDate: d, lockedAt: DateTime.now()))
           .toList();
       // today = Sunday Oct 4; last DayLock = Friday Oct 2 → streak = 5
@@ -295,7 +307,11 @@ void main() {
     test('restTokensUsedThisWeek counts rolling 7-day window only', () {
       final h = _habit(restTokensPerWeek: 3);
       final logs = [
-        _log(h.id, today.subtractDays(8), status: HabitLogStatus.rest), // outside window
+        _log(
+          h.id,
+          today.subtractDays(8),
+          status: HabitLogStatus.rest,
+        ), // outside window
         _log(h.id, today.subtractDays(3), status: HabitLogStatus.rest),
         _log(h.id, today.subtractDays(1), status: HabitLogStatus.rest),
       ];

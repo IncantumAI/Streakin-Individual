@@ -1,3 +1,4 @@
+import 'package:streakin/core/design/icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -7,6 +8,7 @@ import 'package:streakin/core/time/local_date.dart';
 import 'package:streakin/features/goals/application/goal_providers.dart';
 import 'package:streakin/features/goals/domain/goal.dart';
 import 'package:streakin/features/goals/domain/goal_clock.dart';
+import 'package:streakin/features/goals/domain/goal_repository.dart';
 import 'package:streakin/features/goals/presentation/goal_create_sheet.dart';
 import 'package:streakin/features/settings/application/settings_providers.dart'
     show reducedMotionProvider;
@@ -24,7 +26,7 @@ class GoalHeroCard extends ConsumerWidget {
 
     return goalAsync.when(
       loading: () => const _GoalCardShell(child: _LoadingContent()),
-      error: (_, __) => const SizedBox.shrink(),
+      error: (_, _) => const SizedBox.shrink(),
       data: (goal) {
         if (goal == null) {
           if (isDismissed) return const SizedBox.shrink();
@@ -46,49 +48,88 @@ class _NoGoalCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return _GoalCardShell(
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.track_changes_outlined, color: colors.brand, size: 32),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Set your primary goal',
-                    style: TextStyle(
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: colors.brand.withAlpha(20),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  AppIcons.trackChangesOutlined,
+                  color: colors.brand,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Primary Goal',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.6,
+                        color: colors.textMuted,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Not set',
+                      style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w600,
-                        color: colors.text)),
-                const SizedBox(height: 4),
-                Text('One goal. One clock. Everything else supports it.',
-                    style:
-                        TextStyle(fontSize: 12, color: colors.textMuted)),
-              ],
+                        color: colors.text,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Set a primary goal to track your progress with a countdown, see how your daily habits are contributing to it, and get milestone notifications.',
+            style: TextStyle(
+              fontSize: 13,
+              color: colors.textMuted,
+              height: 1.4,
             ),
           ),
-          const SizedBox(width: 8),
-          Column(
+          const SizedBox(height: 14),
+          Row(
             children: [
-              FilledButton(
-                onPressed: () => showGoalCreateSheet(context),
-                style: FilledButton.styleFrom(
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: () => showGoalCreateSheet(context),
+                  icon: const Icon(AppIcons.add, size: 16),
+                  label: const Text('Set my goal'),
+                  style: FilledButton.styleFrom(
                     backgroundColor: colors.brand,
                     foregroundColor: colors.onBrand,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 8)),
-                child: const Text('Set goal', style: TextStyle(fontSize: 13)),
+                  ),
+                ),
               ),
+              const SizedBox(width: 8),
               TextButton(
                 onPressed: () async {
                   final repo = ref.read(goalRepositoryStateProvider);
                   if (repo == null) return;
                   await repo.setHeroPromptDismissed(
-                      LocalDate.today().addDays(7));
+                    LocalDate.today().addDays(7),
+                  );
                   ref.invalidate(heroPromptDismissedProvider);
                 },
-                child: Text('Later',
-                    style:
-                        TextStyle(fontSize: 12, color: colors.textMuted)),
+                child: Text(
+                  'Later',
+                  style: TextStyle(fontSize: 13, color: colors.textMuted),
+                ),
               ),
             ],
           ),
@@ -113,6 +154,9 @@ class _ActiveGoalCard extends ConsumerWidget {
     final live = liveAsync.value;
     final reducedMotion = ref.watch(reducedMotionProvider);
 
+    // Combine closed-day alignment with today's live stats for the chip
+    final int? displayPct = _combinedPct(alignment, live);
+
     return GestureDetector(
       onTap: () => context.push('/goals/${clock.goal.id}'),
       onLongPress: () => _showQuickActions(context, ref),
@@ -127,9 +171,10 @@ class _ActiveGoalCard extends ConsumerWidget {
                   child: Text(
                     clock.goal.title,
                     style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                        color: colors.textMuted),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: colors.textMuted,
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -137,21 +182,23 @@ class _ActiveGoalCard extends ConsumerWidget {
                 if (clock.isFinalStretch)
                   Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 2),
+                      horizontal: 8,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
                       color: colors.warning.withAlpha(30),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Text('Final week',
-                        style: TextStyle(
-                            fontSize: 11, color: colors.warning)),
+                    child: Text(
+                      'Final week',
+                      style: TextStyle(fontSize: 11, color: colors.warning),
+                    ),
                   ),
               ],
             ),
             const SizedBox(height: 12),
             // Main content row
             Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 // Ring + number
                 SizedBox(
@@ -181,20 +228,19 @@ class _ActiveGoalCard extends ConsumerWidget {
                     children: [
                       Text(
                         clock.caption,
-                        style: TextStyle(
-                            fontSize: 13, color: colors.textMuted),
+                        style: TextStyle(fontSize: 13, color: colors.textMuted),
                       ),
-                      if (alignment?.alignmentPct != null) ...[
+                      if (displayPct != null) ...[
                         const SizedBox(height: 6),
-                        _AlignmentChip(
-                            pct: alignment!.alignmentPct!, colors: colors),
+                        _AlignmentChip(pct: displayPct, colors: colors),
                       ],
                       if (live != null && live.scheduled > 0) ...[
                         const SizedBox(height: 6),
                         _LiveDots(
-                            done: live.done,
-                            total: live.scheduled,
-                            colors: colors),
+                          done: live.done,
+                          total: live.scheduled,
+                          colors: colors,
+                        ),
                       ],
                     ],
                   ),
@@ -207,6 +253,17 @@ class _ActiveGoalCard extends ConsumerWidget {
     );
   }
 
+  int? _combinedPct(AlignmentStats? closed, ({int done, int scheduled})? live) {
+    final closedSched = closed?.scheduled ?? 0;
+    final closedDone = closed?.done ?? 0;
+    final liveSched = live?.scheduled ?? 0;
+    final liveDone = live?.done ?? 0;
+    final totalSched = closedSched + liveSched;
+    final totalDone = closedDone + liveDone;
+    if (totalSched == 0) return null;
+    return (100 * totalDone / totalSched).round();
+  }
+
   void _showQuickActions(BuildContext context, WidgetRef ref) {
     final colors = context.colors;
     showModalBottomSheet<void>(
@@ -216,7 +273,7 @@ class _ActiveGoalCard extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: Icon(Icons.edit_outlined, color: colors.brand),
+              leading: Icon(AppIcons.edit, color: colors.brand),
               title: const Text('Edit goal'),
               onTap: () {
                 Navigator.of(context).pop();
@@ -224,22 +281,20 @@ class _ActiveGoalCard extends ConsumerWidget {
               },
             ),
             ListTile(
-              leading: Icon(Icons.check_circle_outline, color: colors.success),
+              leading: Icon(AppIcons.checkCircleOutline, color: colors.success),
               title: const Text('Complete early'),
               onTap: () async {
                 Navigator.of(context).pop();
-                final svc =
-                    ref.read(goalLifecycleServiceProvider);
+                final svc = ref.read(goalLifecycleServiceProvider);
                 if (svc != null) await svc.completeEarly(clock.goal);
               },
             ),
             ListTile(
-              leading: Icon(Icons.cancel_outlined, color: colors.danger),
+              leading: Icon(AppIcons.cancelOutlined, color: colors.danger),
               title: const Text('Abandon'),
               onTap: () async {
                 Navigator.of(context).pop();
-                final svc =
-                    ref.read(goalLifecycleServiceProvider);
+                final svc = ref.read(goalLifecycleServiceProvider);
                 if (svc != null) await svc.abandon(clock.goal);
               },
             ),
@@ -253,10 +308,11 @@ class _ActiveGoalCard extends ConsumerWidget {
 // ── Sub-widgets ───────────────────────────────────────────────────────────────
 
 class _GoalRing extends StatelessWidget {
-  const _GoalRing(
-      {required this.progress,
-      required this.color,
-      required this.reducedMotion});
+  const _GoalRing({
+    required this.progress,
+    required this.color,
+    required this.reducedMotion,
+  });
   final double progress;
   final Color color;
   final bool reducedMotion;
@@ -265,16 +321,18 @@ class _GoalRing extends StatelessWidget {
   Widget build(BuildContext context) {
     if (reducedMotion) {
       return CustomPaint(
-          painter: _RingPainter(progress: progress, color: color),
-          size: const Size(72, 72));
+        painter: _RingPainter(progress: progress, color: color),
+        size: const Size(72, 72),
+      );
     }
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0.0, end: progress),
       duration: const Duration(milliseconds: 400),
       curve: Curves.easeOut,
-      builder: (_, v, __) => CustomPaint(
-          painter: _RingPainter(progress: v, color: color),
-          size: const Size(72, 72)),
+      builder: (_, v, _) => CustomPaint(
+        painter: _RingPainter(progress: v, color: color),
+        size: const Size(72, 72),
+      ),
     );
   }
 }
@@ -300,11 +358,12 @@ class _RingPainter extends CustomPainter {
     canvas.drawCircle(center, radius, bg);
     final sweep = progress.clamp(0.0, 1.0) * 2 * 3.14159265;
     canvas.drawArc(
-        Rect.fromCircle(center: center, radius: radius),
-        -3.14159265 / 2,
-        sweep,
-        false,
-        fg);
+      Rect.fromCircle(center: center, radius: radius),
+      -3.14159265 / 2,
+      sweep,
+      false,
+      fg,
+    );
   }
 
   @override
@@ -312,10 +371,11 @@ class _RingPainter extends CustomPainter {
 }
 
 class _DayNumeral extends StatelessWidget {
-  const _DayNumeral(
-      {required this.clock,
-      required this.colors,
-      required this.reducedMotion});
+  const _DayNumeral({
+    required this.clock,
+    required this.colors,
+    required this.reducedMotion,
+  });
   final GoalClockState clock;
   final AppColorTokens colors;
   final bool reducedMotion;
@@ -323,25 +383,32 @@ class _DayNumeral extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (clock.phase == GoalPhase.finalDay) {
-      return Text('!',
-          style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.w700,
-              color: colors.brand));
+      return Text(
+        '!',
+        style: TextStyle(
+          fontSize: 24,
+          fontWeight: FontWeight.w700,
+          color: colors.brand,
+        ),
+      );
     }
     if (clock.phase == GoalPhase.ended) {
-      return Icon(Icons.check, color: colors.brand, size: 28);
+      return Icon(AppIcons.check, color: colors.brand, size: 28);
     }
-    final label = clock.goal.kind == GoalKind.dated &&
+    final label =
+        clock.goal.kind == GoalKind.dated &&
             clock.daysLeft != null &&
             clock.phase == GoalPhase.active
         ? '${clock.daysLeft}'
         : '${clock.dayNumber}';
-    return Text(label,
-        style: TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.w700,
-            color: colors.brand));
+    return Text(
+      label,
+      style: TextStyle(
+        fontSize: 22,
+        fontWeight: FontWeight.w700,
+        color: colors.brand,
+      ),
+    );
   }
 }
 
@@ -358,16 +425,20 @@ class _AlignmentChip extends StatelessWidget {
         color: colors.brand.withAlpha(20),
         borderRadius: BorderRadius.circular(10),
       ),
-      child: Text('Aligned $pct%',
-          style:
-              TextStyle(fontSize: 11, color: colors.brand)),
+      child: Text(
+        'Aligned $pct%',
+        style: TextStyle(fontSize: 11, color: colors.brand),
+      ),
     );
   }
 }
 
 class _LiveDots extends StatelessWidget {
-  const _LiveDots(
-      {required this.done, required this.total, required this.colors});
+  const _LiveDots({
+    required this.done,
+    required this.total,
+    required this.colors,
+  });
   final int done;
   final int total;
   final AppColorTokens colors;
@@ -397,8 +468,9 @@ class _LoadingContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const SizedBox(
-        height: 40,
-        child: Center(child: CircularProgressIndicator.adaptive()));
+      height: 40,
+      child: Center(child: CircularProgressIndicator.adaptive()),
+    );
   }
 }
 

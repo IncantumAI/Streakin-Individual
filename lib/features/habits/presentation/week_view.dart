@@ -33,7 +33,9 @@ class WeekView extends ConsumerWidget {
           children: [
             _WeekHeader(days: weekDays),
             const SizedBox(height: 8),
-            ...active.map((h) => _HabitWeekRow(habit: h, days: weekDays, ref: ref)),
+            ...active.map(
+              (h) => _HabitWeekRow(habit: h, days: weekDays, ref: ref),
+            ),
           ],
         );
       },
@@ -69,10 +71,7 @@ class _WeekHeader extends StatelessWidget {
                 width: 28,
                 height: 28,
                 decoration: isToday
-                    ? BoxDecoration(
-                        color: colors.brand,
-                        shape: BoxShape.circle,
-                      )
+                    ? BoxDecoration(color: colors.brand, shape: BoxShape.circle)
                     : null,
                 child: Center(
                   child: Text(
@@ -94,7 +93,11 @@ class _WeekHeader extends StatelessWidget {
 }
 
 class _HabitWeekRow extends ConsumerWidget {
-  const _HabitWeekRow({required this.habit, required this.days, required this.ref});
+  const _HabitWeekRow({
+    required this.habit,
+    required this.days,
+    required this.ref,
+  });
   final Habit habit;
   final List<LocalDate> days;
   final WidgetRef ref;
@@ -133,10 +136,15 @@ class _HabitWeekRow extends ConsumerWidget {
               // Habit name
               SizedBox(
                 width: 120,
-                child: Text(habit.name,
-                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis),
+                child: Text(
+                  habit.name,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
               const SizedBox(width: 8),
               // Day dots
@@ -176,8 +184,9 @@ class _HabitWeekRow extends ConsumerWidget {
                 child: Text(
                   '${(pct * 100).round()}%',
                   style: TextStyle(
-                      fontSize: 12,
-                      color: pct == 1.0 ? colors.success : colors.textMuted),
+                    fontSize: 12,
+                    color: pct == 1.0 ? colors.success : colors.textMuted,
+                  ),
                   textAlign: TextAlign.right,
                 ),
               ),

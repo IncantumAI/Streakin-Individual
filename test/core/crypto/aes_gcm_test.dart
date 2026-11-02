@@ -27,24 +27,30 @@ void main() {
     });
 
     test('bit-flip in ciphertext throws CryptoFailure', () async {
-      final ct = await AesGcm256.encrypt(Uint8List.fromList([1, 2, 3, 4, 5]), key);
-      ct[15] ^= 0x01;
-      expect(
-        () => AesGcm256.decrypt(ct, key),
-        throwsA(isA<CryptoFailure>()),
+      final ct = await AesGcm256.encrypt(
+        Uint8List.fromList([1, 2, 3, 4, 5]),
+        key,
       );
+      ct[15] ^= 0x01;
+      expect(() => AesGcm256.decrypt(ct, key), throwsA(isA<CryptoFailure>()));
     });
 
     test('truncated ciphertext throws CryptoFailure', () {
       expect(
-        () => AesGcm256.decrypt(Uint8List.fromList([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]), key),
+        () => AesGcm256.decrypt(
+          Uint8List.fromList([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]),
+          key,
+        ),
         throwsA(isA<CryptoFailure>()),
       );
     });
 
     test('AAD mismatch throws CryptoFailure', () async {
       final ct = await AesGcm256.encrypt(
-          Uint8List.fromList([1, 2, 3]), key, aad: [0x01]);
+        Uint8List.fromList([1, 2, 3]),
+        key,
+        aad: [0x01],
+      );
       expect(
         () => AesGcm256.decrypt(ct, key, aad: [0x02]),
         throwsA(isA<CryptoFailure>()),
@@ -56,8 +62,11 @@ void main() {
       for (int i = 0; i < 100; i++) {
         final ct = await AesGcm256.encrypt(Uint8List.fromList([i]), key);
         final nonce = SecureBytes.toHex(ct.sublist(0, 12));
-        expect(nonces.contains(nonce), isFalse,
-            reason: 'Duplicate nonce at i=$i');
+        expect(
+          nonces.contains(nonce),
+          isFalse,
+          reason: 'Duplicate nonce at i=$i',
+        );
         nonces.add(nonce);
       }
     });

@@ -30,7 +30,8 @@ class _HabitPortNotifier extends Notifier<HabitCompletionPort?> {
 
 final habitCompletionPortStateProvider =
     NotifierProvider<_HabitPortNotifier, HabitCompletionPort?>(
-        _HabitPortNotifier.new);
+      _HabitPortNotifier.new,
+    );
 
 // ── Lifecycle service provider ────────────────────────────────────────────────
 
@@ -43,16 +44,15 @@ class _LifecycleNotifier extends Notifier<GoalLifecycleService?> {
 
 final goalLifecycleServiceProvider =
     NotifierProvider<_LifecycleNotifier, GoalLifecycleService?>(
-        _LifecycleNotifier.new);
+      _LifecycleNotifier.new,
+    );
 
 // ── Active goal stream ────────────────────────────────────────────────────────
 
 final activeGoalProvider = StreamProvider<Goal?>((ref) {
   final repo = ref.watch(goalRepositoryStateProvider);
   if (repo == null) return const Stream.empty();
-  return repo
-      .watchActive()
-      .handleError((_) => null, test: (_) => true);
+  return repo.watchActive().handleError((_) => null, test: (_) => true);
 });
 
 // ── Day ticker ────────────────────────────────────────────────────────────────
@@ -96,8 +96,9 @@ final goalClockProvider = Provider<GoalClockState?>((ref) {
 
 // ── Goal links ────────────────────────────────────────────────────────────────
 
-final activeGoalLinksProvider =
-    FutureProvider<List<GoalHabitLink>>((ref) async {
+final activeGoalLinksProvider = FutureProvider<List<GoalHabitLink>>((
+  ref,
+) async {
   final repo = ref.watch(goalRepositoryStateProvider);
   final goal = ref.watch(activeGoalProvider).value;
   if (repo == null || goal == null) return [];
@@ -121,11 +122,13 @@ final goalAlignmentProvider = FutureProvider<AlignmentStats?>((ref) async {
   if (yesterday < goal.startDate) return null;
 
   final windows = links
-      .map((l) => HabitLinkWindow(
-            habitId: l.habitId,
-            from: l.linkedFrom,
-            to: l.linkedTo,
-          ))
+      .map(
+        (l) => HabitLinkWindow(
+          habitId: l.habitId,
+          from: l.linkedFrom,
+          to: l.linkedTo,
+        ),
+      )
       .toList();
 
   return port.closedDayStats(
@@ -137,16 +140,14 @@ final goalAlignmentProvider = FutureProvider<AlignmentStats?>((ref) async {
 
 // ── Today live stats ──────────────────────────────────────────────────────────
 
-final goalTodayLiveProvider =
-    FutureProvider<({int done, int scheduled})>((ref) async {
+final goalTodayLiveProvider = FutureProvider<({int done, int scheduled})>((
+  ref,
+) async {
   final port = ref.watch(habitCompletionPortStateProvider);
   final links = await ref.watch(activeGoalLinksProvider.future);
   final today = ref.watch(dayTickerProvider).value ?? LocalDate.today();
   if (port == null || links.isEmpty) return (done: 0, scheduled: 0);
-  final habitIds = links
-      .where((l) => l.isOpen)
-      .map((l) => l.habitId)
-      .toList();
+  final habitIds = links.where((l) => l.isOpen).map((l) => l.habitId).toList();
   return port.todayLiveStats(habitIds: habitIds, today: today);
 });
 

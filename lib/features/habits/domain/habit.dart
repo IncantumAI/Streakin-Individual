@@ -45,7 +45,8 @@ class ScheduleMask {
   int get maxRestTokens => scheduledDaysCount ~/ 2;
 
   @override
-  bool operator ==(Object other) => other is ScheduleMask && value == other.value;
+  bool operator ==(Object other) =>
+      other is ScheduleMask && value == other.value;
   @override
   int get hashCode => value.hashCode;
   @override
@@ -71,8 +72,8 @@ class Habit {
 
   final String id;
   final String name;
-  final int iconIndex;     // index into AppIcons.habitIcons
-  final int accentIndex;   // index into AppColors.habitAccents (0–7)
+  final int iconIndex; // index into AppIcons.habitIcons
+  final int accentIndex; // index into AppColors.habitAccents (0–7)
   final ScheduleMask scheduleMask;
   final String? reminderTime; // "HH:mm" or null
   final LocalDate startDate;
@@ -116,7 +117,8 @@ class Habit {
   }
 
   @override
-  bool operator ==(Object other) => other is Habit && id == other.id && hlc == other.hlc;
+  bool operator ==(Object other) =>
+      other is Habit && id == other.id && hlc == other.hlc;
   @override
   int get hashCode => Object.hash(id, hlc);
 }

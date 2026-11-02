@@ -17,22 +17,24 @@ class NoteDao extends DatabaseAccessor<AppDatabase> with _$NoteDaoMixin {
   Stream<List<Note>> watchFolder(String? folderId) {
     return (select(notes)
           ..where((n) => n.deletedAt.isNull())
-          ..where((n) =>
-              folderId == null ? n.folderId.isNull() : n.folderId.equals(folderId))
+          ..where(
+            (n) => folderId == null
+                ? n.folderId.isNull()
+                : n.folderId.equals(folderId),
+          )
           ..orderBy([(n) => OrderingTerm.desc(n.updatedAt)]))
         .watch();
   }
 
   Stream<Note?> watchNote(String id) {
-    return (select(notes)
-          ..where((n) => n.id.equals(id) & n.deletedAt.isNull()))
+    return (select(notes)..where((n) => n.id.equals(id) & n.deletedAt.isNull()))
         .watchSingleOrNull();
   }
 
   Future<Note?> getById(String id) {
-    return (select(notes)
-          ..where((n) => n.id.equals(id) & n.deletedAt.isNull()))
-        .getSingleOrNull();
+    return (select(
+      notes,
+    )..where((n) => n.id.equals(id) & n.deletedAt.isNull())).getSingleOrNull();
   }
 
   Future<List<Note>> searchByTitle(String query) {
@@ -64,8 +66,9 @@ class NoteDao extends DatabaseAccessor<AppDatabase> with _$NoteDaoMixin {
   // ── Folders ───────────────────────────────────────────────────────────────
 
   Stream<List<Folder>> watchFolders() =>
-      (select(folders)..where((f) => f.deletedAt.isNull())
-        ..orderBy([(f) => OrderingTerm.asc(f.sortOrder)]))
+      (select(folders)
+            ..where((f) => f.deletedAt.isNull())
+            ..orderBy([(f) => OrderingTerm.asc(f.sortOrder)]))
           .watch();
 
   Future<void> upsertFolder(FoldersCompanion companion) =>
@@ -88,9 +91,7 @@ class NoteDao extends DatabaseAccessor<AppDatabase> with _$NoteDaoMixin {
     String srcNoteId,
     List<NoteLinksCompanion> newLinks,
   ) async {
-    await (delete(noteLinks)
-          ..where((l) => l.srcNoteId.equals(srcNoteId)))
-        .go();
+    await (delete(noteLinks)..where((l) => l.srcNoteId.equals(srcNoteId))).go();
     if (newLinks.isNotEmpty) {
       await batch((b) => b.insertAll(noteLinks, newLinks));
     }
@@ -99,21 +100,19 @@ class NoteDao extends DatabaseAccessor<AppDatabase> with _$NoteDaoMixin {
   Stream<List<Note>> watchBacklinks(String dstNoteId) {
     final query = select(notes).join([
       innerJoin(noteLinks, noteLinks.srcNoteId.equalsExp(notes.id)),
-    ])
-      ..where(noteLinks.dstNoteId.equals(dstNoteId) & notes.deletedAt.isNull());
+    ])..where(noteLinks.dstNoteId.equals(dstNoteId) & notes.deletedAt.isNull());
     return query.watch().map(
-          (rows) => rows.map((r) => r.readTable(notes)).toList(),
-        );
+      (rows) => rows.map((r) => r.readTable(notes)).toList(),
+    );
   }
 
   Stream<List<Note>> watchOutgoingLinks(String srcNoteId) {
     final query = select(notes).join([
       innerJoin(noteLinks, noteLinks.dstNoteId.equalsExp(notes.id)),
-    ])
-      ..where(noteLinks.srcNoteId.equals(srcNoteId) & notes.deletedAt.isNull());
+    ])..where(noteLinks.srcNoteId.equals(srcNoteId) & notes.deletedAt.isNull());
     return query.watch().map(
-          (rows) => rows.map((r) => r.readTable(notes)).toList(),
-        );
+      (rows) => rows.map((r) => r.readTable(notes)).toList(),
+    );
   }
 
   // ── NoteTags ──────────────────────────────────────────────────────────────
@@ -129,18 +128,21 @@ class NoteDao extends DatabaseAccessor<AppDatabase> with _$NoteDaoMixin {
   }
 
   Stream<List<String>> watchTags() {
-    final q = selectOnly(noteTags)..addColumns([noteTags.tag])..groupBy([noteTags.tag]);
-    return q.watch().map((rows) => rows.map((r) => r.read(noteTags.tag)!).toList());
+    final q = selectOnly(noteTags)
+      ..addColumns([noteTags.tag])
+      ..groupBy([noteTags.tag]);
+    return q.watch().map(
+      (rows) => rows.map((r) => r.read(noteTags.tag)!).toList(),
+    );
   }
 
   Stream<List<Note>> watchNotesByTag(String tag) {
     final query = select(notes).join([
       innerJoin(noteTags, noteTags.noteId.equalsExp(notes.id)),
-    ])
-      ..where(noteTags.tag.equals(tag) & notes.deletedAt.isNull());
+    ])..where(noteTags.tag.equals(tag) & notes.deletedAt.isNull());
     return query.watch().map(
-          (rows) => rows.map((r) => r.readTable(notes)).toList(),
-        );
+      (rows) => rows.map((r) => r.readTable(notes)).toList(),
+    );
   }
 
   // ── DateMentions ──────────────────────────────────────────────────────────
@@ -155,12 +157,29 @@ class NoteDao extends DatabaseAccessor<AppDatabase> with _$NoteDaoMixin {
     }
   }
 
+  /// Mentions that belong to non-deleted notes (for notification planning),
+  /// paired with the note title.
+  Stream<List<({DateMention mention, String title})>> watchActiveMentions() {
+    final q = select(dateMentions).join([
+      innerJoin(notes, notes.id.equalsExp(dateMentions.noteId)),
+    ])..where(notes.deletedAt.isNull());
+    return q.watch().map(
+      (rows) => [
+        for (final r in rows)
+          (mention: r.readTable(dateMentions), title: r.readTable(notes).title),
+      ],
+    );
+  }
+
   Stream<List<DateMention>> watchDateMentionsInRange(
-      String startIso, String endIso) {
-    return (select(dateMentions)
-          ..where((d) =>
+    String startIso,
+    String endIso,
+  ) {
+    return (select(dateMentions)..where(
+          (d) =>
               d.startsAt.isBiggerOrEqualValue(startIso) &
-              d.startsAt.isSmallerOrEqualValue(endIso)))
+              d.startsAt.isSmallerOrEqualValue(endIso),
+        ))
         .watch();
   }
 }
@@ -172,8 +191,7 @@ class AttachmentDao extends DatabaseAccessor<AppDatabase>
     with _$AttachmentDaoMixin {
   AttachmentDao(super.db);
 
-  Future<void> insert(AttachmentsCompanion c) =>
-      into(attachments).insert(c);
+  Future<void> insert(AttachmentsCompanion c) => into(attachments).insert(c);
 
   Future<void> delete_(String id) =>
       (delete(attachments)..where((a) => a.id.equals(id))).go();
@@ -188,9 +206,11 @@ class AttachmentDao extends DatabaseAccessor<AppDatabase>
 
   /// Returns all storage names still referenced in the DB.
   Future<List<String>> allStorageNames() =>
-      (selectOnly(attachments)..addColumns([attachments.storageName]))
-          .get()
-          .then((rows) => rows.map((r) => r.read(attachments.storageName)!).toList());
+      (selectOnly(
+        attachments,
+      )..addColumns([attachments.storageName])).get().then(
+        (rows) => rows.map((r) => r.read(attachments.storageName)!).toList(),
+      );
 
   /// Returns the storageName(s) for a specific attachment id.
   Future<List<String>> allStorageNamesForId(String id) =>
@@ -198,7 +218,10 @@ class AttachmentDao extends DatabaseAccessor<AppDatabase>
             ..addColumns([attachments.storageName])
             ..where(attachments.id.equals(id)))
           .get()
-          .then((rows) => rows.map((r) => r.read(attachments.storageName)!).toList());
+          .then(
+            (rows) =>
+                rows.map((r) => r.read(attachments.storageName)!).toList(),
+          );
 }
 
 // ── NoteFtsDao ────────────────────────────────────────────────────────────────
@@ -250,18 +273,20 @@ class NoteFtsDao {
         Variable.withString(q),
         if (folderId != null) Variable.withString(folderId),
       ];
-      final rows = await _db.customSelect(
-        'SELECT n.id, n.title, snippet(note_fts, 1, "**", "**", "…", 20) AS snip, '
-        'note_fts.rank AS rank '
-        'FROM note_fts '
-        'JOIN notes n ON note_fts.rowid = n.rowid '
-        'WHERE note_fts MATCH ? '
-        '${folderId != null ? "AND n.folder_id = ? " : ""}'
-        'AND n.deleted_at IS NULL '
-        'ORDER BY note_fts.rank '
-        'LIMIT 50',
-        variables: variables,
-      ).get();
+      final rows = await _db
+          .customSelect(
+            'SELECT n.id, n.title, snippet(note_fts, 1, "**", "**", "…", 20) AS snip, '
+            'note_fts.rank AS rank '
+            'FROM note_fts '
+            'JOIN notes n ON note_fts.rowid = n.rowid '
+            'WHERE note_fts MATCH ? '
+            '${folderId != null ? "AND n.folder_id = ? " : ""}'
+            'AND n.deleted_at IS NULL '
+            'ORDER BY note_fts.rank '
+            'LIMIT 50',
+            variables: variables,
+          )
+          .get();
       return rows.map((r) => r.data).toList();
     } catch (_) {
       return [];

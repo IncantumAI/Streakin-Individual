@@ -2,10 +2,10 @@
 <resources>
     <!-- Theme applied to the Android Window while the process is starting (dark OS) -->
     <style name="LaunchTheme" parent="@android:style/Theme.Black.NoTitleBar">
-        <!-- Force a solid brand-purple window background so no white flash occurs on MIUI dark mode -->
+        <!-- Force a solid brand-orange window background so no white flash occurs on MIUI dark mode -->
         <item name="android:windowBackground">@drawable/launch_background</item>
-        <item name="android:statusBarColor">@color/splash_brand_purple</item>
-        <item name="android:navigationBarColor">@color/splash_brand_purple</item>
+        <item name="android:statusBarColor">@color/splash_brand</item>
+        <item name="android:navigationBarColor">@color/splash_brand</item>
     </style>
     <!-- Theme applied to the Android Window as soon as the process has started.
          This theme determines the color of the Android Window while your

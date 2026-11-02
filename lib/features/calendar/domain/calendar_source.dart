@@ -17,8 +17,9 @@ class CalendarEntry {
   final LocalDate date;
   final String title;
   final CalendarEntryKind kind;
-  final Object? color;    // Color — typed as Object to keep domain layer Flutter-free
-  final String? time;     // "HH:mm" display string
+  final Object?
+  color; // Color — typed as Object to keep domain layer Flutter-free
+  final String? time; // "HH:mm" display string
   final String? sourceId; // habit/todo/note id for navigation
 }
 

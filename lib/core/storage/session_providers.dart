@@ -31,8 +31,9 @@ final appDatabaseProvider = FutureProvider<AppDatabase>((ref) async {
 });
 
 /// Wraps the DB into a HabitRepository provider.
-final sessionHabitRepositoryProvider =
-    FutureProvider<DriftHabitRepository>((ref) async {
+final sessionHabitRepositoryProvider = FutureProvider<DriftHabitRepository>((
+  ref,
+) async {
   final db = await ref.watch(appDatabaseProvider.future);
   return DriftHabitRepository(HabitDao(db));
 });

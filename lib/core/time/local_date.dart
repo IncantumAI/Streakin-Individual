@@ -11,8 +11,8 @@ import 'package:flutter/foundation.dart';
 @immutable
 class LocalDate implements Comparable<LocalDate> {
   const LocalDate(this.year, this.month, this.day)
-      : assert(month >= 1 && month <= 12),
-        assert(day >= 1 && day <= 31);
+    : assert(month >= 1 && month <= 12),
+      assert(day >= 1 && day <= 31);
 
   final int year;
   final int month;

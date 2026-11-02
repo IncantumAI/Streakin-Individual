@@ -38,6 +38,9 @@ class _StubHabitRepo implements HabitRepository {
       Stream.value([]);
 
   @override
+  Stream<List<HabitLog>> watchLogsForDate(LocalDate date) => Stream.value([]);
+
+  @override
   Future<HabitLog?> getLog(String habitId, LocalDate date) async => null;
 
   @override
@@ -57,15 +60,19 @@ class _StubHabitRepo implements HabitRepository {
 
   @override
   Future<Map<String, List<HabitLog>>> fetchLogsForHabits(
-      List<String> habitIds, DateRange range) async {
+    List<String> habitIds,
+    DateRange range,
+  ) async {
     final result = <String, List<HabitLog>>{};
     for (final id in habitIds) {
       final all = logs[id] ?? [];
       result[id] = all
-          .where((l) =>
-              l.localDate >= range.start &&
-              l.localDate <= range.end &&
-              !l.isDeleted)
+          .where(
+            (l) =>
+                l.localDate >= range.start &&
+                l.localDate <= range.end &&
+                !l.isDeleted,
+          )
           .toList();
     }
     return result;
@@ -75,24 +82,24 @@ class _StubHabitRepo implements HabitRepository {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 Habit _makeHabit(String id, {int mask = 127}) => Habit(
-      id: id,
-      name: id,
-      iconIndex: 0,
-      accentIndex: 0,
-      scheduleMask: ScheduleMask(mask),
-      startDate: LocalDate.parse('2030-01-01'),
-      sortOrder: 0,
-      restTokensPerWeek: 1,
-      hlc: '0-0000-0000',
-    );
+  id: id,
+  name: id,
+  iconIndex: 0,
+  accentIndex: 0,
+  scheduleMask: ScheduleMask(mask),
+  startDate: LocalDate.parse('2030-01-01'),
+  sortOrder: 0,
+  restTokensPerWeek: 1,
+  hlc: '0-0000-0000',
+);
 
 HabitLog _log(String habitId, String date, HabitLogStatus status) => HabitLog(
-      id: '$habitId-$date',
-      habitId: habitId,
-      localDate: LocalDate.parse(date),
-      status: status,
-      hlc: '0-0000-0000',
-    );
+  id: '$habitId-$date',
+  habitId: habitId,
+  localDate: LocalDate.parse(date),
+  status: status,
+  hlc: '0-0000-0000',
+);
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
@@ -106,16 +113,17 @@ void main() {
           'h1': [
             _log('h1', '2030-01-06', HabitLogStatus.done), // Mon
             _log('h1', '2030-01-07', HabitLogStatus.done), // Tue
-          ]
+          ],
         },
       );
       final port = HabitCompletionPortImpl(repo);
       final stats = await port.closedDayStats(
         windows: [
           HabitLinkWindow(
-              habitId: 'h1',
-              from: LocalDate.parse('2030-01-06'),
-              to: LocalDate.parse('2030-01-07'))
+            habitId: 'h1',
+            from: LocalDate.parse('2030-01-06'),
+            to: LocalDate.parse('2030-01-07'),
+          ),
         ],
         through: LocalDate.parse('2030-01-07'),
         goalRestTokenPool: 0,
@@ -129,18 +137,17 @@ void main() {
       final repo = _StubHabitRepo(
         habits: [h],
         logs: {
-          'h1': [
-            _log('h1', '2030-01-06', HabitLogStatus.done),
-          ]
+          'h1': [_log('h1', '2030-01-06', HabitLogStatus.done)],
         },
       );
       final port = HabitCompletionPortImpl(repo);
       final stats = await port.closedDayStats(
         windows: [
           HabitLinkWindow(
-              habitId: 'h1',
-              from: LocalDate.parse('2030-01-06'),
-              to: LocalDate.parse('2030-01-07'))
+            habitId: 'h1',
+            from: LocalDate.parse('2030-01-06'),
+            to: LocalDate.parse('2030-01-07'),
+          ),
         ],
         through: LocalDate.parse('2030-01-07'),
         goalRestTokenPool: 0,
@@ -156,16 +163,17 @@ void main() {
           'h1': [
             _log('h1', '2030-01-06', HabitLogStatus.done),
             _log('h1', '2030-01-07', HabitLogStatus.rest),
-          ]
+          ],
         },
       );
       final port = HabitCompletionPortImpl(repo);
       final stats = await port.closedDayStats(
         windows: [
           HabitLinkWindow(
-              habitId: 'h1',
-              from: LocalDate.parse('2030-01-06'),
-              to: LocalDate.parse('2030-01-07'))
+            habitId: 'h1',
+            from: LocalDate.parse('2030-01-06'),
+            to: LocalDate.parse('2030-01-07'),
+          ),
         ],
         through: LocalDate.parse('2030-01-07'),
         goalRestTokenPool: 4, // tokens available → rest is neutral
@@ -184,16 +192,17 @@ void main() {
           'h1': [
             _log('h1', '2030-01-06', HabitLogStatus.done),
             _log('h1', '2030-01-07', HabitLogStatus.rest),
-          ]
+          ],
         },
       );
       final port = HabitCompletionPortImpl(repo);
       final stats = await port.closedDayStats(
         windows: [
           HabitLinkWindow(
-              habitId: 'h1',
-              from: LocalDate.parse('2030-01-06'),
-              to: LocalDate.parse('2030-01-07'))
+            habitId: 'h1',
+            from: LocalDate.parse('2030-01-06'),
+            to: LocalDate.parse('2030-01-07'),
+          ),
         ],
         through: LocalDate.parse('2030-01-07'),
         goalRestTokenPool: 0, // no tokens → rest counts as missed
@@ -205,7 +214,8 @@ void main() {
 
     test('no linked habits → null alignment', () async {
       final port = HabitCompletionPortImpl(
-          _StubHabitRepo(habits: [], logs: {}));
+        _StubHabitRepo(habits: [], logs: {}),
+      );
       final stats = await port.closedDayStats(
         windows: [],
         through: LocalDate.parse('2030-01-07'),
@@ -218,17 +228,15 @@ void main() {
     test('alignment pct always in [0,100]', () async {
       // Property: result is bounded
       final h = _makeHabit('h1');
-      final repo = _StubHabitRepo(
-        habits: [h],
-        logs: {'h1': []},
-      );
+      final repo = _StubHabitRepo(habits: [h], logs: {'h1': []});
       final port = HabitCompletionPortImpl(repo);
       final stats = await port.closedDayStats(
         windows: [
           HabitLinkWindow(
-              habitId: 'h1',
-              from: LocalDate.parse('2030-01-06'),
-              to: LocalDate.parse('2030-01-10'))
+            habitId: 'h1',
+            from: LocalDate.parse('2030-01-06'),
+            to: LocalDate.parse('2030-01-10'),
+          ),
         ],
         through: LocalDate.parse('2030-01-10'),
         goalRestTokenPool: 0,
@@ -245,18 +253,23 @@ void main() {
         habits: [h],
         logs: {
           'h1': [
-            _log('h1', '2030-01-07', HabitLogStatus.done), // Tuesday — not scheduled
+            _log(
+              'h1',
+              '2030-01-07',
+              HabitLogStatus.done,
+            ), // Tuesday — not scheduled
             _log('h1', '2030-01-06', HabitLogStatus.done), // Monday — scheduled
-          ]
+          ],
         },
       );
       final port = HabitCompletionPortImpl(repo);
       final stats = await port.closedDayStats(
         windows: [
           HabitLinkWindow(
-              habitId: 'h1',
-              from: LocalDate.parse('2030-01-06'),
-              to: LocalDate.parse('2030-01-07'))
+            habitId: 'h1',
+            from: LocalDate.parse('2030-01-06'),
+            to: LocalDate.parse('2030-01-07'),
+          ),
         ],
         through: LocalDate.parse('2030-01-07'),
         goalRestTokenPool: 0,
@@ -275,16 +288,17 @@ void main() {
             _log('h1', '2030-01-05', HabitLogStatus.done), // before window
             _log('h1', '2030-01-06', HabitLogStatus.done), // in window
             _log('h1', '2030-01-07', HabitLogStatus.done), // after window
-          ]
+          ],
         },
       );
       final port = HabitCompletionPortImpl(repo);
       final stats = await port.closedDayStats(
         windows: [
           HabitLinkWindow(
-              habitId: 'h1',
-              from: LocalDate.parse('2030-01-06'),
-              to: LocalDate.parse('2030-01-06')) // only one day
+            habitId: 'h1',
+            from: LocalDate.parse('2030-01-06'),
+            to: LocalDate.parse('2030-01-06'),
+          ), // only one day
         ],
         through: LocalDate.parse('2030-01-07'),
         goalRestTokenPool: 0,
@@ -305,14 +319,13 @@ void main() {
             // gap
             _log('h1', '2030-01-10', HabitLogStatus.done),
             _log('h1', '2030-01-11', HabitLogStatus.done),
-          ]
+          ],
         },
       );
       final port = HabitCompletionPortImpl(repo);
       final stats = await port.closedDayStats(
         windows: [
-          HabitLinkWindow(
-              habitId: 'h1', from: LocalDate.parse('2030-01-06'))
+          HabitLinkWindow(habitId: 'h1', from: LocalDate.parse('2030-01-06')),
         ],
         through: LocalDate.parse('2030-01-11'),
         goalRestTokenPool: 0,

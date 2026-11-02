@@ -35,12 +35,14 @@ class NotesCalendarSource implements CalendarSource {
           for (final mention in doc.extractDateMentions()) {
             if (mention.isoDate.compareTo(startIso) >= 0 &&
                 mention.isoDate.compareTo(endIso) <= 0) {
-              entries.add(CalendarEntry(
-                date: LocalDate.parse(mention.isoDate),
-                title: note.title.isEmpty ? 'Note date' : note.title,
-                kind: CalendarEntryKind.note,
-                sourceId: note.id,
-              ));
+              entries.add(
+                CalendarEntry(
+                  date: LocalDate.parse(mention.isoDate),
+                  title: note.title.isEmpty ? 'Note date' : note.title,
+                  kind: CalendarEntryKind.note,
+                  sourceId: note.id,
+                ),
+              );
             }
           }
         }
@@ -56,22 +58,27 @@ class NotesCalendarSource implements CalendarSource {
 /// Returns empty stream when not yet unlocked.
 final notesCalendarEntriesProvider =
     StreamProvider.family<List<CalendarEntry>, DateRange>((ref, range) {
-  final repo = ref.watch(noteRepositoryStateProvider);
-  if (repo == null) return const Stream.empty();
-  return NotesCalendarSource(repo).watch(range);
-});
+      final repo = ref.watch(noteRepositoryStateProvider);
+      if (repo == null) return const Stream.empty();
+      return NotesCalendarSource(repo).watch(range);
+    });
 
 /// Convenience: map of ISO-date → list of note IDs for dot markers.
 final notesDateMentionsByDateProvider =
-    StreamProvider.family<Map<String, List<String>>, DateRange>(
-        (ref, range) async* {
-  final repo = ref.watch(noteRepositoryStateProvider);
-  if (repo == null) { yield {}; return; }
-  await for (final entries in NotesCalendarSource(repo).watch(range)) {
-    final map = <String, List<String>>{};
-    for (final e in entries) {
-      map.putIfAbsent(e.date.toIso(), () => []).add(e.sourceId ?? '');
-    }
-    yield map;
-  }
-});
+    StreamProvider.family<Map<String, List<String>>, DateRange>((
+      ref,
+      range,
+    ) async* {
+      final repo = ref.watch(noteRepositoryStateProvider);
+      if (repo == null) {
+        yield {};
+        return;
+      }
+      await for (final entries in NotesCalendarSource(repo).watch(range)) {
+        final map = <String, List<String>>{};
+        for (final e in entries) {
+          map.putIfAbsent(e.date.toIso(), () => []).add(e.sourceId ?? '');
+        }
+        yield map;
+      }
+    });

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="ic_launcher_background">#00000000</color>
-    <!-- Brand purple used for native splash background — matches Flutter _SplashScreen brandPurple -->
-    <color name="splash_brand_purple">#6E56CF</color>
+    <!-- Brand orange used for native splash background — matches Flutter _SplashScreen brandOrange -->
+    <color name="splash_brand">#FF8F34</color>
 </resources>

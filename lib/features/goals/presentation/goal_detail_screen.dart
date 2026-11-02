@@ -1,9 +1,9 @@
+import 'package:streakin/core/design/icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:streakin/core/design/tokens.dart';
-import 'package:streakin/core/time/local_date.dart';
 import 'package:streakin/features/goals/application/goal_providers.dart';
 import 'package:streakin/features/goals/domain/goal.dart';
 import 'package:streakin/features/goals/domain/goal_clock.dart';
@@ -24,9 +24,10 @@ class GoalDetailScreen extends ConsumerWidget {
     final linksAsync = ref.watch(activeGoalLinksProvider);
 
     return goalAsync.when(
-      loading: () =>
-          const Scaffold(body: Center(child: CircularProgressIndicator.adaptive())),
-      error: (_, __) => const Scaffold(body: Center(child: Text('Error'))),
+      loading: () => const Scaffold(
+        body: Center(child: CircularProgressIndicator.adaptive()),
+      ),
+      error: (_, _) => const Scaffold(body: Center(child: Text('Error'))),
       data: (goal) {
         if (goal == null || goal.id != goalId) {
           return _ArchivedGoalDetail(goalId: goalId);
@@ -37,12 +38,13 @@ class GoalDetailScreen extends ConsumerWidget {
         return Scaffold(
           backgroundColor: colors.bg,
           appBar: AppBar(
-            title: Text(goal.title,
-                style: const TextStyle(fontSize: 16,
-                    fontWeight: FontWeight.w600)),
+            title: Text(
+              goal.title,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
             actions: [
               IconButton(
-                icon: const Icon(Icons.edit_outlined),
+                icon: const Icon(AppIcons.edit),
                 onPressed: () => showGoalCreateSheet(context, existing: goal),
               ),
             ],
@@ -65,17 +67,22 @@ class GoalDetailScreen extends ConsumerWidget {
               const SizedBox(height: 16),
               linksAsync.when(
                 loading: () => const SizedBox.shrink(),
-                error: (_, __) => const SizedBox.shrink(),
+                error: (_, _) => const SizedBox.shrink(),
                 data: (links) => _LinkedHabitsSection(
-                    links: links, goal: goal, colors: colors),
+                  links: links,
+                  goal: goal,
+                  colors: colors,
+                ),
               ),
               const SizedBox(height: 16),
               _ActionsSection(goal: goal, colors: colors),
               const SizedBox(height: 8),
               TextButton(
                 onPressed: () => context.push('/goals/history'),
-                child: Text('Past goals',
-                    style: TextStyle(color: colors.textMuted, fontSize: 13)),
+                child: Text(
+                  'Past goals',
+                  style: TextStyle(color: colors.textMuted, fontSize: 13),
+                ),
               ),
               const SizedBox(height: 24),
             ],
@@ -102,8 +109,10 @@ class _CountdownHeader extends StatelessWidget {
       ),
       child: Column(
         children: [
-          Text(clock.caption,
-              style: TextStyle(fontSize: 14, color: colors.textMuted)),
+          Text(
+            clock.caption,
+            style: TextStyle(fontSize: 14, color: colors.textMuted),
+          ),
           const SizedBox(height: 12),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -117,9 +126,10 @@ class _CountdownHeader extends StatelessWidget {
                     ? '${clock.daysLeft}'
                     : '${clock.dayNumber}',
                 style: TextStyle(
-                    fontSize: 56,
-                    fontWeight: FontWeight.w700,
-                    color: colors.brand),
+                  fontSize: 56,
+                  fontWeight: FontWeight.w700,
+                  color: colors.brand,
+                ),
               ),
               const SizedBox(width: 4),
               Text(
@@ -137,9 +147,10 @@ class _CountdownHeader extends StatelessWidget {
               child: Text(
                 clock.goal.why!,
                 style: TextStyle(
-                    fontSize: 13,
-                    color: colors.textMuted,
-                    fontStyle: FontStyle.italic),
+                  fontSize: 13,
+                  color: colors.textMuted,
+                  fontStyle: FontStyle.italic,
+                ),
                 textAlign: TextAlign.center,
               ),
             ),
@@ -163,12 +174,15 @@ class _TimelineBar extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(clock.goal.startDate.toIso(),
-                style: TextStyle(fontSize: 11, color: colors.textMuted)),
+            Text(
+              clock.goal.startDate.toIso(),
+              style: TextStyle(fontSize: 11, color: colors.textMuted),
+            ),
             if (clock.goal.endDate != null)
-              Text(clock.goal.endDate!.toIso(),
-                  style:
-                      TextStyle(fontSize: 11, color: colors.textMuted)),
+              Text(
+                clock.goal.endDate!.toIso(),
+                style: TextStyle(fontSize: 11, color: colors.textMuted),
+              ),
           ],
         ),
         const SizedBox(height: 4),
@@ -198,8 +212,10 @@ class _MilestoneTrack extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Progress to Day $next',
-            style: TextStyle(fontSize: 13, color: colors.textMuted)),
+        Text(
+          'Progress to Day $next',
+          style: TextStyle(fontSize: 13, color: colors.textMuted),
+        ),
         const SizedBox(height: 4),
         ClipRRect(
           borderRadius: BorderRadius.circular(4),
@@ -211,8 +227,10 @@ class _MilestoneTrack extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 4),
-        Text('${clock.daysToNextMilestone ?? 0} days to go',
-            style: TextStyle(fontSize: 11, color: colors.textMuted)),
+        Text(
+          '${clock.daysToNextMilestone ?? 0} days to go',
+          style: TextStyle(fontSize: 11, color: colors.textMuted),
+        ),
       ],
     );
   }
@@ -243,11 +261,14 @@ class _AlignmentSection extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Alignment',
-              style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  color: colors.text)),
+          Text(
+            'Alignment',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: colors.text,
+            ),
+          ),
           const SizedBox(height: 12),
           Row(
             children: [
@@ -284,10 +305,11 @@ class _AlignmentSection extends StatelessWidget {
 }
 
 class _StatTile extends StatelessWidget {
-  const _StatTile(
-      {required this.label,
-      required this.value,
-      required this.colors});
+  const _StatTile({
+    required this.label,
+    required this.value,
+    required this.colors,
+  });
   final String label;
   final String value;
   final AppColorTokens colors;
@@ -297,13 +319,15 @@ class _StatTile extends StatelessWidget {
     return Expanded(
       child: Column(
         children: [
-          Text(value,
-              style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w700,
-                  color: colors.brand)),
-          Text(label,
-              style: TextStyle(fontSize: 11, color: colors.textMuted)),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w700,
+              color: colors.brand,
+            ),
+          ),
+          Text(label, style: TextStyle(fontSize: 11, color: colors.textMuted)),
         ],
       ),
     );
@@ -311,8 +335,11 @@ class _StatTile extends StatelessWidget {
 }
 
 class _LinkedHabitsSection extends ConsumerWidget {
-  const _LinkedHabitsSection(
-      {required this.links, required this.goal, required this.colors});
+  const _LinkedHabitsSection({
+    required this.links,
+    required this.goal,
+    required this.colors,
+  });
   final List<GoalHabitLink> links;
   final Goal goal;
   final AppColorTokens colors;
@@ -321,28 +348,37 @@ class _LinkedHabitsSection extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final openLinks = links.where((l) => l.isOpen).toList();
     if (openLinks.isEmpty) {
-      return Text('No habits linked. Tap Edit to link habits.',
-          style: TextStyle(color: colors.textMuted, fontSize: 13));
+      return Text(
+        'No habits linked. Tap Edit to link habits.',
+        style: TextStyle(color: colors.textMuted, fontSize: 13),
+      );
     }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Linked habits',
-            style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-                color: colors.text)),
+        Text(
+          'Linked habits',
+          style: TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+            color: colors.text,
+          ),
+        ),
         const SizedBox(height: 8),
-        ...openLinks.map((link) => _LinkedHabitTile(
-            link: link, goal: goal, colors: colors)),
+        ...openLinks.map(
+          (link) => _LinkedHabitTile(link: link, goal: goal, colors: colors),
+        ),
       ],
     );
   }
 }
 
 class _LinkedHabitTile extends ConsumerWidget {
-  const _LinkedHabitTile(
-      {required this.link, required this.goal, required this.colors});
+  const _LinkedHabitTile({
+    required this.link,
+    required this.goal,
+    required this.colors,
+  });
   final GoalHabitLink link;
   final Goal goal;
   final AppColorTokens colors;
@@ -357,16 +393,17 @@ class _LinkedHabitTile extends ConsumerWidget {
         return ListTile(
           dense: true,
           contentPadding: EdgeInsets.zero,
-          leading: Icon(Icons.link, size: 18, color: colors.brand),
-          title: Text(name,
-              style: TextStyle(fontSize: 14, color: colors.text)),
+          leading: Icon(AppIcons.link, size: 18, color: colors.brand),
+          title: Text(name, style: TextStyle(fontSize: 14, color: colors.text)),
           trailing: TextButton(
             onPressed: () async {
               final svc = ref.read(goalLifecycleServiceProvider);
               if (svc != null) await svc.unlinkHabit(goal, link.habitId);
             },
-            child: Text('Unlink',
-                style: TextStyle(fontSize: 12, color: colors.textMuted)),
+            child: Text(
+              'Unlink',
+              style: TextStyle(fontSize: 12, color: colors.textMuted),
+            ),
           ),
         );
       },
@@ -385,50 +422,60 @@ class _ActionsSection extends ConsumerWidget {
       children: [
         OutlinedButton.icon(
           onPressed: () => showGoalCreateSheet(context, existing: goal),
-          icon: const Icon(Icons.edit_outlined, size: 16),
+          icon: const Icon(AppIcons.edit, size: 16),
           label: const Text('Edit'),
           style: OutlinedButton.styleFrom(
-              minimumSize: const Size.fromHeight(44)),
+            minimumSize: const Size.fromHeight(44),
+          ),
         ),
         const SizedBox(height: 8),
         OutlinedButton.icon(
           onPressed: () async {
-            final confirm = await _confirm(context, 'Complete early?',
-                'This will archive the goal as completed early.');
+            final confirm = await _confirm(
+              context,
+              'Complete early?',
+              'This will archive the goal as completed early.',
+            );
             if (!confirm) return;
             final svc = ref.read(goalLifecycleServiceProvider);
             if (svc != null) await svc.completeEarly(goal);
             if (context.mounted) context.pop();
           },
-          icon: Icon(Icons.check_circle_outline,
-              size: 16, color: colors.success),
+          icon: Icon(
+            AppIcons.checkCircleOutline,
+            size: 16,
+            color: colors.success,
+          ),
           label: const Text('Complete early'),
           style: OutlinedButton.styleFrom(
-              minimumSize: const Size.fromHeight(44)),
+            minimumSize: const Size.fromHeight(44),
+          ),
         ),
         const SizedBox(height: 8),
         OutlinedButton.icon(
           onPressed: () async {
-            final confirm = await _confirm(context, 'Abandon goal?',
-                'This will archive the goal as abandoned.');
+            final confirm = await _confirm(
+              context,
+              'Abandon goal?',
+              'This will archive the goal as abandoned.',
+            );
             if (!confirm) return;
             final svc = ref.read(goalLifecycleServiceProvider);
             if (svc != null) await svc.abandon(goal);
             if (context.mounted) context.pop();
           },
-          icon: Icon(Icons.cancel_outlined,
-              size: 16, color: colors.danger),
+          icon: Icon(AppIcons.cancelOutlined, size: 16, color: colors.danger),
           label: const Text('Abandon'),
           style: OutlinedButton.styleFrom(
-              foregroundColor: colors.danger,
-              minimumSize: const Size.fromHeight(44)),
+            foregroundColor: colors.danger,
+            minimumSize: const Size.fromHeight(44),
+          ),
         ),
       ],
     );
   }
 
-  Future<bool> _confirm(
-      BuildContext context, String title, String body) async {
+  Future<bool> _confirm(BuildContext context, String title, String body) async {
     return await showDialog<bool>(
           context: context,
           builder: (_) => AlertDialog(
@@ -436,11 +483,13 @@ class _ActionsSection extends ConsumerWidget {
             content: Text(body),
             actions: [
               TextButton(
-                  onPressed: () => Navigator.of(context).pop(false),
-                  child: const Text('Cancel')),
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('Cancel'),
+              ),
               TextButton(
-                  onPressed: () => Navigator.of(context).pop(true),
-                  child: const Text('Confirm')),
+                onPressed: () => Navigator.of(context).pop(true),
+                child: const Text('Confirm'),
+              ),
             ],
           ),
         ) ??
@@ -466,8 +515,7 @@ class _ArchivedGoalDetail extends ConsumerWidget {
         builder: (_, snap) {
           final summary = snap.data;
           if (summary == null) {
-            return const Center(
-                child: CircularProgressIndicator.adaptive());
+            return const Center(child: CircularProgressIndicator.adaptive());
           }
           return _SummaryView(summary: summary, colors: colors);
         },
@@ -486,37 +534,46 @@ class _SummaryView extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        Text('${summary.elapsedDays} days',
-            style: TextStyle(
-                fontSize: 48,
-                fontWeight: FontWeight.w700,
-                color: colors.brand),
-            textAlign: TextAlign.center),
+        Text(
+          '${summary.elapsedDays} days',
+          style: TextStyle(
+            fontSize: 48,
+            fontWeight: FontWeight.w700,
+            color: colors.brand,
+          ),
+          textAlign: TextAlign.center,
+        ),
         const SizedBox(height: 4),
-        Text('of ${summary.totalDays} total',
-            style: TextStyle(color: colors.textMuted),
-            textAlign: TextAlign.center),
+        Text(
+          'of ${summary.totalDays} total',
+          style: TextStyle(color: colors.textMuted),
+          textAlign: TextAlign.center,
+        ),
         const SizedBox(height: 20),
         _SummaryRow(
-            label: 'Alignment',
-            value: summary.alignmentPct != null
-                ? '${summary.alignmentPct}%'
-                : '—',
-            colors: colors),
+          label: 'Alignment',
+          value: summary.alignmentPct != null
+              ? '${summary.alignmentPct}%'
+              : '—',
+          colors: colors,
+        ),
         _SummaryRow(
-            label: 'Perfect days',
-            value: '${summary.perfectDays}',
-            colors: colors),
+          label: 'Perfect days',
+          value: '${summary.perfectDays}',
+          colors: colors,
+        ),
         _SummaryRow(
-            label: 'Best streak',
-            value: '${summary.bestStreak} days',
-            colors: colors),
+          label: 'Best streak',
+          value: '${summary.bestStreak} days',
+          colors: colors,
+        ),
         const SizedBox(height: 20),
         FilledButton(
           onPressed: () => showGoalCreateSheet(context),
           style: FilledButton.styleFrom(
-              backgroundColor: colors.brand,
-              foregroundColor: colors.onBrand),
+            backgroundColor: colors.brand,
+            foregroundColor: colors.onBrand,
+          ),
           child: const Text('Set your next goal'),
         ),
       ],
@@ -525,10 +582,11 @@ class _SummaryView extends StatelessWidget {
 }
 
 class _SummaryRow extends StatelessWidget {
-  const _SummaryRow(
-      {required this.label,
-      required this.value,
-      required this.colors});
+  const _SummaryRow({
+    required this.label,
+    required this.value,
+    required this.colors,
+  });
   final String label;
   final String value;
   final AppColorTokens colors;
@@ -540,11 +598,12 @@ class _SummaryRow extends StatelessWidget {
       child: Row(
         children: [
           Expanded(
-              child: Text(label,
-                  style: TextStyle(color: colors.textMuted))),
-          Text(value,
-              style: TextStyle(
-                  fontWeight: FontWeight.w600, color: colors.text)),
+            child: Text(label, style: TextStyle(color: colors.textMuted)),
+          ),
+          Text(
+            value,
+            style: TextStyle(fontWeight: FontWeight.w600, color: colors.text),
+          ),
         ],
       ),
     );

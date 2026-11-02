@@ -17,9 +17,8 @@ final List<RouteBase> notesRoutes = [
       GoRoute(
         path: ':noteId',
         name: 'note-editor',
-        builder: (context, state) => NoteEditorScreen(
-          noteId: state.pathParameters['noteId']!,
-        ),
+        builder: (context, state) =>
+            NoteEditorScreen(noteId: state.pathParameters['noteId']!),
       ),
     ],
   ),

@@ -2,6 +2,7 @@
 // Folder tree sidebar used in both mobile (drawer/stack) and desktop (pane).
 // Supports: expand/collapse, create, rename (inline), delete, move (long-press menu).
 
+import 'package:streakin/core/design/icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
@@ -44,8 +45,11 @@ class FolderSidebar extends ConsumerWidget {
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.folder_special_outlined,
-                          color: colors.onBrand, size: 22),
+                      Icon(
+                        AppIcons.folderSpecialOutlined,
+                        color: colors.onBrand,
+                        size: 22,
+                      ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
@@ -65,21 +69,26 @@ class FolderSidebar extends ConsumerWidget {
                   SizedBox(
                     width: double.infinity,
                     child: OutlinedButton.icon(
-                      onPressed: () =>
-                          _createFolder(context, ref, null),
-                      icon: Icon(Icons.create_new_folder_outlined,
-                          size: 16, color: colors.onBrand),
-                      label: Text('New folder',
-                          style: TextStyle(
-                              color: colors.onBrand, fontSize: 13)),
+                      onPressed: () => _createFolder(context, ref, null),
+                      icon: Icon(
+                        AppIcons.createNewFolderOutlined,
+                        size: 16,
+                        color: colors.onBrand,
+                      ),
+                      label: Text(
+                        'New folder',
+                        style: TextStyle(color: colors.onBrand, fontSize: 13),
+                      ),
                       style: OutlinedButton.styleFrom(
-                        side: BorderSide(
-                            color: colors.onBrand.withAlpha(128)),
+                        side: BorderSide(color: colors.onBrand.withAlpha(128)),
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 8),
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
                         alignment: Alignment.centerLeft,
                         shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8)),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
                       ),
                     ),
                   ),
@@ -92,10 +101,11 @@ class FolderSidebar extends ConsumerWidget {
         // ── Folder list + tags ──────────────────────────────────────────────
         Expanded(
           child: foldersAsync.when(
-            loading: () => const Center(
-                child: CircularProgressIndicator.adaptive()),
-            error: (e, _) =>
-                Center(child: Text('Error', style: TextStyle(color: colors.danger))),
+            loading: () =>
+                const Center(child: CircularProgressIndicator.adaptive()),
+            error: (e, _) => Center(
+              child: Text('Error', style: TextStyle(color: colors.danger)),
+            ),
             data: (folders) => Column(
               children: [
                 Expanded(child: _FolderTree(folders: folders)),
@@ -106,10 +116,7 @@ class FolderSidebar extends ConsumerWidget {
         ),
 
         // ── Safe area bottom padding (navigation bar) ───────────────────────
-        const SafeArea(
-          top: false,
-          child: SizedBox(height: 4),
-        ),
+        const SafeArea(top: false, child: SizedBox(height: 4)),
       ],
     );
   }
@@ -126,14 +133,15 @@ class FolderSidebar extends ConsumerWidget {
     final allFolders = ref.read(foldersProvider).value ?? [];
     if (parentId != null && exceedsSoftCap(allFolders, parentId)) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Folders nested this deep may be hard to navigate.'),
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Folders nested this deep may be hard to navigate.'),
+          ),
+        );
       }
     }
 
     final repo = ref.read(noteRepositoryProvider);
-    final now = DateTime.now();
     final folder = Folder(
       id: const Uuid().v4(),
       parentId: parentId,
@@ -170,14 +178,16 @@ class _FolderTree extends ConsumerWidget {
             // Root Inbox
             _FolderTile(
               label: 'Inbox',
-              icon: Icons.inbox_outlined,
+              icon: AppIcons.inboxOutlined,
               isActive: activeId == null,
               depth: 0,
               onTap: () => _selectFolder(context, ref, null),
             ),
             const SizedBox(height: 8),
-            Text('No folders yet.',
-                style: TextStyle(fontSize: 13, color: colors.textMuted)),
+            Text(
+              'No folders yet.',
+              style: TextStyle(fontSize: 13, color: colors.textMuted),
+            ),
           ],
         ),
       );
@@ -191,7 +201,7 @@ class _FolderTree extends ConsumerWidget {
         if (i == 0) {
           return _FolderTile(
             label: 'Inbox',
-            icon: Icons.inbox_outlined,
+            icon: AppIcons.inboxOutlined,
             isActive: activeId == null,
             depth: 0,
             onTap: () => _selectFolder(context, ref, null),
@@ -204,8 +214,8 @@ class _FolderTree extends ConsumerWidget {
 
         return _FolderTile(
           label: folder.name,
-          icon: Icons.folder_outlined,
-          activeIcon: Icons.folder,
+          icon: AppIcons.folder,
+          activeIcon: AppIcons.folderFill,
           isActive: isActive,
           depth: node.depth,
           hasChildren: node.children.isNotEmpty,
@@ -214,8 +224,7 @@ class _FolderTree extends ConsumerWidget {
           onToggleExpand: () {
             ref.read(expandedFolderIdsProvider.notifier).toggle(folder.id);
           },
-          onLongPress: () =>
-              _showFolderMenu(context, ref, folder, folders),
+          onLongPress: () => _showFolderMenu(context, ref, folder, folders),
         );
       },
     );
@@ -229,11 +238,8 @@ class _FolderTree extends ConsumerWidget {
   ) {
     showModalBottomSheet<void>(
       context: context,
-      builder: (_) => _FolderActionSheet(
-        folder: folder,
-        allFolders: allFolders,
-        ref: ref,
-      ),
+      builder: (_) =>
+          _FolderActionSheet(folder: folder, allFolders: allFolders, ref: ref),
     );
   }
 
@@ -291,9 +297,7 @@ class _FolderTile extends StatelessWidget {
         ),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
         decoration: BoxDecoration(
-          color: isActive
-              ? colors.brand.withAlpha(20)
-              : Colors.transparent,
+          color: isActive ? colors.brand.withAlpha(20) : Colors.transparent,
           borderRadius: BorderRadius.circular(8),
           border: isActive
               ? Border.all(color: colors.brand.withAlpha(60))
@@ -309,8 +313,8 @@ class _FolderTile extends StatelessWidget {
                   padding: const EdgeInsets.only(right: 4),
                   child: Icon(
                     isExpanded
-                        ? Icons.keyboard_arrow_down
-                        : Icons.keyboard_arrow_right,
+                        ? AppIcons.keyboardArrowDown
+                        : AppIcons.keyboardArrowRight,
                     size: 16,
                     color: isActive ? colors.brand : colors.textMuted,
                   ),
@@ -331,8 +335,7 @@ class _FolderTile extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   fontSize: 14,
-                  fontWeight:
-                      isActive ? FontWeight.w600 : FontWeight.normal,
+                  fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
                   color: isActive ? colors.brand : colors.text,
                 ),
               ),
@@ -368,29 +371,45 @@ class _FolderActionSheet extends StatelessWidget {
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-              child: Text(folder.name,
-                  style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 15,
-                      color: colors.text)),
+              child: Text(
+                folder.name,
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 15,
+                  color: colors.text,
+                ),
+              ),
             ),
             const Divider(),
             ListTile(
-              leading: Icon(Icons.drive_file_rename_outline, color: colors.text),
+              leading: Icon(
+                AppIcons.driveFileRenameOutline,
+                color: colors.text,
+              ),
               title: const Text('Rename'),
               onTap: () async {
                 Navigator.of(context).pop();
-                final name =
-                    await _promptFolderName(context, initial: folder.name);
+                final name = await _promptFolderName(
+                  context,
+                  initial: folder.name,
+                );
                 if (name != null && name.trim().isNotEmpty) {
-                  await ref.read(noteRepositoryProvider).saveFolder(
-                        folder.copyWith(name: name.trim(), hlc: Hlc.now().toIso()),
+                  await ref
+                      .read(noteRepositoryProvider)
+                      .saveFolder(
+                        folder.copyWith(
+                          name: name.trim(),
+                          hlc: Hlc.now().toIso(),
+                        ),
                       );
                 }
               },
             ),
             ListTile(
-              leading: Icon(Icons.create_new_folder_outlined, color: colors.text),
+              leading: Icon(
+                AppIcons.createNewFolderOutlined,
+                color: colors.text,
+              ),
               title: const Text('New subfolder'),
               onTap: () async {
                 Navigator.of(context).pop();
@@ -398,9 +417,11 @@ class _FolderActionSheet extends StatelessWidget {
               },
             ),
             ListTile(
-              leading: Icon(Icons.delete_outline, color: colors.danger),
-              title: Text('Delete folder',
-                  style: TextStyle(color: colors.danger)),
+              leading: Icon(AppIcons.delete, color: colors.danger),
+              title: Text(
+                'Delete folder',
+                style: TextStyle(color: colors.danger),
+              ),
               onTap: () async {
                 Navigator.of(context).pop();
                 final confirmed = await _confirmDelete(context, folder.name);
@@ -427,14 +448,17 @@ class _FolderActionSheet extends StatelessWidget {
       builder: (ctx) => AlertDialog(
         title: const Text('Delete folder?'),
         content: Text(
-            'All notes in "$name" will be deleted. This cannot be undone.'),
+          'All notes in "$name" will be deleted. This cannot be undone.',
+        ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.of(ctx).pop(false),
-              child: const Text('Cancel')),
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
           TextButton(
-              onPressed: () => Navigator.of(ctx).pop(true),
-              child: const Text('Delete')),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Delete'),
+          ),
         ],
       ),
     );
@@ -443,8 +467,10 @@ class _FolderActionSheet extends StatelessWidget {
 
 // ── Prompt helpers ────────────────────────────────────────────────────────────
 
-Future<String?> _promptFolderName(BuildContext context,
-    {required String initial}) {
+Future<String?> _promptFolderName(
+  BuildContext context, {
+  required String initial,
+}) {
   final ctrl = TextEditingController(text: initial);
   return showDialog<String>(
     context: context,
@@ -458,11 +484,13 @@ Future<String?> _promptFolderName(BuildContext context,
       ),
       actions: [
         TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cancel')),
+          onPressed: () => Navigator.of(ctx).pop(),
+          child: const Text('Cancel'),
+        ),
         TextButton(
-            onPressed: () => Navigator.of(ctx).pop(ctrl.text),
-            child: const Text('OK')),
+          onPressed: () => Navigator.of(ctx).pop(ctrl.text),
+          child: const Text('OK'),
+        ),
       ],
     ),
   );

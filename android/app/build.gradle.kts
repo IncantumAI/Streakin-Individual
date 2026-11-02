@@ -27,6 +27,14 @@ android {
         release {
             // TODO: Replace debug signing with a real keystore before Play Store release.
             signingConfig = signingConfigs.getByName("debug")
+            // R8 shrinking/obfuscation (Spec §8.7). Keep rules live in
+            // proguard-rules.pro; verify with a release build on device.
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
         }
     }
 }

@@ -1,6 +1,7 @@
 // lib/features/habits/presentation/widgets/habit_check_button.dart
 // Spring-animated check button. Spec §5.5: ring stroke + scale 0.9→1.1→1, 250ms.
 
+import 'package:streakin/core/design/icons.dart';
 import 'package:flutter/material.dart';
 import 'package:streakin/core/design/motion.dart';
 
@@ -29,10 +30,7 @@ class _HabitCheckButtonState extends State<HabitCheckButton>
   @override
   void initState() {
     super.initState();
-    _ctrl = AnimationController(
-      vsync: this,
-      duration: AppDurations.habitCheck,
-    );
+    _ctrl = AnimationController(vsync: this, duration: AppDurations.habitCheck);
     _scale = TweenSequence([
       TweenSequenceItem(tween: Tween(begin: 1.0, end: 0.9), weight: 20),
       TweenSequenceItem(tween: Tween(begin: 0.9, end: 1.1), weight: 50),
@@ -76,10 +74,10 @@ class _HabitCheckButtonState extends State<HabitCheckButton>
                   : Colors.transparent,
             ),
             child: widget.isDone
-                ? Icon(Icons.check, size: 18, color: color)
+                ? Icon(AppIcons.check, size: 18, color: color)
                 : widget.isRest
-                    ? Icon(Icons.coffee, size: 16, color: color)
-                    : null,
+                ? Icon(AppIcons.coffee, size: 16, color: color)
+                : null,
           ),
         ),
       ),

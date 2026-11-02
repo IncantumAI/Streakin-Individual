@@ -29,6 +29,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:streakin/core/design/tokens.dart';
 import 'package:streakin/core/design/icons.dart';
 import 'package:streakin/core/errors/app_failure.dart';
+import 'package:streakin/core/security/brute_force_guard.dart';
+import 'package:streakin/core/security/erase_all_data_service.dart';
 import 'package:streakin/core/security/lock_controller.dart';
 import 'package:streakin/core/storage/identifiers.dart';
 import 'package:streakin/features/onboarding/application/onboarding_service.dart';
@@ -62,6 +64,9 @@ class _LockScreenState extends ConsumerState<LockScreen> {
   // and will be removed; it is intentionally omitted here.
   static const _storage = FlutterSecureStorage(
     aOptions: AndroidOptions(
+      // Keep the existing store name: switching to storageNamespace would
+      // orphan already-registered biometric keys.
+      // ignore: deprecated_member_use
       sharedPreferencesName: 'biometric_storage_v2',
     ),
   );
@@ -84,8 +89,7 @@ class _LockScreenState extends ConsumerState<LockScreen> {
   Future<void> _checkBiometricAndAutoPrompt() async {
     // Read directly from SharedPreferences to avoid async Riverpod load race.
     final prefs = await SharedPreferences.getInstance();
-    final enabled =
-        prefs.getBool(AppIdentifiers.prefBiometricEnabled) ?? false;
+    final enabled = prefs.getBool(AppIdentifiers.prefBiometricEnabled) ?? false;
     if (!enabled) return;
 
     try {
@@ -98,7 +102,9 @@ class _LockScreenState extends ConsumerState<LockScreen> {
       // We use .timeout() to detect this hang and trigger the native wipe.
       bool hasDek = false;
       try {
-        hasDek = await _storage.containsKey(key: _dekBiometricKey).timeout(const Duration(milliseconds: 800));
+        hasDek = await _storage
+            .containsKey(key: _dekBiometricKey)
+            .timeout(const Duration(milliseconds: 800));
       } catch (_) {
         // Keystore key invalidated (reinstall, lock-screen change on MIUI).
         // Native thread probably crashed. Delete corrupted entry securely.
@@ -121,7 +127,8 @@ class _LockScreenState extends ConsumerState<LockScreen> {
     try {
       // First, try wiping the file at the native level to handle severe Keystore corruption
       // that prevents flutter_secure_storage from even completing its own initialisation.
-      await const MethodChannel('streakin.native').invokeMethod<void>('clearCorruptedBiometrics');
+      await const MethodChannel('streakin.native')
+          .invokeMethod<void>('clearCorruptedBiometrics');
     } catch (_) {}
     try {
       await _storage.delete(key: _dekBiometricKey);
@@ -160,7 +167,9 @@ class _LockScreenState extends ConsumerState<LockScreen> {
       // that may be thrown on MIUI/Samsung Knox after reinstall.
       String? dekBase64;
       try {
-        dekBase64 = await _storage.read(key: _dekBiometricKey).timeout(const Duration(milliseconds: 800));
+        dekBase64 = await _storage
+            .read(key: _dekBiometricKey)
+            .timeout(const Duration(milliseconds: 800));
       } catch (_) {
         // Keystore key invalidated — clear and ask for password.
         await _clearBiometricDek();
@@ -206,6 +215,19 @@ class _LockScreenState extends ConsumerState<LockScreen> {
     final rk = _rkController.text.trim();
     if (!_showRecovery && pw.isEmpty) return;
     if (_showRecovery && rk.isEmpty) return;
+
+    // Brute-force defence: escalating lockout persisted in secure storage.
+    final guard = ref.read(bruteForceGuardProvider);
+    final wait = await guard.remaining();
+    if (wait > Duration.zero) {
+      if (mounted) {
+        setState(
+          () => _error =
+              'Too many attempts. Try again in ${wait.inSeconds + 1}s.',
+        );
+      }
+      return;
+    }
     setState(() {
       _unlocking = true;
       _error = null;
@@ -219,9 +241,7 @@ class _LockScreenState extends ConsumerState<LockScreen> {
             .read(onboardingServiceProvider)
             .unlockWithRecoveryKey(_hexToBytes(hex));
       } else {
-        dek = await ref
-            .read(onboardingServiceProvider)
-            .unlockWithPassword(pw);
+        dek = await ref.read(onboardingServiceProvider).unlockWithPassword(pw);
       }
 
       // After a successful password unlock, (re-)register the DEK for
@@ -233,15 +253,15 @@ class _LockScreenState extends ConsumerState<LockScreen> {
         final biometricEnabled =
             prefs.getBool(AppIdentifiers.prefBiometricEnabled) ?? false;
         if (biometricEnabled) {
-          await _storage.write(
-            key: _dekBiometricKey,
-            value: base64Encode(dek),
-          ).timeout(const Duration(milliseconds: 800));
+          await _storage
+              .write(key: _dekBiometricKey, value: base64Encode(dek))
+              .timeout(const Duration(milliseconds: 800));
         }
       } catch (_) {
         // Non-fatal — biometric DEK storage failure must not block unlock.
       }
 
+      await guard.reset();
       ref.read(keyVaultProvider).load(dek);
       ref.read(LockController.provider.notifier).onUnlocked();
 
@@ -252,8 +272,17 @@ class _LockScreenState extends ConsumerState<LockScreen> {
         context.go(dest);
       }
     } on AuthFailure catch (e) {
+      final outcome = await guard.recordFailure();
+      if (outcome.shouldWipe) {
+        await ref.read(eraseAllDataServiceProvider).eraseAll();
+        if (mounted) context.go(AppRoutes.onboarding);
+        return;
+      }
+      if (!mounted) return;
       setState(() {
-        _error = e.message;
+        _error = outcome.lockedFor > Duration.zero
+            ? '${e.message}. Locked for ${outcome.lockedFor.inSeconds}s.'
+            : e.message;
         _unlocking = false;
       });
     } catch (e) {
@@ -303,7 +332,7 @@ class _LockScreenState extends ConsumerState<LockScreen> {
                   if (_biometricAvailable && !_showRecovery) ...[
                     OutlinedButton.icon(
                       onPressed: _unlocking ? null : _unlockWithBiometric,
-                      icon: const Icon(Icons.fingerprint),
+                      icon: const Icon(AppIcons.biometric),
                       label: const Text('Unlock with biometrics'),
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 14),
@@ -312,16 +341,22 @@ class _LockScreenState extends ConsumerState<LockScreen> {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    Row(children: [
-                      Expanded(child: Divider(color: colors.outline)),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        child: Text('or',
+                    Row(
+                      children: [
+                        Expanded(child: Divider(color: colors.outline)),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          child: Text(
+                            'or',
                             style: TextStyle(
-                                color: colors.textMuted, fontSize: 12)),
-                      ),
-                      Expanded(child: Divider(color: colors.outline)),
-                    ]),
+                              color: colors.textMuted,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                        Expanded(child: Divider(color: colors.outline)),
+                      ],
+                    ),
                     const SizedBox(height: 16),
                   ],
 
@@ -343,7 +378,10 @@ class _LockScreenState extends ConsumerState<LockScreen> {
                         labelText: 'Password',
                         suffixIcon: IconButton(
                           icon: Icon(
-                              _pwVisible ? Icons.visibility : Icons.visibility_off),
+                            _pwVisible
+                                ? AppIcons.visibility
+                                : AppIcons.visibilityOff,
+                          ),
                           onPressed: () =>
                               setState(() => _pwVisible = !_pwVisible),
                         ),
@@ -351,9 +389,11 @@ class _LockScreenState extends ConsumerState<LockScreen> {
                     ),
                   if (_error != null) ...[
                     const SizedBox(height: 8),
-                    Text(_error!,
-                        style: TextStyle(color: colors.danger, fontSize: 13),
-                        textAlign: TextAlign.center),
+                    Text(
+                      _error!,
+                      style: TextStyle(color: colors.danger, fontSize: 13),
+                      textAlign: TextAlign.center,
+                    ),
                   ],
                   const SizedBox(height: 24),
                   ElevatedButton(
@@ -363,7 +403,10 @@ class _LockScreenState extends ConsumerState<LockScreen> {
                             height: 20,
                             width: 20,
                             child: CircularProgressIndicator(
-                                strokeWidth: 2, color: Colors.white))
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
                         : const Text('Unlock'),
                   ),
                   const SizedBox(height: 16),
@@ -372,9 +415,9 @@ class _LockScreenState extends ConsumerState<LockScreen> {
                       _showRecovery = !_showRecovery;
                       _error = null;
                     }),
-                    child: Text(_showRecovery
-                        ? 'Back to password'
-                        : 'Forgot password?'),
+                    child: Text(
+                      _showRecovery ? 'Back to password' : 'Forgot password?',
+                    ),
                   ),
                   const SizedBox(height: 32),
                 ],

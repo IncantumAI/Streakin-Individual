@@ -135,8 +135,7 @@ void main() {
     test('day 400 — beyond 365, next milestone > 365', () {
       final g = _goal(kind: GoalKind.open, start: '2029-01-01');
       // 2030-02-05 is day 401 from 2029-01-01
-      final clock =
-          GoalClock.compute(g, LocalDate.parse('2030-02-05'));
+      final clock = GoalClock.compute(g, LocalDate.parse('2030-02-05'));
       expect(clock.dayNumber, greaterThan(365));
       expect(clock.nextMilestone!, greaterThan(365));
     });
@@ -145,9 +144,10 @@ void main() {
       final g = _goal(kind: GoalKind.open, start: '2030-01-01');
       for (var d = 1; d < 200; d++) {
         final clock = GoalClock.compute(
-            g, LocalDate.parse('2030-01-01').addDays(d - 1));
-        expect(clock.progressToNextMilestone,
-            inInclusiveRange(0.0, 1.0));
+          g,
+          LocalDate.parse('2030-01-01').addDays(d - 1),
+        );
+        expect(clock.progressToNextMilestone, inInclusiveRange(0.0, 1.0));
       }
     });
   });

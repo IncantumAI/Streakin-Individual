@@ -5,6 +5,8 @@
 // CSV: table preview (≤ 1,000 rows). TXT: selectable text (≤ 1 MB).
 // DOCX/PPTX: metadata card + "Open externally".
 
+import 'package:streakin/core/design/icons.dart';
+
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -17,8 +19,10 @@ import 'package:streakin/features/notes/domain/attachment.dart';
 
 // ── Preview provider ──────────────────────────────────────────────────────────
 
-final _attachmentBytesProvider =
-    FutureProvider.family<Uint8List, String>((ref, storageName) async {
+final _attachmentBytesProvider = FutureProvider.family<Uint8List, String>((
+  ref,
+  storageName,
+) async {
   final repo = ref.watch(attachmentRepositoryProvider);
   return repo.loadBlob(storageName);
 });
@@ -37,8 +41,9 @@ class AttachmentPreviewSheet extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.colors;
-    final bytesAsync =
-        ref.watch(_attachmentBytesProvider(attachment.storageName));
+    final bytesAsync = ref.watch(
+      _attachmentBytesProvider(attachment.storageName),
+    );
 
     return DraggableScrollableSheet(
       expand: false,
@@ -47,8 +52,7 @@ class AttachmentPreviewSheet extends ConsumerWidget {
       builder: (_, ctrl) => Container(
         decoration: BoxDecoration(
           color: colors.surface,
-          borderRadius:
-              const BorderRadius.vertical(top: Radius.circular(16)),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
         ),
         child: Column(
           children: [
@@ -58,20 +62,21 @@ class AttachmentPreviewSheet extends ConsumerWidget {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                  color: colors.outline,
-                  borderRadius: BorderRadius.circular(2)),
+                color: colors.outline,
+                borderRadius: BorderRadius.circular(2),
+              ),
             ),
             // Filename
             Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               child: Text(
                 attachment.kind.serialized.toUpperCase(),
                 style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: colors.textMuted,
-                    letterSpacing: 0.5),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: colors.textMuted,
+                  letterSpacing: 0.5,
+                ),
               ),
             ),
             // Content
@@ -80,8 +85,11 @@ class AttachmentPreviewSheet extends ConsumerWidget {
                 loading: () =>
                     const Center(child: CircularProgressIndicator.adaptive()),
                 error: (e, _) => Center(
-                    child: Text('Could not load preview.',
-                        style: TextStyle(color: colors.textMuted))),
+                  child: Text(
+                    'Could not load preview.',
+                    style: TextStyle(color: colors.textMuted),
+                  ),
+                ),
                 data: (bytes) => _PreviewContent(
                   attachment: attachment,
                   bytes: bytes,
@@ -116,12 +124,14 @@ class _PreviewContent extends StatelessWidget {
         return _ImagePreview(bytes: bytes);
       case AttachmentKind.svg:
         return _MetadataCard(
-            attachment: attachment,
-            note: 'SVG preview not available — open externally.');
+          attachment: attachment,
+          note: 'SVG preview not available — open externally.',
+        );
       case AttachmentKind.pdf:
         return _MetadataCard(
-            attachment: attachment,
-            note: 'PDF in-app preview coming in a later update.');
+          attachment: attachment,
+          note: 'PDF in-app preview coming in a later update.',
+        );
       case AttachmentKind.csv:
         return _CsvPreview(bytes: bytes, scrollController: scrollController);
       case AttachmentKind.txt:
@@ -146,9 +156,10 @@ class _ImagePreview extends StatelessWidget {
         child: Image.memory(
           bytes,
           fit: BoxFit.contain,
-          cacheWidth: (MediaQuery.sizeOf(context).width *
-                  MediaQuery.devicePixelRatioOf(context))
-              .round(),
+          cacheWidth:
+              (MediaQuery.sizeOf(context).width *
+                      MediaQuery.devicePixelRatioOf(context))
+                  .round(),
         ),
       ),
     );
@@ -158,8 +169,7 @@ class _ImagePreview extends StatelessWidget {
 // ── CSV preview ───────────────────────────────────────────────────────────────
 
 class _CsvPreview extends StatelessWidget {
-  const _CsvPreview(
-      {required this.bytes, required this.scrollController});
+  const _CsvPreview({required this.bytes, required this.scrollController});
   final Uint8List bytes;
   final ScrollController scrollController;
 
@@ -167,15 +177,12 @@ class _CsvPreview extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     final text = utf8.decode(bytes, allowMalformed: true);
-    final lines = const LineSplitter()
-        .convert(text)
-        .take(1000)
-        .toList();
+    final lines = const LineSplitter().convert(text).take(1000).toList();
 
     if (lines.isEmpty) {
       return Center(
-          child: Text('Empty CSV',
-              style: TextStyle(color: colors.textMuted)));
+        child: Text('Empty CSV', style: TextStyle(color: colors.textMuted)),
+      );
     }
 
     return SingleChildScrollView(
@@ -194,26 +201,39 @@ class _CsvPreview extends StatelessWidget {
   List<DataColumn> _columns(String header, AppColorTokens colors) {
     return header
         .split(',')
-        .map((h) => DataColumn(
-            label: Text(h.trim(),
-                style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    color: colors.text,
-                    fontSize: 13))))
+        .map(
+          (h) => DataColumn(
+            label: Text(
+              h.trim(),
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: colors.text,
+                fontSize: 13,
+              ),
+            ),
+          ),
+        )
         .toList();
   }
 
   List<DataRow> _rows(List<String> lines, AppColorTokens colors) {
     return lines
-        .map((line) => DataRow(
-              cells: line
-                  .split(',')
-                  .map((cell) => DataCell(Text(
+        .map(
+          (line) => DataRow(
+            cells: line
+                .split(',')
+                .map(
+                  (cell) => DataCell(
+                    Text(
                       // Formula injection guard — prefix = + - @ with apostrophe for display.
                       _safeCellText(cell.trim()),
-                      style: TextStyle(fontSize: 12, color: colors.text))))
-                  .toList(),
-            ))
+                      style: TextStyle(fontSize: 12, color: colors.text),
+                    ),
+                  ),
+                )
+                .toList(),
+          ),
+        )
         .toList();
   }
 
@@ -232,8 +252,7 @@ class _CsvPreview extends StatelessWidget {
 // ── TXT preview ───────────────────────────────────────────────────────────────
 
 class _TxtPreview extends StatelessWidget {
-  const _TxtPreview(
-      {required this.bytes, required this.scrollController});
+  const _TxtPreview({required this.bytes, required this.scrollController});
   final Uint8List bytes;
   final ScrollController scrollController;
 
@@ -243,9 +262,7 @@ class _TxtPreview extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     final truncated = bytes.length > _maxPreviewBytes;
-    final preview = truncated
-        ? bytes.sublist(0, _maxPreviewBytes)
-        : bytes;
+    final preview = truncated ? bytes.sublist(0, _maxPreviewBytes) : bytes;
     final text = utf8.decode(preview, allowMalformed: true);
 
     return Padding(
@@ -259,9 +276,10 @@ class _TxtPreview extends StatelessWidget {
               child: SelectableText(
                 text,
                 style: TextStyle(
-                    fontSize: 13,
-                    fontFamily: 'JetBrainsMono',
-                    color: colors.text),
+                  fontSize: 13,
+                  fontFamily: 'JetBrainsMono',
+                  color: colors.text,
+                ),
               ),
             ),
           ),
@@ -296,38 +314,42 @@ class _MetadataCard extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            _icon,
-            size: 56,
-            color: colors.brand,
-          ),
+          Icon(_icon, size: 56, color: colors.brand),
           const SizedBox(height: 16),
           Text(
             attachment.kind.mime,
             style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: colors.text),
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: colors.text,
+            ),
           ),
           const SizedBox(height: 4),
-          Text('$sizeKb KB',
-              style: TextStyle(fontSize: 13, color: colors.textMuted)),
+          Text(
+            '$sizeKb KB',
+            style: TextStyle(fontSize: 13, color: colors.textMuted),
+          ),
           if (note != null) ...[
             const SizedBox(height: 16),
-            Text(note!,
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 13, color: colors.textMuted)),
+            Text(
+              note!,
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 13, color: colors.textMuted),
+            ),
           ],
           const SizedBox(height: 24),
           OutlinedButton.icon(
-            icon: const Icon(Icons.open_in_new, size: 18),
+            icon: const Icon(AppIcons.openInNew, size: 18),
             label: const Text('Open externally'),
             onPressed: () {
               // Phase 8: integrate open_filex to decrypt → temp file → open
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                content: Text(
-                    'External file opening coming in a later update.'),
-              ));
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text(
+                    'External file opening coming in a later update.',
+                  ),
+                ),
+              );
             },
           ),
         ],
@@ -336,10 +358,10 @@ class _MetadataCard extends StatelessWidget {
   }
 
   IconData get _icon => switch (attachment.kind) {
-        AttachmentKind.pdf => Icons.picture_as_pdf_outlined,
-        AttachmentKind.docx => Icons.description_outlined,
-        AttachmentKind.pptx => Icons.slideshow_outlined,
-        AttachmentKind.svg => Icons.auto_awesome_outlined,
-        _ => Icons.attach_file,
-      };
+    AttachmentKind.pdf => AppIcons.pictureAsPdfOutlined,
+    AttachmentKind.docx => AppIcons.descriptionOutlined,
+    AttachmentKind.pptx => AppIcons.slideshowOutlined,
+    AttachmentKind.svg => AppIcons.autoAwesomeOutlined,
+    _ => AppIcons.attach,
+  };
 }

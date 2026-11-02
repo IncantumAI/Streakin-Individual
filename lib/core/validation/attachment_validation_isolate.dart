@@ -38,8 +38,9 @@ void _validationIsolateMain(_ValidationRequest req) {
   } on ValidationFailure catch (e) {
     req.sendPort.send(_ValidationResult(errorMessage: e.message));
   } catch (e) {
-    req.sendPort.send(_ValidationResult(
-        errorMessage: 'An unexpected error occurred: $e'));
+    req.sendPort.send(
+      _ValidationResult(errorMessage: 'An unexpected error occurred: $e'),
+    );
   }
 }
 

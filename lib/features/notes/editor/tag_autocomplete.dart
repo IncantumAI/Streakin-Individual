@@ -2,6 +2,7 @@
 // Tag autocomplete overlay: shown when the user types '#' in the editor.
 // Queries existing tags and inserts the selected one inline.
 
+import 'package:streakin/core/design/icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:super_editor/super_editor.dart';
@@ -41,7 +42,7 @@ class TagAutocompleteController {
       return false;
     }
     final offset = (selection.extent.nodePosition as TextNodePosition).offset;
-    final text = node.text.text;
+    final text = node.text.toPlainText();
 
     // Scan backwards from cursor to find '#' trigger.
     final tagQuery = _extractTagQuery(text, offset);
@@ -159,8 +160,7 @@ class _TagAutocompleteOverlay extends ConsumerWidget {
       return const SizedBox.shrink();
     }
 
-    final displayTags =
-        filtered.isEmpty ? allTags.take(8).toList() : filtered;
+    final displayTags = filtered.isEmpty ? allTags.take(8).toList() : filtered;
 
     return Stack(
       children: [
@@ -189,14 +189,17 @@ class _TagAutocompleteOverlay extends ConsumerWidget {
                     onTap: () => onSelect(tag),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 8),
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
                       child: Row(
                         children: [
-                          Icon(Icons.tag, size: 14, color: colors.brand),
+                          Icon(AppIcons.tagIcon, size: 14, color: colors.brand),
                           const SizedBox(width: 6),
-                          Text(tag,
-                              style: TextStyle(
-                                  fontSize: 14, color: colors.text)),
+                          Text(
+                            tag,
+                            style: TextStyle(fontSize: 14, color: colors.text),
+                          ),
                         ],
                       ),
                     ),

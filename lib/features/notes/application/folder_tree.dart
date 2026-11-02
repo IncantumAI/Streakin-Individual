@@ -47,11 +47,13 @@ List<FolderTreeNode> _buildChildren(
 ) {
   return all
       .where((f) => f.parentId == parentId)
-      .map((f) => FolderTreeNode(
-            folder: f,
-            children: _buildChildren(f.id, all, depth + 1),
-            depth: depth,
-          ))
+      .map(
+        (f) => FolderTreeNode(
+          folder: f,
+          children: _buildChildren(f.id, all, depth + 1),
+          depth: depth,
+        ),
+      )
       .toList();
 }
 
@@ -86,6 +88,7 @@ List<FolderTreeNode> flattenTree(
       }
     }
   }
+
   for (final root in roots) {
     visit(root);
   }
@@ -95,10 +98,7 @@ List<FolderTreeNode> flattenTree(
 // ── Breadcrumb ────────────────────────────────────────────────────────────────
 
 /// Build the breadcrumb path from root to [folderId].
-List<FolderCrumb> buildBreadcrumbs(
-  List<Folder> allFolders,
-  String? folderId,
-) {
+List<FolderCrumb> buildBreadcrumbs(List<Folder> allFolders, String? folderId) {
   if (folderId == null) return [];
   final map = {for (final f in allFolders) f.id: f};
   final crumbs = <FolderCrumb>[];

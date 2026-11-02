@@ -14,8 +14,9 @@ final sharedPrefsProvider = FutureProvider<SharedPreferences>(
 
 // ── Theme mode ────────────────────────────────────────────────────────────────
 
-final themeModeProvider =
-    NotifierProvider<ThemeModeNotifier, ThemeMode>(ThemeModeNotifier.new);
+final themeModeProvider = NotifierProvider<ThemeModeNotifier, ThemeMode>(
+  ThemeModeNotifier.new,
+);
 
 class ThemeModeNotifier extends Notifier<ThemeMode> {
   @override
@@ -37,22 +38,23 @@ class ThemeModeNotifier extends Notifier<ThemeMode> {
   }
 
   static ThemeMode _fromString(String s) => switch (s) {
-        'light' => ThemeMode.light,
-        'dark' => ThemeMode.dark,
-        _ => ThemeMode.system,
-      };
+    'light' => ThemeMode.light,
+    'dark' => ThemeMode.dark,
+    _ => ThemeMode.system,
+  };
 
   static String _toString(ThemeMode m) => switch (m) {
-        ThemeMode.light => 'light',
-        ThemeMode.dark => 'dark',
-        _ => 'system',
-      };
+    ThemeMode.light => 'light',
+    ThemeMode.dark => 'dark',
+    _ => 'system',
+  };
 }
 
 // ── Week start ────────────────────────────────────────────────────────────────
 
-final weekStartProvider =
-    NotifierProvider<WeekStartNotifier, int>(WeekStartNotifier.new);
+final weekStartProvider = NotifierProvider<WeekStartNotifier, int>(
+  WeekStartNotifier.new,
+);
 
 class WeekStartNotifier extends Notifier<int> {
   @override
@@ -75,8 +77,9 @@ class WeekStartNotifier extends Notifier<int> {
 
 // ── Day boundary ──────────────────────────────────────────────────────────────
 
-final dayBoundaryMinutesProvider =
-    NotifierProvider<DayBoundaryNotifier, int>(DayBoundaryNotifier.new);
+final dayBoundaryMinutesProvider = NotifierProvider<DayBoundaryNotifier, int>(
+  DayBoundaryNotifier.new,
+);
 
 class DayBoundaryNotifier extends Notifier<int> {
   @override
@@ -99,8 +102,9 @@ class DayBoundaryNotifier extends Notifier<int> {
 
 // ── Motion ────────────────────────────────────────────────────────────────────
 
-final reducedMotionProvider =
-    NotifierProvider<ReducedMotionNotifier, bool>(ReducedMotionNotifier.new);
+final reducedMotionProvider = NotifierProvider<ReducedMotionNotifier, bool>(
+  ReducedMotionNotifier.new,
+);
 
 class ReducedMotionNotifier extends Notifier<bool> {
   @override
@@ -119,7 +123,9 @@ class ReducedMotionNotifier extends Notifier<bool> {
     state = reduced;
     final prefs = await ref.read(sharedPrefsProvider.future);
     await prefs.setString(
-        AppIdentifiers.prefMotionMode, reduced ? 'reduced' : 'full');
+      AppIdentifiers.prefMotionMode,
+      reduced ? 'reduced' : 'full',
+    );
   }
 }
 
@@ -134,7 +140,8 @@ final onboardingDoneProvider = FutureProvider<bool>((ref) async {
 
 final biometricEnabledProvider =
     NotifierProvider<BiometricEnabledNotifier, bool>(
-        BiometricEnabledNotifier.new);
+      BiometricEnabledNotifier.new,
+    );
 
 class BiometricEnabledNotifier extends Notifier<bool> {
   @override
@@ -157,7 +164,8 @@ class BiometricEnabledNotifier extends Notifier<bool> {
 
 // ── Profile ───────────────────────────────────────────────────────────────────
 
-class ProfileNotifier extends Notifier<({String name, String username, String bio})> {
+class ProfileNotifier
+    extends Notifier<({String name, String username, String bio})> {
   @override
   ({String name, String username, String bio}) build() {
     _load();
@@ -187,5 +195,88 @@ class ProfileNotifier extends Notifier<({String name, String username, String bi
 }
 
 final profileProvider =
-    NotifierProvider<ProfileNotifier, ({String name, String username, String bio})>(
-        ProfileNotifier.new);
+    NotifierProvider<
+      ProfileNotifier,
+      ({String name, String username, String bio})
+    >(ProfileNotifier.new);
+
+// ── Generic boolean / int preferences ────────────────────────────────────────
+
+class BoolPrefNotifier extends Notifier<bool> {
+  BoolPrefNotifier(this.key, this.defaultValue);
+  final String key;
+  final bool defaultValue;
+
+  @override
+  bool build() {
+    _load();
+    return defaultValue;
+  }
+
+  Future<void> _load() async {
+    final prefs = await ref.read(sharedPrefsProvider.future);
+    state = prefs.getBool(key) ?? defaultValue;
+  }
+
+  Future<void> set(bool value) async {
+    state = value;
+    final prefs = await ref.read(sharedPrefsProvider.future);
+    await prefs.setBool(key, value);
+  }
+}
+
+NotifierProvider<BoolPrefNotifier, bool> _boolPref(
+  String key, {
+  bool defaultValue = false,
+}) => NotifierProvider<BoolPrefNotifier, bool>(
+  () => BoolPrefNotifier(key, defaultValue),
+);
+
+/// Whether flagged to-dos must be done before the day locks in.
+final countTodosForLockInProvider = _boolPref(
+  AppIdentifiers.prefCountTodosForLockIn,
+);
+
+/// Per-type notification toggles (spec §12.1).
+final notifHabitsEnabledProvider = _boolPref(
+  AppIdentifiers.prefNotifHabits,
+  defaultValue: true,
+);
+final notifTodosEnabledProvider = _boolPref(
+  AppIdentifiers.prefNotifTodos,
+  defaultValue: true,
+);
+final notifMentionsEnabledProvider = _boolPref(
+  AppIdentifiers.prefNotifMentions,
+  defaultValue: true,
+);
+final notifLockInNudgeEnabledProvider = _boolPref(
+  AppIdentifiers.prefNotifLockInNudge,
+  defaultValue: true,
+);
+
+/// 24-hour clock display.
+final timeFormat24hProvider = _boolPref(AppIdentifiers.prefTimeFormat24h);
+
+/// Default reminder time (minutes from midnight) for all-day items.
+final defaultReminderMinutesProvider =
+    NotifierProvider<DefaultReminderNotifier, int>(DefaultReminderNotifier.new);
+
+class DefaultReminderNotifier extends Notifier<int> {
+  @override
+  int build() {
+    _load();
+    return 540; // 09:00
+  }
+
+  Future<void> _load() async {
+    final prefs = await ref.read(sharedPrefsProvider.future);
+    state = prefs.getInt(AppIdentifiers.prefDefaultReminderMinutes) ?? 540;
+  }
+
+  Future<void> set(int minutes) async {
+    state = minutes;
+    final prefs = await ref.read(sharedPrefsProvider.future);
+    await prefs.setInt(AppIdentifiers.prefDefaultReminderMinutes, minutes);
+  }
+}

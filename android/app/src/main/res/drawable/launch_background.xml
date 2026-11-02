@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Brand purple background for the native Android splash (shown before Flutter draws) -->
+<!-- Brand orange background for the native Android splash (shown before Flutter draws) -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:drawable="@color/splash_brand_purple" />
+    <item android:drawable="@color/splash_brand" />
 </layer-list>

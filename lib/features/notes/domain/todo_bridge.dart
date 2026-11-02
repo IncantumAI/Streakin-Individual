@@ -10,6 +10,10 @@ abstract interface class TodoBridge {
   /// Remove the To-do task link from a checkbox (keep checkbox, drop task).
   Future<void> demoteCheckbox(String noteId, String blockId);
 
+  /// Set the done state of the task linked to a checkbox (same use-case as
+  /// ticking the task in the to-do list).
+  Future<void> setCheckboxDone(String noteId, String blockId, bool done);
+
   /// Watch whether a checkbox is currently backed by a complete To-do task.
   Stream<bool> watchCheckboxState(String noteId, String blockId);
 }

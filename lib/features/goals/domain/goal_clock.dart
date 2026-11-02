@@ -84,7 +84,11 @@ class GoalClock {
   }
 
   static GoalClockState _computeDated(
-      Goal goal, LocalDate today, LocalDate start, LocalDate end) {
+    Goal goal,
+    LocalDate today,
+    LocalDate start,
+    LocalDate end,
+  ) {
     final total = _daysBetween(start, end) + 1; // inclusive
 
     if (today < start) {
@@ -130,7 +134,10 @@ class GoalClock {
   }
 
   static GoalClockState _computeOpen(
-      Goal goal, LocalDate today, LocalDate start) {
+    Goal goal,
+    LocalDate today,
+    LocalDate start,
+  ) {
     if (today < start) {
       final daysUntil = _daysBetween(today, start);
       return GoalClockState(
@@ -159,7 +166,6 @@ class GoalClock {
       phase: GoalPhase.active,
       dayNumber: dayNumber,
       totalDays: null,
-      daysLeft: null,
       progress: progressToNext.clamp(0.0, 1.0),
       nextMilestone: next,
       daysToNextMilestone: next - dayNumber,

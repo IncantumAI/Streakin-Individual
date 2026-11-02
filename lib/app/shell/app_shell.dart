@@ -1,13 +1,24 @@
 // lib/app/shell/app_shell.dart
 // Responsive shell with custom navbar — diamond Notes centre button.
 
+import 'dart:io';
+
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:streakin/core/design/tokens.dart';
 import 'package:streakin/core/design/icons.dart';
 import 'package:streakin/app/router.dart' show AppRoutes;
+import 'package:streakin/core/security/lock_controller.dart';
+import 'package:streakin/features/notes/notes_module.dart' show showNewNoteFlow;
+import 'package:streakin/features/todos/presentation/todos_screen.dart'
+    show showAddTaskSheet;
+import 'package:window_manager/window_manager.dart';
+import 'package:streakin/core/notifications/notification_reconciler.dart'
+    show notificationTapPayload;
 
 class AppShell extends ConsumerWidget {
   const AppShell({required this.shell, super.key});
@@ -16,23 +27,128 @@ class AppShell extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final width = MediaQuery.sizeOf(context).width;
-    if (width < 600) return _CompactShell(shell: shell);
-    if (width < 1024) return _MediumShell(shell: shell);
-    return _ExpandedShell(shell: shell);
+    final Widget body;
+    if (width < 600) {
+      body = _CompactShell(shell: shell);
+    } else if (width < 1024) {
+      body = _MediumShell(shell: shell);
+    } else {
+      body = _ExpandedShell(shell: shell);
+    }
+    return _NotificationTapListener(child: _DesktopShortcuts(child: body));
   }
+}
+
+/// App-level desktop shortcuts (Spec §5.7). Editor-level shortcuts (Ctrl+B/I/U,
+/// Ctrl+Z …) are provided by the editor itself.
+class _DesktopShortcuts extends ConsumerWidget {
+  const _DesktopShortcuts({required this.child});
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (kIsWeb || !(Platform.isWindows || Platform.isLinux)) return child;
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.keyN, control: true): () =>
+            showNewNoteFlow(context, ref),
+        const SingleActivator(LogicalKeyboardKey.keyT, control: true): () =>
+            showAddTaskSheet(context),
+        const SingleActivator(LogicalKeyboardKey.keyK, control: true): () =>
+            GoRouter.of(context).push('/notes/search'),
+        const SingleActivator(LogicalKeyboardKey.keyL, control: true): () =>
+            ref.read(LockController.provider.notifier).lock(),
+        const SingleActivator(LogicalKeyboardKey.f11): () async {
+          final full = await windowManager.isFullScreen();
+          await windowManager.setFullScreen(!full);
+        },
+      },
+      child: Focus(autofocus: true, child: child),
+    );
+  }
+}
+
+/// Routes a tapped notification (opaque `type:id` payload) to its entity.
+/// The shell only exists after unlock, so a tap while locked first goes
+/// through the lock screen and is consumed here afterwards.
+class _NotificationTapListener extends StatefulWidget {
+  const _NotificationTapListener({required this.child});
+  final Widget child;
+
+  @override
+  State<_NotificationTapListener> createState() =>
+      _NotificationTapListenerState();
+}
+
+class _NotificationTapListenerState extends State<_NotificationTapListener> {
+  @override
+  void initState() {
+    super.initState();
+    notificationTapPayload.addListener(_consume);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _consume());
+  }
+
+  @override
+  void dispose() {
+    notificationTapPayload.removeListener(_consume);
+    super.dispose();
+  }
+
+  void _consume() {
+    final payload = notificationTapPayload.value;
+    if (payload == null || !mounted) return;
+    notificationTapPayload.value = null;
+    final sep = payload.indexOf(':');
+    if (sep < 0) return;
+    final type = payload.substring(0, sep);
+    final id = payload.substring(sep + 1);
+    final router = GoRouter.of(context);
+    switch (type) {
+      case 'habit':
+      case 'lockin':
+        router.go(AppRoutes.habits);
+      case 'todo':
+        router.go(AppRoutes.tasks);
+      case 'date_mention':
+        router.push('/notes/$id');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }
 
 // Indices: 0=Home, 1=Habits, 2=Notes, 3=Calendar, 4=Tasks
 const _sideItems = [
   _NavItem(label: 'Home', icon: AppIcons.home, activeIcon: AppIcons.homeActive),
-  _NavItem(label: 'Habits', icon: AppIcons.habits, activeIcon: AppIcons.habitsActive),
-  _NavItem(label: 'Notes', icon: AppIcons.notes, activeIcon: AppIcons.notesActive),
-  _NavItem(label: 'Calendar', icon: AppIcons.calendar, activeIcon: AppIcons.calendarActive),
-  _NavItem(label: 'Tasks', icon: AppIcons.tasks, activeIcon: AppIcons.tasksActive),
+  _NavItem(
+    label: 'Habits',
+    icon: AppIcons.habits,
+    activeIcon: AppIcons.habitsActive,
+  ),
+  _NavItem(
+    label: 'Notes',
+    icon: AppIcons.notes,
+    activeIcon: AppIcons.notesActive,
+  ),
+  _NavItem(
+    label: 'Calendar',
+    icon: AppIcons.calendar,
+    activeIcon: AppIcons.calendarActive,
+  ),
+  _NavItem(
+    label: 'Tasks',
+    icon: AppIcons.tasks,
+    activeIcon: AppIcons.tasksActive,
+  ),
 ];
 
 class _NavItem {
-  const _NavItem({required this.label, required this.icon, required this.activeIcon});
+  const _NavItem({
+    required this.label,
+    required this.icon,
+    required this.activeIcon,
+  });
   final String label;
   final IconData icon;
   final IconData activeIcon;
@@ -51,7 +167,8 @@ class _CompactShell extends StatelessWidget {
       body: shell,
       bottomNavigationBar: _CustomNavBar(
         currentIndex: shell.currentIndex,
-        onTap: (i) => shell.goBranch(i, initialLocation: i == shell.currentIndex),
+        onTap: (i) =>
+            shell.goBranch(i, initialLocation: i == shell.currentIndex),
         colors: colors,
       ),
     );
@@ -200,9 +317,7 @@ class _DiamondNotesButton extends StatelessWidget {
         height: 60,
         child: CustomPaint(
           painter: _DiamondPainter(
-            fillColor: selected
-                ? colors.brand
-                : colors.brand,
+            fillColor: selected ? colors.brand : colors.brand,
             shadowColor: colors.brand.withAlpha(80),
           ),
           child: Center(
@@ -219,8 +334,7 @@ class _DiamondNotesButton extends StatelessWidget {
 }
 
 class _DiamondPainter extends CustomPainter {
-  const _DiamondPainter(
-      {required this.fillColor, required this.shadowColor});
+  const _DiamondPainter({required this.fillColor, required this.shadowColor});
   final Color fillColor;
   final Color shadowColor;
 
@@ -231,10 +345,10 @@ class _DiamondPainter extends CustomPainter {
     final r = size.width * 0.48;
 
     final path = Path()
-      ..moveTo(cx, cy - r)          // top
-      ..lineTo(cx + r, cy)          // right
-      ..lineTo(cx, cy + r)          // bottom
-      ..lineTo(cx - r, cy)          // left
+      ..moveTo(cx, cy - r) // top
+      ..lineTo(cx + r, cy) // right
+      ..lineTo(cx, cy + r) // bottom
+      ..lineTo(cx - r, cy) // left
       ..close();
 
     // Shadow
@@ -254,16 +368,16 @@ class _DiamondPainter extends CustomPainter {
       ..lineTo(cx - r + 6, cy)
       ..close();
     canvas.drawPath(
-        highlightPath,
-        Paint()
-          ..color = Colors.white.withAlpha(25)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 1);
+      highlightPath,
+      Paint()
+        ..color = Colors.white.withAlpha(25)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1,
+    );
   }
 
   @override
-  bool shouldRepaint(_DiamondPainter old) =>
-      old.fillColor != fillColor;
+  bool shouldRepaint(_DiamondPainter old) => old.fillColor != fillColor;
 }
 
 // ── Medium (tablet rail) ───────────────────────────────────────────────────────
@@ -299,12 +413,13 @@ class _MediumShell extends StatelessWidget {
               ),
             ),
             destinations: _sideItems
-                .map((n) => NavigationRailDestination(
-                      icon: Icon(n.icon),
-                      selectedIcon:
-                          Icon(n.activeIcon, color: colors.brand),
-                      label: Text(n.label),
-                    ))
+                .map(
+                  (n) => NavigationRailDestination(
+                    icon: Icon(n.icon),
+                    selectedIcon: Icon(n.activeIcon, color: colors.brand),
+                    label: Text(n.label),
+                  ),
+                )
                 .toList(),
           ),
           const VerticalDivider(width: 1),
@@ -342,22 +457,24 @@ class _ExpandedShell extends StatelessWidget {
                   child: Padding(
                     padding: const EdgeInsets.only(bottom: 16),
                     child: ListTile(
-                      leading: Icon(AppIcons.settings,
-                          color: colors.textMuted),
-                      title: Text('Settings',
-                          style: TextStyle(color: colors.textMuted)),
+                      leading: Icon(AppIcons.settings, color: colors.textMuted),
+                      title: Text(
+                        'Settings',
+                        style: TextStyle(color: colors.textMuted),
+                      ),
                       onTap: () => context.push(AppRoutes.settings),
                     ),
                   ),
                 ),
               ),
               destinations: _sideItems
-                  .map((n) => NavigationRailDestination(
-                        icon: Icon(n.icon),
-                        selectedIcon:
-                            Icon(n.activeIcon, color: colors.brand),
-                        label: Text(n.label),
-                      ))
+                  .map(
+                    (n) => NavigationRailDestination(
+                      icon: Icon(n.icon),
+                      selectedIcon: Icon(n.activeIcon, color: colors.brand),
+                      label: Text(n.label),
+                    ),
+                  )
                   .toList(),
             ),
           ),

@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+# TODO(rename): Name, Exec and Icon follow the final brand (spec §19 item 6).
+Name=Streakin
+Comment=Private habit tracker and notes
+Exec=streakin %U
+Icon=in.incantum.streakin
+Categories=Office;Utility;
+Terminal=false
+StartupWMClass=streakin

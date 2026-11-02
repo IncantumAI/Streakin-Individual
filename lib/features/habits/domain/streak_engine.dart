@@ -56,11 +56,9 @@ class StreakEngine {
     final logMap = _toMap(logs);
 
     // Find the date range from habit.startDate to max log date.
-    final dates = logs
-        .where((l) => !l.isDeleted)
-        .map((l) => l.localDate)
-        .toList()
-      ..sort();
+    final dates =
+        logs.where((l) => !l.isDeleted).map((l) => l.localDate).toList()
+          ..sort();
     if (dates.isEmpty) return 0;
 
     final end = dates.last;
@@ -152,15 +150,20 @@ class StreakEngine {
   /// Returns how many rest tokens have been used in the rolling 7-day window
   /// ending on [today] for [habit].
   int restTokensUsedThisWeek(
-      Habit habit, List<HabitLog> logs, LocalDate today) {
+    Habit habit,
+    List<HabitLog> logs,
+    LocalDate today,
+  ) {
     final weekStart = today.subtractDays(6);
     final range = DateRange(start: weekStart, end: today);
     return logs
-        .where((l) =>
-            l.habitId == habit.id &&
-            l.status == HabitLogStatus.rest &&
-            !l.isDeleted &&
-            range.contains(l.localDate))
+        .where(
+          (l) =>
+              l.habitId == habit.id &&
+              l.status == HabitLogStatus.rest &&
+              !l.isDeleted &&
+              range.contains(l.localDate),
+        )
         .length;
   }
 

@@ -43,7 +43,10 @@ void main() {
     });
 
     test('DateRange.contains', () {
-      const r = DateRange(start: LocalDate(2026, 1, 1), end: LocalDate(2026, 1, 7));
+      const r = DateRange(
+        start: LocalDate(2026, 1, 1),
+        end: LocalDate(2026, 1, 7),
+      );
       expect(r.contains(const LocalDate(2026, 1, 1)), isTrue);
       expect(r.contains(const LocalDate(2026, 1, 7)), isTrue);
       expect(r.contains(const LocalDate(2025, 12, 31)), isFalse);
@@ -51,7 +54,10 @@ void main() {
     });
 
     test('DateRange.dates iterates all days', () {
-      const r = DateRange(start: LocalDate(2026, 1, 1), end: LocalDate(2026, 1, 3));
+      const r = DateRange(
+        start: LocalDate(2026, 1, 1),
+        end: LocalDate(2026, 1, 3),
+      );
       final dates = r.dates.toList();
       expect(dates.length, 3);
       expect(dates[0].toIso(), '2026-01-01');

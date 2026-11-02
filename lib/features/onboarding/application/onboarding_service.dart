@@ -24,18 +24,19 @@ class OnboardingService {
   final Ref _ref;
 
   // Argon2id parameters — match spec §3.2
-  static const int _opsLimit = 3;           // iterations
-  static const int _memLimit = 64 * 1024;   // 64 MiB in KiB (cryptography uses KiB)
+  static const int _opsLimit = 3; // iterations
+  static const int _memLimit =
+      64 * 1024; // 64 MiB in KiB (cryptography uses KiB)
   static const int _parallelism = 1;
   static const int _saltBytes = 16;
   static const int _keyBytes = 32;
 
   Argon2id get _argon2id => const DartArgon2id(
-        parallelism: _parallelism,
-        memory: _memLimit,
-        iterations: _opsLimit,
-        hashLength: _keyBytes,
-      );
+    parallelism: _parallelism,
+    memory: _memLimit,
+    iterations: _opsLimit,
+    hashLength: _keyBytes,
+  );
 
   Future<Uint8List> _deriveKey(String password, Uint8List salt) async {
     final secretKey = await _argon2id.deriveKeyFromPassword(
@@ -109,6 +110,95 @@ class OnboardingService {
       SecureBytes.zeroFill(kekRk);
       throw const AuthFailure('Incorrect recovery key');
     }
+  }
+
+  // ── Password change / recovery key regeneration (Phase 5C/5D) ─────────────
+  //
+  // Both only re-wrap the DEK; the DEK itself (and therefore the database and
+  // biometric quick-unlock wrapping) is unchanged.
+
+  /// Verifies [currentPassword], then re-wraps the DEK under [newPassword]
+  /// with a fresh salt. The old password stops working immediately.
+  Future<void> changePassword(
+    String currentPassword,
+    String newPassword,
+  ) async {
+    final dek = await unlockWithPassword(currentPassword);
+    try {
+      final keyring = await _readKeyring();
+      final salt = SecureBytes.randomBytes(_saltBytes);
+      final kek = await _deriveKey(newPassword, salt);
+      final wrapped = await AesGcm256.encrypt(dek, kek);
+      SecureBytes.zeroFill(kek);
+      await _writeKeyring(
+        kdfParams: {
+          'alg': 'argon2id',
+          'ops': _opsLimit,
+          'mem': _memLimit,
+          'parallelism': _parallelism,
+          'salt': SecureBytes.toHex(salt),
+        },
+        dekWrappedPw: wrapped,
+        dekWrappedRk: SecureBytes.fromHex(keyring['dek_rk'] as String),
+      );
+    } finally {
+      SecureBytes.zeroFill(dek);
+    }
+  }
+
+  /// Requires the current password. Generates a new recovery key, re-wraps
+  /// the DEK under it and returns it (shown once). The old key stops working.
+  Future<Uint8List> regenerateRecoveryKey(String currentPassword) async {
+    final dek = await unlockWithPassword(currentPassword);
+    try {
+      final keyring = await _readKeyring();
+      final recoveryKey = SecureBytes.randomBytes(_keyBytes);
+      final kekRk = _deriveKek(recoveryKey, 'recovery_kek');
+      final wrappedRk = await AesGcm256.encrypt(dek, kekRk);
+      SecureBytes.zeroFill(kekRk);
+      await _writeKeyring(
+        kdfParams: Map<String, dynamic>.from(
+          keyring['kdf_params'] as Map<String, dynamic>,
+        ),
+        dekWrappedPw: SecureBytes.fromHex(keyring['dek_pw'] as String),
+        dekWrappedRk: wrappedRk,
+      );
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt(
+        AppIdentifiers.prefRecoveryVerifiedAt,
+        DateTime.now().millisecondsSinceEpoch,
+      );
+      return recoveryKey;
+    } finally {
+      SecureBytes.zeroFill(dek);
+    }
+  }
+
+  /// True if [recoveryKey] opens the keyring (does not unlock the app).
+  Future<bool> verifyRecoveryKey(Uint8List recoveryKey) async {
+    try {
+      final dek = await unlockWithRecoveryKey(recoveryKey);
+      SecureBytes.zeroFill(dek);
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt(
+        AppIdentifiers.prefRecoveryVerifiedAt,
+        DateTime.now().millisecondsSinceEpoch,
+      );
+      return true;
+    } on AuthFailure {
+      return false;
+    }
+  }
+
+  /// Days until the next "Verify your recovery key" nudge (≤ 0 → due now).
+  static Future<int> daysUntilRecoveryReminder({DateTime? now}) async {
+    final prefs = await SharedPreferences.getInstance();
+    final last = prefs.getInt(AppIdentifiers.prefRecoveryVerifiedAt);
+    if (last == null) return 0;
+    final elapsed = (now ?? DateTime.now())
+        .difference(DateTime.fromMillisecondsSinceEpoch(last))
+        .inDays;
+    return 30 - elapsed;
   }
 
   Future<void> markDone() async {

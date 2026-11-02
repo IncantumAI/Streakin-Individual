@@ -31,39 +31,46 @@ else
 fi
 
 # 2. No Icons.* references (must use AppIcons.*)
-ICONS_REFS=$(grep -rn "Icons\." lib/ \
+#    The boundary excludes "AppIcons." / "MyIcons." (which contain "Icons.").
+ICON_RE='(^|[^A-Za-z0-9_])Icons\.'
+ICONS_REFS=$(grep -rnE "$ICON_RE" lib/ \
   --include="*.dart" \
   --exclude="icons.dart" \
   --exclude="*.g.dart" \
-  | grep -v "//.*Icons\." | wc -l)
+  | grep -vE "//.*Icons\." | wc -l)
 if [ "$ICONS_REFS" -gt 0 ]; then
   fail "Direct Icons.* usage found outside icons.dart ($ICONS_REFS occurrences)"
-  grep -rn "Icons\." lib/ --include="*.dart" --exclude="icons.dart" \
-    --exclude="*.g.dart" | grep -v "//.*Icons\." | head -10
+  grep -rnE "$ICON_RE" lib/ --include="*.dart" --exclude="icons.dart" \
+    --exclude="*.g.dart" | grep -vE "//.*Icons\." | head -10
 else
   pass "No raw Icons.* usage"
 fi
 
 # 3. No cross-feature internal imports
-# Each feature's data/domain/application must not import other features' internals
+# A feature's data/, domain/ and application/ layers must not import another
+# feature's data/domain/application files; they go through that feature's
+# *_module.dart facade. Presentation (UI composition) may compose features.
+# Allowed shared contract: calendar's CalendarSource interface, which every
+# feature implements to appear on the calendar (spec 4.5).
 CROSS_IMPORTS=$(grep -rn "import 'package:streakin/features/" lib/features/ \
   --include="*.dart" \
   --exclude="*.g.dart" \
-  | grep -v "notes_module.dart" \
-  | grep -E "(data|domain|application)/[^']+'" \
   | python3 -c "
 import sys, re
-lines = sys.stdin.readlines()
-violations = []
-for line in lines:
-    match = re.match(r'lib/features/(\w+)/.*import.*features/(\w+)/(data|domain|application)', line)
-    if match and match.group(1) != match.group(2):
-        violations.append(line.strip())
-for v in violations:
-    print(v)
-" 2>/dev/null | wc -l)
+n = 0
+for line in sys.stdin:
+    m = re.match(r'lib/features/(\w+)/(data|domain|application)/[^:]*:\d+:.*features/(\w+)/(data|domain|application)/([^\']+)', line)
+    if not m or m.group(1) == m.group(3):
+        continue
+    if m.group(3) == 'calendar' and m.group(5) == 'calendar_source.dart':
+        continue
+    print(line.strip(), file=sys.stderr)
+    n += 1
+print(n)
+" 2>/tmp/cross_imports.txt)
 if [ "$CROSS_IMPORTS" -gt 0 ]; then
   fail "Cross-feature internal imports found ($CROSS_IMPORTS)"
+  head -10 /tmp/cross_imports.txt
 else
   pass "No cross-feature internal imports"
 fi

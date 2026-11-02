@@ -2,7 +2,7 @@
 // Horizontal attachment gallery strip at the bottom of the note editor.
 // Tap to preview; long-press to delete.
 
-
+import 'package:streakin/core/design/icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -32,10 +32,8 @@ class AttachmentStrip extends ConsumerWidget {
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
             itemCount: attachments.length,
-            itemBuilder: (context, i) => _AttachmentThumb(
-              attachment: attachments[i],
-              noteId: noteId,
-            ),
+            itemBuilder: (context, i) =>
+                _AttachmentThumb(attachment: attachments[i], noteId: noteId),
           ),
         );
       },
@@ -81,14 +79,14 @@ class _AttachmentThumb extends ConsumerWidget {
   }
 
   IconData _iconFor(AttachmentKind kind) => switch (kind) {
-        AttachmentKind.png || AttachmentKind.jpeg => Icons.image_outlined,
-        AttachmentKind.svg => Icons.auto_awesome_outlined,
-        AttachmentKind.pdf => Icons.picture_as_pdf_outlined,
-        AttachmentKind.csv => Icons.table_chart_outlined,
-        AttachmentKind.txt => Icons.text_snippet_outlined,
-        AttachmentKind.docx => Icons.description_outlined,
-        AttachmentKind.pptx => Icons.slideshow_outlined,
-      };
+    AttachmentKind.png || AttachmentKind.jpeg => AppIcons.imageOutlined,
+    AttachmentKind.svg => AppIcons.autoAwesomeOutlined,
+    AttachmentKind.pdf => AppIcons.pictureAsPdfOutlined,
+    AttachmentKind.csv => AppIcons.tableChartOutlined,
+    AttachmentKind.txt => AppIcons.textSnippetOutlined,
+    AttachmentKind.docx => AppIcons.descriptionOutlined,
+    AttachmentKind.pptx => AppIcons.slideshowOutlined,
+  };
 
   void _preview(BuildContext context) {
     showModalBottomSheet<void>(
@@ -97,10 +95,8 @@ class _AttachmentThumb extends ConsumerWidget {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
-      builder: (_) => AttachmentPreviewSheet(
-        attachment: attachment,
-        noteId: noteId,
-      ),
+      builder: (_) =>
+          AttachmentPreviewSheet(attachment: attachment, noteId: noteId),
     );
   }
 
@@ -112,11 +108,13 @@ class _AttachmentThumb extends ConsumerWidget {
         content: const Text('This cannot be undone.'),
         actions: [
           TextButton(
-              onPressed: () => Navigator.of(ctx).pop(false),
-              child: const Text('Cancel')),
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
           TextButton(
-              onPressed: () => Navigator.of(ctx).pop(true),
-              child: const Text('Remove')),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Remove'),
+          ),
         ],
       ),
     );

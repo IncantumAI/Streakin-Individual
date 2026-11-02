@@ -6,14 +6,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:streakin/core/logging/app_logger.dart';
 import 'package:streakin/core/security/key_vault.dart';
+import 'package:streakin/core/security/vault_manager.dart';
 
 final _log = AppLogger.get('LockController');
 
 enum LockState { locked, unlocked }
 
 class LockController extends Notifier<LockState> with WidgetsBindingObserver {
-  static final provider =
-      NotifierProvider<LockController, LockState>(LockController.new);
+  static final provider = NotifierProvider<LockController, LockState>(
+    LockController.new,
+  );
 
   // Default: 5 minutes. Short enough for security, long enough that normal
   // use (keyboard appearing, notification shade, system dialogs) never trips it.
@@ -55,9 +57,15 @@ class LockController extends Notifier<LockState> with WidgetsBindingObserver {
       case AppLifecycleState.paused:
         // Truly backgrounded — start the timer now.
         _backgroundedAt = DateTime.now();
+        // Vaults lock the moment the app is backgrounded (§4.4.7).
+        try {
+          ref.read(vaultManagerStateProvider)?.lockAll();
+        } catch (_) {}
         _lockTimer?.cancel();
-        _lockTimer = Timer(_backgroundTimeout,
-            () => _executeLockSequence(reason: 'background_timeout'));
+        _lockTimer = Timer(
+          _backgroundTimeout,
+          () => _executeLockSequence(reason: 'background_timeout'),
+        );
 
       case AppLifecycleState.inactive:
         // Keyboard, notification shade, split-screen resize, etc.
@@ -99,6 +107,10 @@ class LockController extends Notifier<LockState> with WidgetsBindingObserver {
     _log.info('Lock sequence: $reason');
     _lockTimer?.cancel();
     _lockTimer = null;
+    try {
+      // The app lock always locks every vault first.
+      ref.read(vaultManagerStateProvider)?.lockAll();
+    } catch (_) {}
     try {
       ref.read(keyVaultProvider).dispose();
     } catch (_) {}

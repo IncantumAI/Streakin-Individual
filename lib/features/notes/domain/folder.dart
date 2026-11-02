@@ -1,7 +1,6 @@
 // lib/features/notes/domain/folder.dart
 // Folder domain entity. Folders form an unlimited tree (parentId = null → root).
 
-
 /// Breadcrumb item used to display folder path.
 class FolderCrumb {
   const FolderCrumb({required this.id, required this.name});
@@ -23,11 +22,11 @@ class Folder {
   });
 
   final String id;
-  final String? parentId;      // null = root level
+  final String? parentId; // null = root level
   final String name;
   final int iconIndex;
   final int accentIndex;
-  final String? vaultId;       // null = not vaulted
+  final String? vaultId; // null = not vaulted
   final int sortOrder;
   final String hlc;
   final DateTime? deletedAt;

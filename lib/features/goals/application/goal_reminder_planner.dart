@@ -49,12 +49,11 @@ class GoalReminderSettings {
   static Future<GoalReminderSettings> load() async {
     final prefs = await SharedPreferences.getInstance();
     return GoalReminderSettings(
-      cadence: prefs.getString(AppIdentifiers.prefGoalReminderCadence) ??
-          'daily',
+      cadence:
+          prefs.getString(AppIdentifiers.prefGoalReminderCadence) ?? 'daily',
       hour: prefs.getInt(AppIdentifiers.prefGoalReminderHour) ?? 8,
       minute: prefs.getInt(AppIdentifiers.prefGoalReminderMinute) ?? 0,
-      finalStretch:
-          prefs.getBool(AppIdentifiers.prefGoalFinalStretch) ?? true,
+      finalStretch: prefs.getBool(AppIdentifiers.prefGoalFinalStretch) ?? true,
       milestoneAlerts:
           prefs.getBool(AppIdentifiers.prefGoalMilestoneAlerts) ?? true,
       completionAlert:
@@ -73,8 +72,14 @@ class GoalReminderSettings {
     await prefs.setInt(AppIdentifiers.prefGoalReminderHour, hour);
     await prefs.setInt(AppIdentifiers.prefGoalReminderMinute, minute);
     await prefs.setBool(AppIdentifiers.prefGoalFinalStretch, finalStretch);
-    await prefs.setBool(AppIdentifiers.prefGoalMilestoneAlerts, milestoneAlerts);
-    await prefs.setBool(AppIdentifiers.prefGoalCompletionAlert, completionAlert);
+    await prefs.setBool(
+      AppIdentifiers.prefGoalMilestoneAlerts,
+      milestoneAlerts,
+    );
+    await prefs.setBool(
+      AppIdentifiers.prefGoalCompletionAlert,
+      completionAlert,
+    );
     await prefs.setBool(AppIdentifiers.prefGoalShowTitle, showTitle);
     await prefs.setBool(AppIdentifiers.prefGoalShowAlignment, showAlignment);
     await prefs.setBool(AppIdentifiers.prefGoalSuppressIfDone, suppressIfDone);
@@ -82,11 +87,7 @@ class GoalReminderSettings {
 }
 
 class GoalReminderPlanner {
-  GoalReminderPlanner({
-    required GoalRepository goalRepo,
-    required HabitCompletionPort habitPort,
-  })  : _goalRepo = goalRepo,
-        _habitPort = habitPort;
+  GoalReminderPlanner({required this._goalRepo, required this._habitPort});
 
   final GoalRepository _goalRepo;
   final HabitCompletionPort _habitPort;
@@ -126,11 +127,15 @@ class GoalReminderPlanner {
       bool suppress = false;
       if (settings.suppressIfDone) {
         final links = await _goalRepo.getLinksForGoal(goal.id);
-        final habitIds =
-            links.where((l) => l.isOpen).map((l) => l.habitId).toList();
+        final habitIds = links
+            .where((l) => l.isOpen)
+            .map((l) => l.habitId)
+            .toList();
         if (habitIds.isNotEmpty) {
           final live = await _habitPort.todayLiveStats(
-              habitIds: habitIds, today: today);
+            habitIds: habitIds,
+            today: today,
+          );
           suppress = live.scheduled > 0 && live.done == live.scheduled;
         }
       }
@@ -191,7 +196,8 @@ class GoalReminderPlanner {
     while (endDate == null || d <= endDate) {
       if (result.length >= _maxPrecomputed) break;
 
-      final isFinalStretch = clock.goal.kind == GoalKind.dated &&
+      final isFinalStretch =
+          clock.goal.kind == GoalKind.dated &&
           clock.daysLeft != null &&
           _daysFrom(today, d) <= 7 &&
           settings.finalStretch;
@@ -207,13 +213,20 @@ class GoalReminderPlanner {
   }
 
   String _buildTitle(
-      Goal goal, GoalClockState clock, GoalReminderSettings settings) {
+    Goal goal,
+    GoalClockState clock,
+    GoalReminderSettings settings,
+  ) {
     if (settings.showTitle) return goal.title;
     return 'Goal countdown';
   }
 
-  String _buildTitleForDay(Goal goal, GoalReminderSettings settings,
-      int dayNumber, int? total) {
+  String _buildTitleForDay(
+    Goal goal,
+    GoalReminderSettings settings,
+    int dayNumber,
+    int? total,
+  ) {
     if (settings.showTitle) return goal.title;
     if (total != null) return 'Day $dayNumber of $total';
     return 'Day $dayNumber';
@@ -238,7 +251,13 @@ class GoalReminderPlanner {
   }) async {
     final now = tz.TZDateTime.now(tz.local);
     var scheduled = tz.TZDateTime(
-        tz.local, now.year, now.month, now.day, hour, minute);
+      tz.local,
+      now.year,
+      now.month,
+      now.day,
+      hour,
+      minute,
+    );
     scheduled = scheduled.add(Duration(days: daysFromNow));
     if (scheduled.isBefore(now)) return;
     await _plugin.zonedSchedule(
@@ -246,12 +265,10 @@ class GoalReminderPlanner {
       title: title,
       body: body,
       scheduledDate: scheduled,
-      notificationDetails: NotificationDetails(
+      notificationDetails: const NotificationDetails(
         android: AndroidNotificationDetails(
           AppIdentifiers.channelGoalCountdown,
           'Goal Countdown',
-          importance: Importance.defaultImportance,
-          priority: Priority.defaultPriority,
         ),
       ),
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,

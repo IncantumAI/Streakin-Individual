@@ -62,7 +62,8 @@ class Todos extends Table {
   IntColumn get priority => integer().withDefault(const Constant(0))();
   TextColumn get status => text().withDefault(const Constant('pending'))();
   TextColumn get completedAt => text().nullable()();
-  BoolColumn get countsForLockin => boolean().withDefault(const Constant(false))();
+  BoolColumn get countsForLockin =>
+      boolean().withDefault(const Constant(false))();
   TextColumn get sourceNoteId => text().nullable()();
   TextColumn get sourceBlockId => text().nullable()();
   TextColumn get reminderAt => text().nullable()();
@@ -123,7 +124,8 @@ class DateMentions extends Table {
   TextColumn get blockId => text()();
   TextColumn get startsAt => text()();
   BoolColumn get allDay => boolean().withDefault(const Constant(false))();
-  TextColumn get reminderOffset => text().withDefault(const Constant('at_time'))();
+  TextColumn get reminderOffset =>
+      text().withDefault(const Constant('at_time'))();
   TextColumn get notifId => text().nullable()();
   TextColumn get vaultId => text().nullable()();
   TextColumn get genericLabel => text().nullable()();
@@ -168,11 +170,14 @@ class Goals extends Table {
   TextColumn get id => text()();
   TextColumn get title => text()();
   TextColumn get why => text().nullable()();
-  TextColumn get kind => text().withDefault(const Constant('dated'))(); // 'dated'|'open'
+  TextColumn get kind =>
+      text().withDefault(const Constant('dated'))(); // 'dated'|'open'
   TextColumn get startDate => text()();
   TextColumn get endDate => text().nullable()();
-  TextColumn get status => text().withDefault(const Constant('active'))(); // 'active'|'archived'
-  TextColumn get archiveReason => text().nullable()(); // 'completed'|'completed_early'|'replaced'|'abandoned'
+  TextColumn get status =>
+      text().withDefault(const Constant('active'))(); // 'active'|'archived'
+  TextColumn get archiveReason => text()
+      .nullable()(); // 'completed'|'completed_early'|'replaced'|'abandoned'
   TextColumn get archivedAt => text().nullable()();
   TextColumn get activatedHlc => text()();
   IntColumn get accentIndex => integer().withDefault(const Constant(0))();
@@ -206,7 +211,8 @@ class GoalSummaries extends Table {
   IntColumn get perfectDays => integer()();
   IntColumn get bestStreak => integer()();
   TextColumn get perHabit => text().withDefault(const Constant('{}'))(); // JSON
-  TextColumn get milestones => text().withDefault(const Constant('[]'))(); // JSON
+  TextColumn get milestones =>
+      text().withDefault(const Constant('[]'))(); // JSON
   TextColumn get hlc => text()();
   @override
   Set<Column> get primaryKey => {goalId};
@@ -214,8 +220,10 @@ class GoalSummaries extends Table {
 
 class GoalLocalState extends Table {
   TextColumn get goalId => text().references(Goals, #id)();
-  BoolColumn get celebrationPending => boolean().withDefault(const Constant(false))();
-  TextColumn get milestonesShown => text().withDefault(const Constant('[]'))(); // JSON
+  BoolColumn get celebrationPending =>
+      boolean().withDefault(const Constant(false))();
+  TextColumn get milestonesShown =>
+      text().withDefault(const Constant('[]'))(); // JSON
   TextColumn get heroPromptDismissedUntil => text().nullable()();
   @override
   Set<Column> get primaryKey => {goalId};
@@ -234,12 +242,27 @@ class SyncPeers extends Table {
 
 // ── Database ────────────────────────────────────────────────────────────────
 
-@DriftDatabase(tables: [
-  Habits, HabitLogs, DayLocks, Todos, Folders, Notes,
-  NoteLinks, NoteTags, DateMentions, Attachments,
-  NoteEmbeddings, Vaults, SyncPeers,
-  Goals, GoalHabits, GoalSummaries, GoalLocalState,
-])
+@DriftDatabase(
+  tables: [
+    Habits,
+    HabitLogs,
+    DayLocks,
+    Todos,
+    Folders,
+    Notes,
+    NoteLinks,
+    NoteTags,
+    DateMentions,
+    Attachments,
+    NoteEmbeddings,
+    Vaults,
+    SyncPeers,
+    Goals,
+    GoalHabits,
+    GoalSummaries,
+    GoalLocalState,
+  ],
+)
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
@@ -248,26 +271,26 @@ class AppDatabase extends _$AppDatabase {
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
-        onCreate: (m) async {
-          await m.createAll();
-          await _createFtsTable();
-          await _createGoalIndexes();
-        },
-        onUpgrade: (m, from, to) async {
-          if (from < 2) await _createFtsTable();
-          if (from < 3) {
-            await m.createTable(goals);
-            await m.createTable(goalHabits);
-            await m.createTable(goalSummaries);
-            await m.createTable(goalLocalState);
-            await _createGoalIndexes();
-          }
-        },
-        beforeOpen: (details) async {
-          await _createFtsTable();
-          await _createGoalIndexes();
-        },
-      );
+    onCreate: (m) async {
+      await m.createAll();
+      await _createFtsTable();
+      await _createGoalIndexes();
+    },
+    onUpgrade: (m, from, to) async {
+      if (from < 2) await _createFtsTable();
+      if (from < 3) {
+        await m.createTable(goals);
+        await m.createTable(goalHabits);
+        await m.createTable(goalSummaries);
+        await m.createTable(goalLocalState);
+        await _createGoalIndexes();
+      }
+    },
+    beforeOpen: (details) async {
+      await _createFtsTable();
+      await _createGoalIndexes();
+    },
+  );
 
   Future<void> _createFtsTable() async {
     try {

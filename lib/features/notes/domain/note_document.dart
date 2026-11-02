@@ -25,14 +25,15 @@ enum NoteBlockKind {
   codeBlock,
   table,
   image,
-  wikiLink,   // inline — stored as a block for serialisation purposes
+  wikiLink, // inline — stored as a block for serialisation purposes
 }
 
 extension NoteBlockKindExt on NoteBlockKind {
   String get key => name;
-  static NoteBlockKind fromKey(String k) =>
-      NoteBlockKind.values.firstWhere((v) => v.name == k,
-          orElse: () => NoteBlockKind.paragraph);
+  static NoteBlockKind fromKey(String k) => NoteBlockKind.values.firstWhere(
+    (v) => v.name == k,
+    orElse: () => NoteBlockKind.paragraph,
+  );
 }
 
 // ── Block model ───────────────────────────────────────────────────────────────
@@ -50,12 +51,16 @@ class NoteBlock {
 
   final String id;
   final NoteBlockKind kind;
+
   /// Plain text content (for headings, paragraphs, list items, tasks, etc.).
   final String text;
+
   /// For task blocks — whether the checkbox is checked.
   final bool isComplete;
+
   /// For heading blocks — 1, 2 or 3.
   final int level;
+
   /// Arbitrary extra attributes (e.g. table data, wiki-link target ID).
   final Map<String, dynamic> attrs;
 
@@ -66,33 +71,32 @@ class NoteBlock {
     bool? isComplete,
     int? level,
     Map<String, dynamic>? attrs,
-  }) =>
-      NoteBlock(
-        id: id ?? this.id,
-        kind: kind ?? this.kind,
-        text: text ?? this.text,
-        isComplete: isComplete ?? this.isComplete,
-        level: level ?? this.level,
-        attrs: attrs ?? this.attrs,
-      );
+  }) => NoteBlock(
+    id: id ?? this.id,
+    kind: kind ?? this.kind,
+    text: text ?? this.text,
+    isComplete: isComplete ?? this.isComplete,
+    level: level ?? this.level,
+    attrs: attrs ?? this.attrs,
+  );
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'kind': kind.key,
-        'text': text,
-        if (isComplete) 'isComplete': isComplete,
-        if (level != 1) 'level': level,
-        if (attrs.isNotEmpty) 'attrs': attrs,
-      };
+    'id': id,
+    'kind': kind.key,
+    'text': text,
+    if (isComplete) 'isComplete': isComplete,
+    if (level != 1) 'level': level,
+    if (attrs.isNotEmpty) 'attrs': attrs,
+  };
 
   factory NoteBlock.fromJson(Map<String, dynamic> j) => NoteBlock(
-        id: j['id'] as String,
-        kind: NoteBlockKindExt.fromKey(j['kind'] as String? ?? 'paragraph'),
-        text: j['text'] as String? ?? '',
-        isComplete: j['isComplete'] as bool? ?? false,
-        level: j['level'] as int? ?? 1,
-        attrs: (j['attrs'] as Map<String, dynamic>?) ?? {},
-      );
+    id: j['id'] as String,
+    kind: NoteBlockKindExt.fromKey(j['kind'] as String? ?? 'paragraph'),
+    text: j['text'] as String? ?? '',
+    isComplete: j['isComplete'] as bool? ?? false,
+    level: j['level'] as int? ?? 1,
+    attrs: (j['attrs'] as Map<String, dynamic>?) ?? {},
+  );
 }
 
 // ── NoteDocument ──────────────────────────────────────────────────────────────
@@ -182,15 +186,18 @@ class NoteDocument {
     return tags;
   }
 
-  /// Extract `@date` mentions. Returns ISO-8601 date strings found in text.
-  /// Pattern: @YYYY-MM-DD
-  List<({String blockId, String isoDate})> extractDateMentions() {
-    final results = <({String blockId, String isoDate})>[];
-    final pattern = RegExp(r'@(\d{4}-\d{2}-\d{2})');
+  /// Extract `@date` mentions. Returns ISO-8601 date strings found in text,
+  /// plus an optional `HH:mm` time (null → all-day).
+  /// Pattern: @YYYY-MM-DD or @YYYY-MM-DD HH:mm
+  List<({String blockId, String isoDate, String? time})> extractDateMentions() {
+    final results = <({String blockId, String isoDate, String? time})>[];
+    final pattern = RegExp(r'@(\d{4}-\d{2}-\d{2})(?: (\d{2}:\d{2}))?');
     for (final block in blocks) {
       for (final match in pattern.allMatches(block.text)) {
         final date = match.group(1);
-        if (date != null) results.add((blockId: block.id, isoDate: date));
+        if (date != null) {
+          results.add((blockId: block.id, isoDate: date, time: match.group(2)));
+        }
       }
     }
     return results;

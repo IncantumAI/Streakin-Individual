@@ -14,7 +14,14 @@ enum GoalPhase { upcoming, active, finalDay, ended }
 // ── Milestone definitions ─────────────────────────────────────────────────────
 
 const kDatedMilestonePcts = [25, 50, 75]; // % milestones for dated goals
-const kOpenMilestoneDays = [7, 30, 50, 100, 200, 365]; // day milestones for open-ended
+const kOpenMilestoneDays = [
+  7,
+  30,
+  50,
+  100,
+  200,
+  365,
+]; // day milestones for open-ended
 
 List<int> openMilestonesUpTo(int day) {
   final fixed = kOpenMilestoneDays.where((m) => m <= day).toList();
@@ -118,8 +125,9 @@ class Goal {
       startDate: startDate ?? this.startDate,
       endDate: endDate != null ? endDate() : this.endDate,
       status: status ?? this.status,
-      archiveReason:
-          archiveReason != null ? archiveReason() : this.archiveReason,
+      archiveReason: archiveReason != null
+          ? archiveReason()
+          : this.archiveReason,
       archivedAt: archivedAt != null ? archivedAt() : this.archivedAt,
       activatedHlc: activatedHlc,
       accentIndex: accentIndex ?? this.accentIndex,

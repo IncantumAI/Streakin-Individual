@@ -22,11 +22,13 @@ class TodoDao extends DatabaseAccessor<AppDatabase> with _$TodoDaoMixin {
   Stream<List<domain.Todo>> watchToday() {
     final today = LocalDate.today().toIso();
     return (select(todos)
-          ..where((t) =>
-              t.deletedAt.isNull() &
-              t.status.equals('pending') &
-              t.dueDate.isNotNull() &
-              t.dueDate.isSmallerOrEqualValue(today))
+          ..where(
+            (t) =>
+                t.deletedAt.isNull() &
+                t.status.equals('pending') &
+                t.dueDate.isNotNull() &
+                t.dueDate.isSmallerOrEqualValue(today),
+          )
           ..orderBy([
             (t) => OrderingTerm.asc(t.dueDate),
             (t) => OrderingTerm.desc(t.priority),
@@ -40,11 +42,13 @@ class TodoDao extends DatabaseAccessor<AppDatabase> with _$TodoDaoMixin {
   Stream<List<domain.Todo>> watchUpcoming() {
     final today = LocalDate.today().toIso();
     return (select(todos)
-          ..where((t) =>
-              t.deletedAt.isNull() &
-              t.status.equals('pending') &
-              t.dueDate.isNotNull() &
-              t.dueDate.isBiggerThanValue(today))
+          ..where(
+            (t) =>
+                t.deletedAt.isNull() &
+                t.status.equals('pending') &
+                t.dueDate.isNotNull() &
+                t.dueDate.isBiggerThanValue(today),
+          )
           ..orderBy([
             (t) => OrderingTerm.asc(t.dueDate),
             (t) => OrderingTerm.desc(t.priority),
@@ -57,10 +61,12 @@ class TodoDao extends DatabaseAccessor<AppDatabase> with _$TodoDaoMixin {
 
   Stream<List<domain.Todo>> watchAnytime() {
     return (select(todos)
-          ..where((t) =>
-              t.deletedAt.isNull() &
-              t.status.equals('pending') &
-              t.dueDate.isNull())
+          ..where(
+            (t) =>
+                t.deletedAt.isNull() &
+                t.status.equals('pending') &
+                t.dueDate.isNull(),
+          )
           ..orderBy([
             (t) => OrderingTerm.desc(t.priority),
             (t) => OrderingTerm.asc(t.hlc),
@@ -73,8 +79,7 @@ class TodoDao extends DatabaseAccessor<AppDatabase> with _$TodoDaoMixin {
 
   Stream<List<domain.Todo>> watchDone() {
     return (select(todos)
-          ..where((t) =>
-              t.deletedAt.isNull() & t.status.equals('done'))
+          ..where((t) => t.deletedAt.isNull() & t.status.equals('done'))
           ..orderBy([(t) => OrderingTerm.desc(t.completedAt)]))
         .watch()
         .map((rows) => rows.map(_fromRow).toList());
@@ -83,21 +88,23 @@ class TodoDao extends DatabaseAccessor<AppDatabase> with _$TodoDaoMixin {
   // ── Upsert ────────────────────────────────────────────────────────────────
 
   Future<void> save(domain.Todo todo) async {
-    await into(todos).insertOnConflictUpdate(TodosCompanion(
-      id: Value(todo.id),
-      title: Value(todo.title),
-      dueDate: Value(todo.dueDate),
-      dueTime: Value(todo.dueTime),
-      priority: Value(todo.priority.toInt()),
-      status: Value(todo.status.toLabel()),
-      completedAt: Value(todo.completedAt),
-      countsForLockin: Value(todo.countsForLockin),
-      sourceNoteId: Value(todo.sourceNoteId),
-      sourceBlockId: Value(todo.sourceBlockId),
-      reminderAt: Value(todo.reminderAt),
-      hlc: Value(todo.hlc),
-      deletedAt: Value(todo.deletedAt),
-    ));
+    await into(todos).insertOnConflictUpdate(
+      TodosCompanion(
+        id: Value(todo.id),
+        title: Value(todo.title),
+        dueDate: Value(todo.dueDate),
+        dueTime: Value(todo.dueTime),
+        priority: Value(todo.priority.toInt()),
+        status: Value(todo.status.toLabel()),
+        completedAt: Value(todo.completedAt),
+        countsForLockin: Value(todo.countsForLockin),
+        sourceNoteId: Value(todo.sourceNoteId),
+        sourceBlockId: Value(todo.sourceBlockId),
+        reminderAt: Value(todo.reminderAt),
+        hlc: Value(todo.hlc),
+        deletedAt: Value(todo.deletedAt),
+      ),
+    );
   }
 
   // ── Complete / uncomplete ─────────────────────────────────────────────────
@@ -128,21 +135,19 @@ class TodoDao extends DatabaseAccessor<AppDatabase> with _$TodoDaoMixin {
   Future<void> softDelete(String id) async {
     final now = DateTime.now().toUtc().toIso8601String();
     await (update(todos)..where((t) => t.id.equals(id))).write(
-      TodosCompanion(
-        deletedAt: Value(now),
-        hlc: Value(Hlc.now().toIso()),
-      ),
+      TodosCompanion(deletedAt: Value(now), hlc: Value(Hlc.now().toIso())),
     );
   }
 
   // ── Source-block watch ────────────────────────────────────────────────────
 
   Stream<domain.Todo?> watchBySourceBlock(String noteId, String blockId) {
-    return (select(todos)
-          ..where((t) =>
+    return (select(todos)..where(
+          (t) =>
               t.sourceNoteId.equals(noteId) &
               t.sourceBlockId.equals(blockId) &
-              t.deletedAt.isNull()))
+              t.deletedAt.isNull(),
+        ))
         .watchSingleOrNull()
         .map((row) => row == null ? null : _fromRow(row));
   }
@@ -150,9 +155,9 @@ class TodoDao extends DatabaseAccessor<AppDatabase> with _$TodoDaoMixin {
   // ── By id ─────────────────────────────────────────────────────────────────
 
   Future<domain.Todo?> getById(String id) async {
-    final row = await (select(todos)
-          ..where((t) => t.id.equals(id) & t.deletedAt.isNull()))
-        .getSingleOrNull();
+    final row = await (select(
+      todos,
+    )..where((t) => t.id.equals(id) & t.deletedAt.isNull())).getSingleOrNull();
     return row == null ? null : _fromRow(row);
   }
 
@@ -160,14 +165,18 @@ class TodoDao extends DatabaseAccessor<AppDatabase> with _$TodoDaoMixin {
 
   /// All non-deleted tasks with a due date inside [start..end] (inclusive).
   Future<List<domain.Todo>> fetchByDateRange(
-      LocalDate start, LocalDate end) async {
-    final rows = await (select(todos)
-          ..where((t) =>
-              t.deletedAt.isNull() &
-              t.dueDate.isNotNull() &
-              t.dueDate.isBiggerOrEqualValue(start.toIso()) &
-              t.dueDate.isSmallerOrEqualValue(end.toIso())))
-        .get();
+    LocalDate start,
+    LocalDate end,
+  ) async {
+    final rows =
+        await (select(todos)..where(
+              (t) =>
+                  t.deletedAt.isNull() &
+                  t.dueDate.isNotNull() &
+                  t.dueDate.isBiggerOrEqualValue(start.toIso()) &
+                  t.dueDate.isSmallerOrEqualValue(end.toIso()),
+            ))
+            .get();
     return rows.map(_fromRow).toList();
   }
 
@@ -176,18 +185,18 @@ class TodoDao extends DatabaseAccessor<AppDatabase> with _$TodoDaoMixin {
   // Drift generates a data class named `Todo` (matching table class `Todos`).
   // We alias the domain class to `domain.Todo` to avoid the name clash.
   static domain.Todo _fromRow(Todo row) => domain.Todo(
-        id: row.id,
-        title: row.title,
-        dueDate: row.dueDate,
-        dueTime: row.dueTime,
-        priority: domain.TodoPriority.fromInt(row.priority),
-        status: domain.TodoStatus.fromString(row.status),
-        completedAt: row.completedAt,
-        countsForLockin: row.countsForLockin,
-        sourceNoteId: row.sourceNoteId,
-        sourceBlockId: row.sourceBlockId,
-        reminderAt: row.reminderAt,
-        hlc: row.hlc,
-        deletedAt: row.deletedAt,
-      );
+    id: row.id,
+    title: row.title,
+    dueDate: row.dueDate,
+    dueTime: row.dueTime,
+    priority: domain.TodoPriority.fromInt(row.priority),
+    status: domain.TodoStatus.fromString(row.status),
+    completedAt: row.completedAt,
+    countsForLockin: row.countsForLockin,
+    sourceNoteId: row.sourceNoteId,
+    sourceBlockId: row.sourceBlockId,
+    reminderAt: row.reminderAt,
+    hlc: row.hlc,
+    deletedAt: row.deletedAt,
+  );
 }

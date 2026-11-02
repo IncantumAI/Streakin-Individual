@@ -34,22 +34,21 @@ Todo _todo({
   String? sourceBlockId,
   String? reminderAt,
   String? deletedAt,
-}) =>
-    Todo(
-      id: id ?? _uuid.v4(),
-      title: title,
-      dueDate: dueDate,
-      dueTime: dueTime,
-      priority: priority,
-      status: status,
-      completedAt: completedAt,
-      countsForLockin: countsForLockin,
-      sourceNoteId: sourceNoteId,
-      sourceBlockId: sourceBlockId,
-      reminderAt: reminderAt,
-      hlc: '2026-10-07T00:00:00.000Z-0000-test',
-      deletedAt: deletedAt,
-    );
+}) => Todo(
+  id: id ?? _uuid.v4(),
+  title: title,
+  dueDate: dueDate,
+  dueTime: dueTime,
+  priority: priority,
+  status: status,
+  completedAt: completedAt,
+  countsForLockin: countsForLockin,
+  sourceNoteId: sourceNoteId,
+  sourceBlockId: sourceBlockId,
+  reminderAt: reminderAt,
+  hlc: '2026-10-07T00:00:00.000Z-0000-test',
+  deletedAt: deletedAt,
+);
 
 // ── TodoPriority ───────────────────────────────────────────────────────────
 
@@ -85,10 +84,11 @@ void main() {
     });
 
     test('toLabel round-trips', () {
-      expect(TodoStatus.fromString(TodoStatus.pending.toLabel()),
-          TodoStatus.pending);
       expect(
-          TodoStatus.fromString(TodoStatus.done.toLabel()), TodoStatus.done);
+        TodoStatus.fromString(TodoStatus.pending.toLabel()),
+        TodoStatus.pending,
+      );
+      expect(TodoStatus.fromString(TodoStatus.done.toLabel()), TodoStatus.done);
     });
   });
 
@@ -103,7 +103,9 @@ void main() {
 
     test('isDone false when deleted', () {
       final t = _todo(
-          status: TodoStatus.done, deletedAt: '2026-10-07T10:00:00.000Z');
+        status: TodoStatus.done,
+        deletedAt: '2026-10-07T10:00:00.000Z',
+      );
       expect(t.isDone, isFalse);
     });
 
@@ -145,8 +147,9 @@ void main() {
 
     test('hasSourceNote requires both fields', () {
       expect(
-          _todo(sourceNoteId: 'n1', sourceBlockId: 'b1').hasSourceNote,
-          isTrue);
+        _todo(sourceNoteId: 'n1', sourceBlockId: 'b1').hasSourceNote,
+        isTrue,
+      );
       expect(_todo(sourceNoteId: 'n1').hasSourceNote, isFalse);
       expect(_todo().hasSourceNote, isFalse);
     });
@@ -300,14 +303,12 @@ void main() {
     test('watchBySourceBlock returns linked task', () async {
       final t = _todo(sourceNoteId: 'note1', sourceBlockId: 'block1');
       await repo.save(t);
-      final linked =
-          await repo.watchBySourceBlock('note1', 'block1').first;
+      final linked = await repo.watchBySourceBlock('note1', 'block1').first;
       expect(linked?.id, t.id);
     });
 
     test('watchBySourceBlock returns null when no match', () async {
-      final linked =
-          await repo.watchBySourceBlock('note1', 'block1').first;
+      final linked = await repo.watchBySourceBlock('note1', 'block1').first;
       expect(linked, isNull);
     });
 
@@ -315,8 +316,7 @@ void main() {
       final t = _todo(sourceNoteId: 'note1', sourceBlockId: 'block1');
       await repo.save(t);
       await repo.softDelete(t.id);
-      final linked =
-          await repo.watchBySourceBlock('note1', 'block1').first;
+      final linked = await repo.watchBySourceBlock('note1', 'block1').first;
       expect(linked, isNull);
     });
 
@@ -324,8 +324,11 @@ void main() {
 
     test('high priority task appears before none in watchAnytime', () async {
       final low = _todo(id: 'low', title: 'Low');
-      final high =
-          _todo(id: 'high', title: 'High', priority: TodoPriority.high);
+      final high = _todo(
+        id: 'high',
+        title: 'High',
+        priority: TodoPriority.high,
+      );
       await repo.save(low);
       await repo.save(high);
       final list = await repo.watchAnytime().first;
@@ -374,20 +377,22 @@ void main() {
     tearDown(() => db.close());
 
     test('task with due date in range produces CalendarEntry', () async {
-      const target = LocalDate(2026, 10, 15);
+      final target = LocalDate.today().addDays(10);
       final t = _todo(dueDate: target.toIso(), title: 'Meeting');
       await repo.save(t);
 
-      const range = DateRange(
-        start: LocalDate(2026, 10, 1),
-        end: LocalDate(2026, 10, 31),
+      final range = DateRange(
+        start: LocalDate.today(),
+        end: LocalDate.today().addDays(30),
       );
       // Verify the repository exposes the task in the today/upcoming streams.
       // (CalendarSource widget tests are integration-level; here we verify
       // the data layer produces a task with the correct due date.)
       final upcoming = await repo.watchUpcoming().first;
-      expect(upcoming.any((x) => x.id == t.id && x.dueDate == target.toIso()),
-          isTrue);
+      expect(
+        upcoming.any((x) => x.id == t.id && x.dueDate == target.toIso()),
+        isTrue,
+      );
 
       // Also verify range contains the date.
       expect(range.contains(target), isTrue);
@@ -440,8 +445,9 @@ void main() {
       // After completion the task moves to done, watchToday no longer returns it.
       // Lock-in check must also consult watchDone for flagged tasks.
       final done = await repo.watchDone().first;
-      final flaggedDone =
-          done.where((x) => x.countsForLockin && x.isDone).toList();
+      final flaggedDone = done
+          .where((x) => x.countsForLockin && x.isDone)
+          .toList();
       expect(flaggedDone.length, 1);
     });
 
@@ -453,21 +459,25 @@ void main() {
       await repo.save(unflagged);
       await repo.complete(unflagged.id);
       final todayTasks = await repo.watchToday().first;
-      final pendingFlagged =
-          todayTasks.where((x) => x.countsForLockin).toList();
+      final pendingFlagged = todayTasks
+          .where((x) => x.countsForLockin)
+          .toList();
       // Flagged task still pending → not locked in
       expect(pendingFlagged.length, 1);
       expect(pendingFlagged.first.isPending, isTrue);
     });
 
-    test('setting off → todos irrelevant to lock-in (no flagged tasks)', () async {
-      // With countTodosForLockIn = false, the lock-in service ignores todos.
-      // This is enforced at the use-case layer (Phase 4 settings),
-      // but we verify that flagged field itself is stored.
-      final t = _todo();
-      await repo.save(t);
-      final fetched = await repo.getById(t.id);
-      expect(fetched?.countsForLockin, isFalse);
-    });
+    test(
+      'setting off → todos irrelevant to lock-in (no flagged tasks)',
+      () async {
+        // With countTodosForLockIn = false, the lock-in service ignores todos.
+        // This is enforced at the use-case layer (Phase 4 settings),
+        // but we verify that flagged field itself is stored.
+        final t = _todo();
+        await repo.save(t);
+        final fetched = await repo.getById(t.id);
+        expect(fetched?.countsForLockin, isFalse);
+      },
+    );
   });
 }

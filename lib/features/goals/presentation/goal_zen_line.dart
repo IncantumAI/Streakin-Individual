@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:streakin/core/design/tokens.dart';
 import 'package:streakin/features/goals/application/goal_providers.dart';
 import 'package:streakin/features/goals/domain/goal.dart';
-import 'package:streakin/features/goals/domain/goal_clock.dart';
 
 /// Zen line: "Day 42 of 100" (or "Day 42" for open-ended).
 /// TODO (Phase 7 — Zen Mode): Wire GoalZenLine into Focus Zen and Writing Zen screens.

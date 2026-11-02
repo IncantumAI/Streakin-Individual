@@ -2,6 +2,7 @@
 // Spec §4.1: 3-step onboarding — appearance, lock setup, recovery key.
 
 import 'package:flutter/material.dart';
+import 'package:streakin/core/security/password_strength.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:local_auth/local_auth.dart';
@@ -45,8 +46,11 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   void _next() {
     if (_step < 2) {
       setState(() => _step++);
-      _pageController.animateToPage(_step,
-          duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
+      _pageController.animateToPage(
+        _step,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
     }
   }
 
@@ -65,16 +69,19 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             Padding(
               padding: const EdgeInsets.all(24),
               child: Row(
-                children: List.generate(3, (i) => Expanded(
-                  child: Container(
-                    height: 4,
-                    margin: const EdgeInsets.symmetric(horizontal: 3),
-                    decoration: BoxDecoration(
-                      color: i <= _step ? colors.brand : colors.outline,
-                      borderRadius: BorderRadius.circular(2),
+                children: List.generate(
+                  3,
+                  (i) => Expanded(
+                    child: Container(
+                      height: 4,
+                      margin: const EdgeInsets.symmetric(horizontal: 3),
+                      decoration: BoxDecoration(
+                        color: i <= _step ? colors.brand : colors.outline,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
                     ),
                   ),
-                )),
+                ),
               ),
             ),
             Expanded(
@@ -89,7 +96,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                     pwVisible: _pwVisible,
                     pwError: _pwError,
                     settingUp: _settingUp,
-                    onToggleVisible: () => setState(() => _pwVisible = !_pwVisible),
+                    onToggleVisible: () =>
+                        setState(() => _pwVisible = !_pwVisible),
                     onNext: _handlePasswordSetup,
                   ),
                   _Step3RecoveryKey(
@@ -119,10 +127,25 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       setState(() => _pwError = 'Passwords do not match');
       return;
     }
-    setState(() { _settingUp = true; _pwError = null; });
+    final strength = PasswordStrength.estimate(pw);
+    if (!strength.acceptable) {
+      setState(
+        () => _pwError =
+            'Too easy to guess (${strength.label.toLowerCase()}, cracked in '
+            '${strength.crackTimeLabel}). Add more words or characters.',
+      );
+      return;
+    }
+    setState(() {
+      _settingUp = true;
+      _pwError = null;
+    });
     try {
       final rk = await ref.read(onboardingServiceProvider).setupPassword(pw);
-      final hex = rk.map((b) => b.toRadixString(16).padLeft(2, '0')).join().toUpperCase();
+      final hex = rk
+          .map((b) => b.toRadixString(16).padLeft(2, '0'))
+          .join()
+          .toUpperCase();
       final groups = <String>[];
       for (int i = 0; i < hex.length; i += 5) {
         groups.add(hex.substring(i, (i + 5).clamp(0, hex.length)));
@@ -133,7 +156,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       });
       _next();
     } catch (e) {
-      setState(() { _pwError = 'Setup failed: $e'; _settingUp = false; });
+      setState(() {
+        _pwError = 'Setup failed: $e';
+        _settingUp = false;
+      });
     }
   }
 
@@ -169,20 +195,40 @@ class _Step1Appearance extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Choose your look', style: Theme.of(context).textTheme.displayLarge),
+          Text(
+            'Choose your look',
+            style: Theme.of(context).textTheme.displayLarge,
+          ),
           const SizedBox(height: 8),
-          Text('You can change this anytime in settings.',
-              style: TextStyle(color: colors.textMuted)),
+          Text(
+            'You can change this anytime in settings.',
+            style: TextStyle(color: colors.textMuted),
+          ),
           const SizedBox(height: 32),
-          _ThemeOption(label: 'Light', mode: ThemeMode.light, selected: mode == ThemeMode.light),
+          _ThemeOption(
+            label: 'Light',
+            mode: ThemeMode.light,
+            selected: mode == ThemeMode.light,
+          ),
           const SizedBox(height: 12),
-          _ThemeOption(label: 'Dark', mode: ThemeMode.dark, selected: mode == ThemeMode.dark),
+          _ThemeOption(
+            label: 'Dark',
+            mode: ThemeMode.dark,
+            selected: mode == ThemeMode.dark,
+          ),
           const SizedBox(height: 12),
-          _ThemeOption(label: 'Follow system', mode: ThemeMode.system, selected: mode == ThemeMode.system),
+          _ThemeOption(
+            label: 'Follow system',
+            mode: ThemeMode.system,
+            selected: mode == ThemeMode.system,
+          ),
           const SizedBox(height: 40),
           SizedBox(
             width: double.infinity,
-            child: ElevatedButton(onPressed: onNext, child: const Text('Continue')),
+            child: ElevatedButton(
+              onPressed: onNext,
+              child: const Text('Continue'),
+            ),
           ),
         ],
       ),
@@ -191,7 +237,11 @@ class _Step1Appearance extends ConsumerWidget {
 }
 
 class _ThemeOption extends ConsumerWidget {
-  const _ThemeOption({required this.label, required this.mode, required this.selected});
+  const _ThemeOption({
+    required this.label,
+    required this.mode,
+    required this.selected,
+  });
   final String label;
   final ThemeMode mode;
   final bool selected;
@@ -204,14 +254,28 @@ class _ThemeOption extends ConsumerWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          color: selected ? colors.brand.withValues(alpha: 0.1) : colors.surfaceAlt,
-          border: Border.all(color: selected ? colors.brand : colors.outline, width: selected ? 1.5 : 1),
+          color: selected
+              ? colors.brand.withValues(alpha: 0.1)
+              : colors.surfaceAlt,
+          border: Border.all(
+            color: selected ? colors.brand : colors.outline,
+            width: selected ? 1.5 : 1,
+          ),
           borderRadius: BorderRadius.circular(12),
         ),
-        child: Row(children: [
-          Expanded(child: Text(label, style: TextStyle(fontWeight: selected ? FontWeight.w600 : FontWeight.normal))),
-          if (selected) Icon(AppIcons.check, color: colors.brand, size: 20),
-        ]),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+                ),
+              ),
+            ),
+            if (selected) Icon(AppIcons.check, color: colors.brand, size: 20),
+          ],
+        ),
       ),
     );
   }
@@ -255,7 +319,9 @@ class _Step2LockState extends ConsumerState<_Step2Lock> {
       final auth = LocalAuthentication();
       final canCheck = await auth.canCheckBiometrics;
       final isSupported = await auth.isDeviceSupported();
-      if (mounted) setState(() => _biometricAvailable = canCheck && isSupported);
+      if (mounted) {
+        setState(() => _biometricAvailable = canCheck && isSupported);
+      }
     } catch (_) {
       // Device doesn't support biometrics — hide the option.
     }
@@ -270,10 +336,15 @@ class _Step2LockState extends ConsumerState<_Step2Lock> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Protect your data', style: Theme.of(context).textTheme.displayLarge),
+          Text(
+            'Protect your data',
+            style: Theme.of(context).textTheme.displayLarge,
+          ),
           const SizedBox(height: 8),
-          Text('Your password encrypts all your data locally.\nMinimum 10 characters.',
-              style: TextStyle(color: colors.textMuted)),
+          Text(
+            'Your password encrypts all your data locally.\nMinimum 10 characters.',
+            style: TextStyle(color: colors.textMuted),
+          ),
           const SizedBox(height: 32),
           TextField(
             controller: widget.pwController,
@@ -282,7 +353,11 @@ class _Step2LockState extends ConsumerState<_Step2Lock> {
             decoration: InputDecoration(
               labelText: 'Password',
               suffixIcon: IconButton(
-                icon: Icon(widget.pwVisible ? Icons.visibility : Icons.visibility_off),
+                icon: Icon(
+                  widget.pwVisible
+                      ? AppIcons.visibility
+                      : AppIcons.visibilityOff,
+                ),
                 onPressed: widget.onToggleVisible,
               ),
             ),
@@ -296,7 +371,10 @@ class _Step2LockState extends ConsumerState<_Step2Lock> {
           ),
           if (widget.pwError != null) ...[
             const SizedBox(height: 8),
-            Text(widget.pwError!, style: TextStyle(color: colors.danger, fontSize: 13)),
+            Text(
+              widget.pwError!,
+              style: TextStyle(color: colors.danger, fontSize: 13),
+            ),
           ],
           if (_biometricAvailable) ...[
             const SizedBox(height: 24),
@@ -310,15 +388,18 @@ class _Step2LockState extends ConsumerState<_Step2Lock> {
               child: SwitchListTile.adaptive(
                 contentPadding: EdgeInsets.zero,
                 value: biometricEnabled,
-                activeColor: colors.brand,
+                activeThumbColor: colors.brand,
                 onChanged: (v) =>
                     ref.read(biometricEnabledProvider.notifier).set(v),
-                title: Text('Enable biometric unlock',
-                    style: TextStyle(color: colors.text, fontSize: 14)),
+                title: Text(
+                  'Enable biometric unlock',
+                  style: TextStyle(color: colors.text, fontSize: 14),
+                ),
                 subtitle: Text(
-                    'Use fingerprint or face ID to unlock after password is set.',
-                    style: TextStyle(color: colors.textMuted, fontSize: 12)),
-                secondary: Icon(Icons.fingerprint, color: colors.brand),
+                  'Use fingerprint or face ID to unlock after password is set.',
+                  style: TextStyle(color: colors.textMuted, fontSize: 12),
+                ),
+                secondary: Icon(AppIcons.biometric, color: colors.brand),
               ),
             ),
           ],
@@ -328,8 +409,14 @@ class _Step2LockState extends ConsumerState<_Step2Lock> {
             child: ElevatedButton(
               onPressed: widget.settingUp ? null : widget.onNext,
               child: widget.settingUp
-                  ? const SizedBox(height: 20, width: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
                   : const Text('Set password & continue'),
             ),
           ),
@@ -363,7 +450,10 @@ class _Step3RecoveryKey extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Save your recovery key', style: Theme.of(context).textTheme.displayLarge),
+          Text(
+            'Save your recovery key',
+            style: Theme.of(context).textTheme.displayLarge,
+          ),
           const SizedBox(height: 8),
           Text(
             'If you forget your password, this key is your only way back in.\nWrite it down somewhere safe.',
@@ -406,8 +496,12 @@ class _Step3RecoveryKey extends StatelessWidget {
               onPressed: (savedConfirmed && !finishing) ? onFinish : null,
               child: finishing
                   ? const SizedBox(
-                      height: 20, width: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
                     )
                   : const Text("I'm ready — let's go"),
             ),

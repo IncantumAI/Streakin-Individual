@@ -24,15 +24,19 @@ class NotesDashboardProvider implements DashboardSectionProvider {
         final folderNotes = await _repo.watchFolder(folder.id).first;
         allNotes.addAll(folderNotes);
       }
-      final filtered = allNotes
-          .where((n) => n.vaultId == null && !n.isDeleted)
-          .toList()
-        ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
-      yield filtered.take(limit).map((n) => RecentNoteItem(
-            id: n.id,
-            title: n.title.isEmpty ? 'Untitled' : n.title,
-            updatedAt: n.updatedAt,
-          )).toList();
+      final filtered =
+          allNotes.where((n) => n.vaultId == null && !n.isDeleted).toList()
+            ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+      yield filtered
+          .take(limit)
+          .map(
+            (n) => RecentNoteItem(
+              id: n.id,
+              title: n.title.isEmpty ? 'Untitled' : n.title,
+              updatedAt: n.updatedAt,
+            ),
+          )
+          .toList();
     });
   }
 
@@ -47,10 +51,12 @@ class NotesDashboardProvider implements DashboardSectionProvider {
       }
       yield allNotes
           .where((n) => n.isPinned && n.vaultId == null && !n.isDeleted)
-          .map((n) => PinnedNoteItem(
-                id: n.id,
-                title: n.title.isEmpty ? 'Untitled' : n.title,
-              ))
+          .map(
+            (n) => PinnedNoteItem(
+              id: n.id,
+              title: n.title.isEmpty ? 'Untitled' : n.title,
+            ),
+          )
           .toList();
     });
   }
@@ -58,8 +64,10 @@ class NotesDashboardProvider implements DashboardSectionProvider {
 
 // ── Riverpod providers ────────────────────────────────────────────────────────
 
-final recentNotesProvider = StreamProvider.family<List<RecentNoteItem>, int>(
-    (ref, limit) {
+final recentNotesProvider = StreamProvider.family<List<RecentNoteItem>, int>((
+  ref,
+  limit,
+) {
   final repo = ref.watch(noteRepositoryProvider);
   return NotesDashboardProvider(repo).watchRecentNotes(limit);
 });

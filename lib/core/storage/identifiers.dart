@@ -63,6 +63,24 @@ class AppIdentifiers {
   /// Whether to count to-dos toward daily lock-in (default false).
   static const String prefCountTodosForLockIn = 'core.todos_lockin';
 
+  /// Security settings (Phase 5).
+  static const String prefWipeAfterFailures =
+      'security.wipe_after_n'; // 0 = off
+  static const String prefBlockScreenCapture = 'security.block_capture';
+  static const String prefAutoLockSeconds = 'security.auto_lock_s';
+  static const String prefIdleLockSeconds = 'security.idle_lock_s';
+  static const String prefRecoveryVerifiedAt = 'security.recovery_verified_at';
+  static const String prefVaultLockOnLeave = 'security.vault_lock_on_leave';
+
+  /// Per-type notification toggles (default true).
+  static const String prefNotifHabits = 'core.notif_habits';
+  static const String prefNotifTodos = 'core.notif_todos';
+  static const String prefNotifMentions = 'core.notif_mentions';
+  static const String prefNotifLockInNudge = 'core.notif_lockin_nudge';
+
+  /// 24-hour time format (default false → 12-hour).
+  static const String prefTimeFormat24h = 'core.time_24h';
+
   /// Default reminder time offset in minutes from midnight.
   static const String prefDefaultReminderMinutes = 'core.default_reminder_min';
 

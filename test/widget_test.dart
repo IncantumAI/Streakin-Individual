@@ -7,9 +7,9 @@ import 'package:streakin/app/app.dart';
 
 void main() {
   testWidgets('App smoke test — widget tree builds', (tester) async {
-    await tester.pumpWidget(
-      const ProviderScope(child: StreakinApp()),
-    );
+    await tester.pumpWidget(const ProviderScope(child: StreakinApp()));
     expect(find.byType(ProviderScope), findsOneWidget);
+    // Let the splash screen's minimum-display timer finish.
+    await tester.pump(const Duration(seconds: 1));
   });
 }

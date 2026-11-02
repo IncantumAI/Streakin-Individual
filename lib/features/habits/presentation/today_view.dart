@@ -18,7 +18,7 @@ class TodayView extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final habitsAsync = ref.watch(habitsForTodayProvider);
+    final habitsAsync = ref.watch(habitsForAllTodayProvider);
     final logsAsync = ref.watch(todayLogsProvider);
     final lockedInAsync = ref.watch(lockedInTodayProvider);
     return habitsAsync.when(
@@ -33,14 +33,15 @@ class TodayView extends ConsumerWidget {
             // Lock-in banner
             SliverToBoxAdapter(
               child: lockedInAsync.maybeWhen(
-                data: (locked) => locked ? const LockInBanner() : const SizedBox.shrink(),
+                data: (locked) =>
+                    locked ? const LockInBanner() : const SizedBox.shrink(),
                 orElse: () => const SizedBox.shrink(),
               ),
             ),
             // Reorderable habit list
             SliverReorderableList(
               itemCount: habits.length,
-              onReorder: (oldIndex, newIndex) =>
+              onReorderItem: (oldIndex, newIndex) =>
                   _onReorder(ref, habits, oldIndex, newIndex),
               itemBuilder: (context, index) {
                 final habit = habits[index];
@@ -59,8 +60,12 @@ class TodayView extends ConsumerWidget {
   }
 
   Future<void> _onReorder(
-      WidgetRef ref, List<Habit> habits, int oldIndex, int newIndex) async {
-    if (newIndex > oldIndex) newIndex--;
+    WidgetRef ref,
+    List<Habit> habits,
+    int oldIndex,
+    int newIndex,
+  ) async {
+    // onReorderItem already compensates newIndex for the removed item.
     final useCases = ref.read(habitUseCasesProvider);
     // Update sort orders
     final reordered = [...habits];
@@ -110,7 +115,10 @@ class _HabitTileState extends ConsumerState<_HabitTile> {
           decoration: BoxDecoration(
             color: colors.surface,
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: accentColor, width: isDone || isRest ? 1.5 : 1),
+            border: Border.all(
+              color: accentColor,
+              width: isDone || isRest ? 1.5 : 1,
+            ),
           ),
           child: Row(
             children: [
@@ -129,7 +137,8 @@ class _HabitTileState extends ConsumerState<_HabitTile> {
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(
-                  AppIcons.habitIcons[widget.habit.iconIndex % AppIcons.habitIcons.length],
+                  AppIcons.habitIcons[widget.habit.iconIndex %
+                      AppIcons.habitIcons.length],
                   size: 22,
                   color: AppColors.habitAccents[widget.habit.accentIndex % 8],
                 ),
@@ -150,8 +159,10 @@ class _HabitTileState extends ConsumerState<_HabitTile> {
                       ),
                     ),
                     if (isRest)
-                      Text('Rest token used',
-                          style: TextStyle(fontSize: 12, color: colors.textMuted)),
+                      Text(
+                        'Rest token used',
+                        style: TextStyle(fontSize: 12, color: colors.textMuted),
+                      ),
                   ],
                 ),
               ),
@@ -159,7 +170,8 @@ class _HabitTileState extends ConsumerState<_HabitTile> {
               HabitCheckButton(
                 isDone: isDone,
                 isRest: isRest,
-                accentColor: AppColors.habitAccents[widget.habit.accentIndex % 8],
+                accentColor:
+                    AppColors.habitAccents[widget.habit.accentIndex % 8],
                 onTap: _onCheck,
               ),
             ],
@@ -198,10 +210,11 @@ class _HabitTileState extends ConsumerState<_HabitTile> {
         action: SnackBarAction(
           label: 'Undo',
           onPressed: () async {
-            final habit = await ref.read(habitRepositoryStateProvider)?.getById(habitId);
+            final habit = await ref
+                .read(habitRepositoryStateProvider)
+                ?.getById(habitId);
             if (habit != null) {
-              await ref.read(habitUseCasesProvider).saveHabit(
-                  habit.copyWith());
+              await ref.read(habitUseCasesProvider).saveHabit(habit.copyWith());
             }
           },
         ),
@@ -225,7 +238,6 @@ class _HabitContextMenu extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 8),
@@ -273,10 +285,15 @@ class _EmptyState extends StatelessWidget {
         children: [
           Icon(AppIcons.emptyHabits, size: 72, color: colors.textMuted),
           const SizedBox(height: 16),
-          Text('No habits yet', style: TextStyle(fontSize: 18, color: colors.textMuted)),
+          Text(
+            'No habits yet',
+            style: TextStyle(fontSize: 18, color: colors.textMuted),
+          ),
           const SizedBox(height: 8),
-          Text('Tap + to add your first habit',
-              style: TextStyle(fontSize: 14, color: colors.textMuted)),
+          Text(
+            'Tap + to add your first habit',
+            style: TextStyle(fontSize: 14, color: colors.textMuted),
+          ),
         ],
       ),
     );

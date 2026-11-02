@@ -51,10 +51,9 @@ class _MonthViewState extends ConsumerState<MonthView> {
             ),
             const Divider(height: 1),
             // Per-habit heat strip
-            ...active.map((h) => _HabitMonthCard(
-                  habit: h,
-                  focusedMonth: _focusedDay,
-                )),
+            ...active.map(
+              (h) => _HabitMonthCard(habit: h, focusedMonth: _focusedDay),
+            ),
           ],
         );
       },
@@ -75,8 +74,11 @@ class _HabitMonthCard extends ConsumerWidget {
     final engine = ref.watch(streakEngineProvider);
 
     final firstDay = LocalDate(focusedMonth.year, focusedMonth.month, 1);
-    final lastDay = LocalDate(focusedMonth.year, focusedMonth.month,
-        DateUtils.getDaysInMonth(focusedMonth.year, focusedMonth.month));
+    final lastDay = LocalDate(
+      focusedMonth.year,
+      focusedMonth.month,
+      DateUtils.getDaysInMonth(focusedMonth.year, focusedMonth.month),
+    );
     final range = DateRange(start: firstDay, end: lastDay);
 
     return FutureBuilder<Map<String, List<HabitLog>>>(
@@ -86,8 +88,9 @@ class _HabitMonthCard extends ConsumerWidget {
         final logMap = {for (final l in logs) l.localDate.toIso(): l};
 
         // Monthly %
-        final scheduledDays =
-            range.dates.where(habit.scheduleMask.isScheduled).length;
+        final scheduledDays = range.dates
+            .where(habit.scheduleMask.isScheduled)
+            .length;
         final doneDays = logs.where((l) => l.isDone || l.isRest).length;
         final pct = scheduledDays == 0 ? 0.0 : doneDays / scheduledDays;
 
@@ -107,16 +110,26 @@ class _HabitMonthCard extends ConsumerWidget {
             children: [
               Row(
                 children: [
-                  Text(habit.name,
-                      style: const TextStyle(
-                          fontSize: 15, fontWeight: FontWeight.w600)),
+                  Text(
+                    habit.name,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                   const Spacer(),
-                  Text('${(pct * 100).round()}%',
-                      style: TextStyle(fontSize: 13, color: colors.textMuted)),
+                  Text(
+                    '${(pct * 100).round()}%',
+                    style: TextStyle(fontSize: 13, color: colors.textMuted),
+                  ),
                   const SizedBox(width: 12),
-                  Text('Best: $bestInMonth',
-                      style: const TextStyle(
-                          fontSize: 13, color: AppColors.streakLight)),
+                  Text(
+                    'Best: $bestInMonth',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: AppColors.streakLight,
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(height: 10),

@@ -6,6 +6,5 @@ targets:
         - test/**
         - integration_test/**
       exclude:
-        - tool/spikes/**
         - "**/*.g.dart"
         - "**/*.freezed.dart"

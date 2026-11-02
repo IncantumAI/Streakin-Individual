@@ -3,7 +3,7 @@
 // Production: all logging suppressed (Level.OFF). No console output.
 // Debug: Level.ALL with redaction.
 
-import 'package:flutter/foundation.dart' show kDebugMode;
+import 'package:flutter/foundation.dart' show debugPrint, kDebugMode;
 import 'package:logging/logging.dart';
 
 export 'package:logging/logging.dart' show Logger, Level;
@@ -48,11 +48,9 @@ class RedactorSink {
     if (!kDebugMode) return; // Extra guard — should not reach here in prod.
     final cleaned = _redact(record.message);
     final output = '[${record.level.name}][${record.loggerName}] $cleaned';
-    // ignore: avoid_print
-    print(output);
+    debugPrint(output);
     if (record.error != null) {
-      // ignore: avoid_print
-      print('  Error type: ${record.error.runtimeType}');
+      debugPrint('  Error type: ${record.error.runtimeType}');
     }
   }
 

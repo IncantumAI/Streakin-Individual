@@ -10,6 +10,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:streakin/app/app.dart';
 import 'package:streakin/core/logging/app_logger.dart';
 import 'package:streakin/core/storage/app_database.dart';
+import 'package:streakin/core/notifications/notification_reconciler.dart'
+    show defaultNotificationScheduler;
+import 'package:streakin/core/platform/desktop_notification_scheduler.dart';
+import 'package:streakin/core/platform/tray_service.dart';
+import 'package:streakin/core/security/lock_controller.dart';
 import 'package:streakin/core/time/hlc.dart';
 
 // Flavour: set by --dart-define=FLAVOR=prod (default: dev).
@@ -30,6 +35,11 @@ void main() {
         Logger('editor').level = Level.WARNING;
       }
 
+      // Memory budget (Spec §11.4): bounded decoded-image cache.
+      PaintingBinding.instance.imageCache
+        ..maximumSize = 150
+        ..maximumSizeBytes = 48 << 20;
+
       // Apply SQLCipher Android workaround before any DB operations.
       await initSqlCipherOnAndroid();
 
@@ -46,17 +56,33 @@ void main() {
         );
       };
 
+      // Desktop reminders run on in-process timers (no OS scheduling there).
+      if (DesktopNotificationScheduler.isDesktop) {
+        defaultNotificationScheduler = () =>
+            DesktopNotificationScheduler.instance;
+      }
+
+      // Desktop: window min size + close-to-tray (Phase 8A/B).
+      final container = ProviderContainer();
+      if (TrayService.supported) {
+        TrayService.instance.onBeforeHide = () =>
+            container.read(LockController.provider.notifier).lock();
+        await TrayService.instance.start();
+      }
+
       runApp(
-        const ProviderScope(
-          child: StreakinApp(),
+        UncontrolledProviderScope(
+          container: container,
+          child: const StreakinApp(),
         ),
       );
     },
     (error, stack) {
       AppLogger.get('Zone').severe(
-          'Unhandled zone error\n  Error type: ${error.runtimeType}\n  $error',
-          error,
-          stack);
+        'Unhandled zone error\n  Error type: ${error.runtimeType}\n  $error',
+        error,
+        stack,
+      );
     },
   );
 }

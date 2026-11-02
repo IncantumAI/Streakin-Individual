@@ -27,11 +27,7 @@ class GoalDraft {
 }
 
 class GoalLifecycleService {
-  GoalLifecycleService({
-    required GoalRepository goalRepo,
-    required HabitCompletionPort habitPort,
-  })  : _goalRepo = goalRepo,
-        _habitPort = habitPort;
+  GoalLifecycleService({required this._goalRepo, required this._habitPort});
 
   final GoalRepository _goalRepo;
   final HabitCompletionPort _habitPort;
@@ -83,22 +79,26 @@ class GoalLifecycleService {
     await _goalRepo.saveGoal(goal);
 
     // Create local state row
-    await _goalRepo.saveLocalState(GoalLocalState(
-      goalId: goal.id,
-      celebrationPending: false,
-      milestonesShown: [],
-    ));
+    await _goalRepo.saveLocalState(
+      GoalLocalState(
+        goalId: goal.id,
+        celebrationPending: false,
+        milestonesShown: [],
+      ),
+    );
 
     // Link habits
     final linkFrom = countFromStart ? draft.startDate : today;
     for (final habitId in habitIds) {
-      await _goalRepo.saveGoalHabitLink(GoalHabitLink(
-        id: _uuid.v4(),
-        goalId: goal.id,
-        habitId: habitId,
-        linkedFrom: linkFrom,
-        hlc: Hlc.now().toIso(),
-      ));
+      await _goalRepo.saveGoalHabitLink(
+        GoalHabitLink(
+          id: _uuid.v4(),
+          goalId: goal.id,
+          habitId: habitId,
+          linkedFrom: linkFrom,
+          hlc: Hlc.now().toIso(),
+        ),
+      );
     }
 
     return archived;
@@ -119,14 +119,19 @@ class GoalLifecycleService {
   }
 
   Future<void> completeEarly(Goal goal) async {
-    await _archiveGoal(goal,
-        reason: GoalArchiveReason.completedEarly,
-        through: LocalDate.today());
+    await _archiveGoal(
+      goal,
+      reason: GoalArchiveReason.completedEarly,
+      through: LocalDate.today(),
+    );
   }
 
   Future<void> abandon(Goal goal) async {
-    await _archiveGoal(goal,
-        reason: GoalArchiveReason.abandoned, through: LocalDate.today());
+    await _archiveGoal(
+      goal,
+      reason: GoalArchiveReason.abandoned,
+      through: LocalDate.today(),
+    );
   }
 
   Future<void> linkHabit(
@@ -136,13 +141,15 @@ class GoalLifecycleService {
   }) async {
     final today = LocalDate.today();
     final from = countFromStart ? goal.startDate : today;
-    await _goalRepo.saveGoalHabitLink(GoalHabitLink(
-      id: _uuid.v4(),
-      goalId: goal.id,
-      habitId: habitId,
-      linkedFrom: from,
-      hlc: Hlc.now().toIso(),
-    ));
+    await _goalRepo.saveGoalHabitLink(
+      GoalHabitLink(
+        id: _uuid.v4(),
+        goalId: goal.id,
+        habitId: habitId,
+        linkedFrom: from,
+        hlc: Hlc.now().toIso(),
+      ),
+    );
   }
 
   Future<void> unlinkHabit(Goal goal, String habitId) async {
@@ -172,35 +179,44 @@ class GoalLifecycleService {
     if (active.kind == GoalKind.dated &&
         active.endDate != null &&
         today > active.endDate!) {
-      await _archiveGoal(active,
-          reason: GoalArchiveReason.completed, through: active.endDate!);
+      await _archiveGoal(
+        active,
+        reason: GoalArchiveReason.completed,
+        through: active.endDate!,
+      );
     }
   }
 
   Future<void> dismissCelebration(String goalId) async {
     final state = await _goalRepo.getLocalState(goalId);
     if (state == null) return;
-    await _goalRepo.saveLocalState(GoalLocalState(
-      goalId: goalId,
-      celebrationPending: false,
-      milestonesShown: state.milestonesShown,
-      heroPromptDismissedUntil: state.heroPromptDismissedUntil,
-    ));
+    await _goalRepo.saveLocalState(
+      GoalLocalState(
+        goalId: goalId,
+        celebrationPending: false,
+        milestonesShown: state.milestonesShown,
+        heroPromptDismissedUntil: state.heroPromptDismissedUntil,
+      ),
+    );
   }
 
   Future<void> markMilestoneShown(String goalId, String milestone) async {
-    final state = await _goalRepo.getLocalState(goalId) ??
+    final state =
+        await _goalRepo.getLocalState(goalId) ??
         GoalLocalState(
-            goalId: goalId,
-            celebrationPending: false,
-            milestonesShown: []);
+          goalId: goalId,
+          celebrationPending: false,
+          milestonesShown: [],
+        );
     final updated = [...state.milestonesShown, milestone];
-    await _goalRepo.saveLocalState(GoalLocalState(
-      goalId: goalId,
-      celebrationPending: state.celebrationPending,
-      milestonesShown: updated,
-      heroPromptDismissedUntil: state.heroPromptDismissedUntil,
-    ));
+    await _goalRepo.saveLocalState(
+      GoalLocalState(
+        goalId: goalId,
+        celebrationPending: state.celebrationPending,
+        milestonesShown: updated,
+        heroPromptDismissedUntil: state.heroPromptDismissedUntil,
+      ),
+    );
   }
 
   // ── Internal ──────────────────────────────────────────────────────────────
@@ -216,7 +232,7 @@ class GoalLifecycleService {
     final archived = goal.copyWith(
       status: GoalStatus.archived,
       archiveReason: () => reason,
-      archivedAt: () => DateTime.now(),
+      archivedAt: DateTime.now,
       updatedAt: DateTime.now(),
       hlc: Hlc.now().toIso(),
     );
@@ -225,32 +241,40 @@ class GoalLifecycleService {
     // Set celebration pending for completed goals
     if (reason == GoalArchiveReason.completed ||
         reason == GoalArchiveReason.completedEarly) {
-      final state = await _goalRepo.getLocalState(goal.id) ??
+      final state =
+          await _goalRepo.getLocalState(goal.id) ??
           GoalLocalState(
-              goalId: goal.id,
-              celebrationPending: false,
-              milestonesShown: []);
-      await _goalRepo.saveLocalState(GoalLocalState(
-        goalId: goal.id,
-        celebrationPending: true,
-        milestonesShown: state.milestonesShown,
-        heroPromptDismissedUntil: state.heroPromptDismissedUntil,
-      ));
+            goalId: goal.id,
+            celebrationPending: false,
+            milestonesShown: [],
+          );
+      await _goalRepo.saveLocalState(
+        GoalLocalState(
+          goalId: goal.id,
+          celebrationPending: true,
+          milestonesShown: state.milestonesShown,
+          heroPromptDismissedUntil: state.heroPromptDismissedUntil,
+        ),
+      );
     }
 
     return archived;
   }
 
-  Future<GoalSummary> _computeSummary(Goal goal,
-      {required LocalDate through}) async {
+  Future<GoalSummary> _computeSummary(
+    Goal goal, {
+    required LocalDate through,
+  }) async {
     final clock = GoalClock.compute(goal, through);
     final links = await _goalRepo.getLinksForGoal(goal.id);
     final windows = links
-        .map((l) => HabitLinkWindow(
-              habitId: l.habitId,
-              from: l.linkedFrom,
-              to: l.linkedTo,
-            ))
+        .map(
+          (l) => HabitLinkWindow(
+            habitId: l.habitId,
+            from: l.linkedFrom,
+            to: l.linkedTo,
+          ),
+        )
         .toList();
 
     final stats = await _habitPort.closedDayStats(

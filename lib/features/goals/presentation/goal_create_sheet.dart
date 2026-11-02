@@ -1,3 +1,4 @@
+import 'package:streakin/core/design/icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,7 +10,6 @@ import 'package:streakin/features/goals/application/goal_lifecycle_service.dart'
 import 'package:streakin/features/goals/application/goal_providers.dart';
 import 'package:streakin/features/goals/domain/goal.dart';
 import 'package:streakin/features/habits/application/habit_providers.dart';
-import 'package:streakin/features/habits/domain/habit.dart';
 
 void showGoalCreateSheet(BuildContext context, {Goal? existing}) {
   showModalBottomSheet<void>(
@@ -41,8 +41,6 @@ class _GoalCreateSheetState extends ConsumerState<_GoalCreateSheet> {
   final List<String> _linkedHabitIds = [];
   bool _saving = false;
   int _step = 0; // 0=goal, 1=time, 2=habits, 3=reminders, 4=confirm
-
-  static const _durationChips = [30, 60, 90, 100, 180, 365];
 
   @override
   void initState() {
@@ -109,9 +107,7 @@ class _GoalCreateSheetState extends ConsumerState<_GoalCreateSheet> {
               canAdvance: _canAdvance,
               saving: _saving,
               onBack: () => setState(() => _step--),
-              onNext: _step < 4
-                  ? () => setState(() => _step++)
-                  : _save,
+              onNext: _step < 4 ? () => setState(() => _step++) : _save,
               colors: colors,
             ),
           ],
@@ -123,55 +119,55 @@ class _GoalCreateSheetState extends ConsumerState<_GoalCreateSheet> {
   Widget _buildStep(AppColorTokens colors) {
     return switch (_step) {
       0 => _StepGoal(
-          titleCtrl: _titleCtrl,
-          whyCtrl: _whyCtrl,
-          kind: _kind,
-          accentIndex: _accentIndex,
-          onKindChanged: (k) => setState(() => _kind = k),
-          onAccentChanged: (a) => setState(() => _accentIndex = a),
-          colors: colors,
-        ),
+        titleCtrl: _titleCtrl,
+        whyCtrl: _whyCtrl,
+        kind: _kind,
+        accentIndex: _accentIndex,
+        onKindChanged: (k) => setState(() => _kind = k),
+        onAccentChanged: (a) => setState(() => _accentIndex = a),
+        colors: colors,
+      ),
       1 => _StepTime(
-          kind: _kind,
-          startDate: _startDate,
-          endDate: _endDate,
-          durationDays: _durationDays,
-          useDuration: _useDuration,
-          onStartChanged: (d) => setState(() => _startDate = d),
-          onEndChanged: (d) => setState(() {
-            _endDate = d;
-            _useDuration = false;
-          }),
-          onDurationChanged: (n) => setState(() {
-            _durationDays = n;
-            _useDuration = true;
-            _endDate = _startDate.addDays(n - 1);
-          }),
-          colors: colors,
-        ),
+        kind: _kind,
+        startDate: _startDate,
+        endDate: _endDate,
+        durationDays: _durationDays,
+        useDuration: _useDuration,
+        onStartChanged: (d) => setState(() => _startDate = d),
+        onEndChanged: (d) => setState(() {
+          _endDate = d;
+          _useDuration = false;
+        }),
+        onDurationChanged: (n) => setState(() {
+          _durationDays = n;
+          _useDuration = true;
+          _endDate = _startDate.addDays(n - 1);
+        }),
+        colors: colors,
+      ),
       2 => _StepHabits(
-          linkedIds: _linkedHabitIds,
-          countFromStart: _countFromStart,
-          onToggle: (id) => setState(() {
-            if (_linkedHabitIds.contains(id)) {
-              _linkedHabitIds.remove(id);
-            } else {
-              _linkedHabitIds.add(id);
-            }
-          }),
-          onCountFromStartChanged: (v) => setState(() => _countFromStart = v),
-          colors: colors,
-        ),
+        linkedIds: _linkedHabitIds,
+        countFromStart: _countFromStart,
+        onToggle: (id) => setState(() {
+          if (_linkedHabitIds.contains(id)) {
+            _linkedHabitIds.remove(id);
+          } else {
+            _linkedHabitIds.add(id);
+          }
+        }),
+        onCountFromStartChanged: (v) => setState(() => _countFromStart = v),
+        colors: colors,
+      ),
       3 => _StepReminders(colors: colors),
       4 => _StepConfirm(
-          title: _titleCtrl.text.trim(),
-          kind: _kind,
-          startDate: _startDate,
-          endDate: _endDate,
-          linkedCount: _linkedHabitIds.length,
-          existing: widget.existing,
-          colors: colors,
-        ),
+        title: _titleCtrl.text.trim(),
+        kind: _kind,
+        startDate: _startDate,
+        endDate: _endDate,
+        linkedCount: _linkedHabitIds.length,
+        existing: widget.existing,
+        colors: colors,
+      ),
       _ => const SizedBox.shrink(),
     };
   }
@@ -196,14 +192,19 @@ class _GoalCreateSheetState extends ConsumerState<_GoalCreateSheet> {
         accentIndex: _accentIndex,
       );
       if (widget.existing == null) {
-        await svc.setPrimaryGoal(draft,
-            habitIds: _linkedHabitIds,
-            countFromStart: _countFromStart);
+        await svc.setPrimaryGoal(
+          draft,
+          habitIds: _linkedHabitIds,
+          countFromStart: _countFromStart,
+        );
       } else {
         await svc.editGoal(widget.existing!, draft);
         for (final id in _linkedHabitIds) {
-          await svc.linkHabit(widget.existing!, id,
-              countFromStart: _countFromStart);
+          await svc.linkHabit(
+            widget.existing!,
+            id,
+            countFromStart: _countFromStart,
+          );
         }
       }
       if (mounted) Navigator.of(context).pop();
@@ -232,7 +233,9 @@ class _Handle extends StatelessWidget {
           width: 36,
           height: 4,
           decoration: BoxDecoration(
-              color: colors.outline, borderRadius: BorderRadius.circular(2)),
+            color: colors.outline,
+            borderRadius: BorderRadius.circular(2),
+          ),
         ),
       ),
     );
@@ -240,8 +243,11 @@ class _Handle extends StatelessWidget {
 }
 
 class _StepIndicator extends StatelessWidget {
-  const _StepIndicator(
-      {required this.step, required this.total, required this.colors});
+  const _StepIndicator({
+    required this.step,
+    required this.total,
+    required this.colors,
+  });
   final int step;
   final int total;
   final AppColorTokens colors;
@@ -305,14 +311,18 @@ class _NavButtons extends StatelessWidget {
             child: FilledButton(
               onPressed: canAdvance && !saving ? onNext : null,
               style: FilledButton.styleFrom(
-                  backgroundColor: colors.brand,
-                  foregroundColor: colors.onBrand),
+                backgroundColor: colors.brand,
+                foregroundColor: colors.onBrand,
+              ),
               child: saving
                   ? const SizedBox(
                       width: 20,
                       height: 20,
                       child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.white))
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
                   : Text(step < total - 1 ? 'Next' : 'Save'),
             ),
           ),
@@ -345,17 +355,22 @@ class _StepGoal extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('What are you working toward?',
-            style: TextStyle(
-                fontSize: 17,
-                fontWeight: FontWeight.w600,
-                color: colors.text)),
+        Text(
+          'What are you working toward?',
+          style: TextStyle(
+            fontSize: 17,
+            fontWeight: FontWeight.w600,
+            color: colors.text,
+          ),
+        ),
         const SizedBox(height: 16),
         TextField(
           controller: titleCtrl,
           maxLength: 80,
-          decoration: InputDecoration(
-              hintText: 'Goal title', counterText: ''),
+          decoration: const InputDecoration(
+            hintText: 'Goal title',
+            counterText: '',
+          ),
           inputFormatters: [LengthLimitingTextInputFormatter(80)],
         ),
         const SizedBox(height: 12),
@@ -363,9 +378,10 @@ class _StepGoal extends StatelessWidget {
           controller: whyCtrl,
           maxLength: 280,
           maxLines: 2,
-          decoration: InputDecoration(
-              hintText: 'Why does this matter? (optional)',
-              counterText: ''),
+          decoration: const InputDecoration(
+            hintText: 'Why does this matter? (optional)',
+            counterText: '',
+          ),
         ),
         const SizedBox(height: 16),
         Row(
@@ -391,11 +407,12 @@ class _StepGoal extends StatelessWidget {
 }
 
 class _KindChip extends StatelessWidget {
-  const _KindChip(
-      {required this.label,
-      required this.selected,
-      required this.onTap,
-      required this.colors});
+  const _KindChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+    required this.colors,
+  });
   final String label;
   final bool selected;
   final VoidCallback onTap;
@@ -406,19 +423,20 @@ class _KindChip extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding:
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
           color: selected ? colors.brand.withAlpha(30) : Colors.transparent,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-              color: selected ? colors.brand : colors.outline),
+          border: Border.all(color: selected ? colors.brand : colors.outline),
         ),
-        child: Text(label,
-            style: TextStyle(
-                color: selected ? colors.brand : colors.textMuted,
-                fontWeight: FontWeight.w500,
-                fontSize: 13)),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: selected ? colors.brand : colors.textMuted,
+            fontWeight: FontWeight.w500,
+            fontSize: 13,
+          ),
+        ),
       ),
     );
   }
@@ -453,36 +471,46 @@ class _StepTime extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('When does it start?',
-            style: TextStyle(
-                fontSize: 17,
-                fontWeight: FontWeight.w600,
-                color: colors.text)),
+        Text(
+          'When does it start?',
+          style: TextStyle(
+            fontSize: 17,
+            fontWeight: FontWeight.w600,
+            color: colors.text,
+          ),
+        ),
         const SizedBox(height: 12),
         _DateRow(
           label: 'Start date',
           date: startDate,
-          onChanged: (d) { if (d != null) onStartChanged(d); },
+          onChanged: (d) {
+            if (d != null) onStartChanged(d);
+          },
           colors: colors,
         ),
         if (kind == GoalKind.dated) ...[
           const SizedBox(height: 16),
-          Text('How long?',
-              style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w500,
-                  color: colors.text)),
+          Text(
+            'How long?',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w500,
+              color: colors.text,
+            ),
+          ),
           const SizedBox(height: 10),
           Wrap(
             spacing: 8,
             runSpacing: 8,
             children: _chips
-                .map((n) => _DurationChip(
-                      days: n,
-                      selected: useDuration && durationDays == n,
-                      onTap: () => onDurationChanged(n),
-                      colors: colors,
-                    ))
+                .map(
+                  (n) => _DurationChip(
+                    days: n,
+                    selected: useDuration && durationDays == n,
+                    onTap: () => onDurationChanged(n),
+                    colors: colors,
+                  ),
+                )
                 .toList(),
           ),
           const SizedBox(height: 12),
@@ -516,11 +544,12 @@ class _StepTime extends StatelessWidget {
 }
 
 class _DateRow extends StatelessWidget {
-  const _DateRow(
-      {required this.label,
-      required this.date,
-      required this.onChanged,
-      required this.colors});
+  const _DateRow({
+    required this.label,
+    required this.date,
+    required this.onChanged,
+    required this.colors,
+  });
   final String label;
   final LocalDate? date;
   final ValueChanged<LocalDate?> onChanged;
@@ -545,19 +574,20 @@ class _DateRow extends StatelessWidget {
       },
       borderRadius: BorderRadius.circular(8),
       child: Container(
-        padding:
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
           border: Border.all(color: colors.outline),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Row(
           children: [
-            Icon(Icons.calendar_today_outlined,
-                size: 16, color: colors.textMuted),
+            Icon(
+              AppIcons.calendarTodayOutlined,
+              size: 16,
+              color: colors.textMuted,
+            ),
             const SizedBox(width: 8),
-            Text(label,
-                style: TextStyle(color: colors.text, fontSize: 14)),
+            Text(label, style: TextStyle(color: colors.text, fontSize: 14)),
           ],
         ),
       ),
@@ -566,11 +596,12 @@ class _DateRow extends StatelessWidget {
 }
 
 class _DurationChip extends StatelessWidget {
-  const _DurationChip(
-      {required this.days,
-      required this.selected,
-      required this.onTap,
-      required this.colors});
+  const _DurationChip({
+    required this.days,
+    required this.selected,
+    required this.onTap,
+    required this.colors,
+  });
   final int days;
   final bool selected;
   final VoidCallback onTap;
@@ -581,18 +612,19 @@ class _DurationChip extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding:
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
           color: selected ? colors.brand : Colors.transparent,
           borderRadius: BorderRadius.circular(16),
-          border:
-              Border.all(color: selected ? colors.brand : colors.outline),
+          border: Border.all(color: selected ? colors.brand : colors.outline),
         ),
-        child: Text('$days days',
-            style: TextStyle(
-                color: selected ? colors.onBrand : colors.textMuted,
-                fontSize: 13)),
+        child: Text(
+          '$days days',
+          style: TextStyle(
+            color: selected ? colors.onBrand : colors.textMuted,
+            fontSize: 13,
+          ),
+        ),
       ),
     );
   }
@@ -618,38 +650,46 @@ class _StepHabits extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Link habits',
-            style: TextStyle(
-                fontSize: 17,
-                fontWeight: FontWeight.w600,
-                color: colors.text)),
+        Text(
+          'Link habits',
+          style: TextStyle(
+            fontSize: 17,
+            fontWeight: FontWeight.w600,
+            color: colors.text,
+          ),
+        ),
         const SizedBox(height: 4),
         Text(
-            'Linked habits contribute to goal alignment.',
-            style: TextStyle(fontSize: 12, color: colors.textMuted)),
+          'Linked habits contribute to goal alignment.',
+          style: TextStyle(fontSize: 12, color: colors.textMuted),
+        ),
         const SizedBox(height: 16),
         habitsAsync.when(
           loading: () => const CircularProgressIndicator.adaptive(),
-          error: (_, __) => const SizedBox.shrink(),
+          error: (_, _) => const SizedBox.shrink(),
           data: (habits) {
-            final active =
-                habits.where((h) => h.isActive).toList();
+            final active = habits.where((h) => h.isActive).toList();
             if (active.isEmpty) {
-              return Text('No habits yet',
-                  style: TextStyle(color: colors.textMuted));
+              return Text(
+                'No habits yet',
+                style: TextStyle(color: colors.textMuted),
+              );
             }
             return Column(
               children: active
-                  .map((h) => CheckboxListTile(
-                        dense: true,
-                        value: linkedIds.contains(h.id),
-                        onChanged: (_) => onToggle(h.id),
-                        title: Text(h.name,
-                            style: TextStyle(
-                                color: colors.text, fontSize: 14)),
-                        activeColor: colors.brand,
-                        contentPadding: EdgeInsets.zero,
-                      ))
+                  .map(
+                    (h) => CheckboxListTile(
+                      dense: true,
+                      value: linkedIds.contains(h.id),
+                      onChanged: (_) => onToggle(h.id),
+                      title: Text(
+                        h.name,
+                        style: TextStyle(color: colors.text, fontSize: 14),
+                      ),
+                      activeColor: colors.brand,
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                  )
                   .toList(),
             );
           },
@@ -658,13 +698,16 @@ class _StepHabits extends ConsumerWidget {
         SwitchListTile.adaptive(
           value: countFromStart,
           onChanged: onCountFromStartChanged,
-          activeColor: colors.brand,
+          activeThumbColor: colors.brand,
           contentPadding: EdgeInsets.zero,
-          title: Text('Count from goal start',
-              style: TextStyle(fontSize: 14, color: colors.text)),
+          title: Text(
+            'Count from goal start',
+            style: TextStyle(fontSize: 14, color: colors.text),
+          ),
           subtitle: Text(
-              'Include existing logs since the goal start date',
-              style: TextStyle(fontSize: 11, color: colors.textMuted)),
+            'Include existing logs since the goal start date',
+            style: TextStyle(fontSize: 11, color: colors.textMuted),
+          ),
         ),
       ],
     );
@@ -680,15 +723,19 @@ class _StepReminders extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Reminders',
-            style: TextStyle(
-                fontSize: 17,
-                fontWeight: FontWeight.w600,
-                color: colors.text)),
+        Text(
+          'Reminders',
+          style: TextStyle(
+            fontSize: 17,
+            fontWeight: FontWeight.w600,
+            color: colors.text,
+          ),
+        ),
         const SizedBox(height: 8),
         Text(
-            'Configure detailed reminder settings in Settings → Goals after creating the goal.',
-            style: TextStyle(fontSize: 13, color: colors.textMuted)),
+          'Configure detailed reminder settings in Settings → Goals after creating the goal.',
+          style: TextStyle(fontSize: 13, color: colors.textMuted),
+        ),
       ],
     );
   }
@@ -718,26 +765,29 @@ class _StepConfirm extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Confirm',
-            style: TextStyle(
-                fontSize: 17,
-                fontWeight: FontWeight.w600,
-                color: colors.text)),
+        Text(
+          'Confirm',
+          style: TextStyle(
+            fontSize: 17,
+            fontWeight: FontWeight.w600,
+            color: colors.text,
+          ),
+        ),
         const SizedBox(height: 16),
         _ConfirmRow(label: 'Title', value: title, colors: colors),
         _ConfirmRow(
-            label: 'Type',
-            value: kind == GoalKind.dated ? 'Dated' : 'Open-ended',
-            colors: colors),
-        _ConfirmRow(
-            label: 'Start', value: startDate.toIso(), colors: colors),
+          label: 'Type',
+          value: kind == GoalKind.dated ? 'Dated' : 'Open-ended',
+          colors: colors,
+        ),
+        _ConfirmRow(label: 'Start', value: startDate.toIso(), colors: colors),
         if (endDate != null)
-          _ConfirmRow(
-              label: 'End', value: endDate!.toIso(), colors: colors),
+          _ConfirmRow(label: 'End', value: endDate!.toIso(), colors: colors),
         _ConfirmRow(
-            label: 'Linked habits',
-            value: '$linkedCount habit${linkedCount == 1 ? '' : 's'}',
-            colors: colors),
+          label: 'Linked habits',
+          value: '$linkedCount habit${linkedCount == 1 ? '' : 's'}',
+          colors: colors,
+        ),
         if (activeGoal != null && existing == null) ...[
           const SizedBox(height: 16),
           Container(
@@ -759,8 +809,11 @@ class _StepConfirm extends ConsumerWidget {
 }
 
 class _ConfirmRow extends StatelessWidget {
-  const _ConfirmRow(
-      {required this.label, required this.value, required this.colors});
+  const _ConfirmRow({
+    required this.label,
+    required this.value,
+    required this.colors,
+  });
   final String label;
   final String value;
   final AppColorTokens colors;
@@ -773,15 +826,20 @@ class _ConfirmRow extends StatelessWidget {
         children: [
           SizedBox(
             width: 100,
-            child: Text(label,
-                style: TextStyle(fontSize: 13, color: colors.textMuted)),
+            child: Text(
+              label,
+              style: TextStyle(fontSize: 13, color: colors.textMuted),
+            ),
           ),
           Expanded(
-            child: Text(value,
-                style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    color: colors.text)),
+            child: Text(
+              value,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: colors.text,
+              ),
+            ),
           ),
         ],
       ),

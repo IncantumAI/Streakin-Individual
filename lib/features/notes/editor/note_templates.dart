@@ -65,18 +65,20 @@ NoteDocument buildTemplate(NoteTemplateKind kind) {
     case NoteTemplateKind.whatHappenedToday:
       return NoteDocument([
         NoteBlock(
-            id: _id(),
-            kind: NoteBlockKind.heading2,
-            text: 'What happened today?'),
+          id: _id(),
+          kind: NoteBlockKind.heading2,
+          text: 'What happened today?',
+        ),
         NoteBlock(id: _id(), kind: NoteBlockKind.paragraph),
       ]);
 
     case NoteTemplateKind.whatDidYouLearnToday:
       return NoteDocument([
         NoteBlock(
-            id: _id(),
-            kind: NoteBlockKind.heading2,
-            text: 'What did you learn today?'),
+          id: _id(),
+          kind: NoteBlockKind.heading2,
+          text: 'What did you learn today?',
+        ),
         NoteBlock(id: _id(), kind: NoteBlockKind.bulletItem),
         NoteBlock(id: _id(), kind: NoteBlockKind.bulletItem),
         NoteBlock(id: _id(), kind: NoteBlockKind.bulletItem),
@@ -85,7 +87,10 @@ NoteDocument buildTemplate(NoteTemplateKind kind) {
     case NoteTemplateKind.summaryOfTheDay:
       return NoteDocument([
         NoteBlock(
-            id: _id(), kind: NoteBlockKind.heading2, text: 'Summary of the day'),
+          id: _id(),
+          kind: NoteBlockKind.heading2,
+          text: 'Summary of the day',
+        ),
         NoteBlock(id: _id(), kind: NoteBlockKind.heading3, text: 'Wins'),
         NoteBlock(id: _id(), kind: NoteBlockKind.task),
         NoteBlock(id: _id(), kind: NoteBlockKind.heading3, text: 'Misses'),
@@ -97,32 +102,43 @@ NoteDocument buildTemplate(NoteTemplateKind kind) {
     case NoteTemplateKind.whereDidYouFallBack:
       return NoteDocument([
         NoteBlock(
-            id: _id(),
-            kind: NoteBlockKind.heading2,
-            text: 'Where did you fall back?'),
+          id: _id(),
+          kind: NoteBlockKind.heading2,
+          text: 'Where did you fall back?',
+        ),
         NoteBlock(
-            id: _id(), kind: NoteBlockKind.heading3, text: 'What slipped?'),
+          id: _id(),
+          kind: NoteBlockKind.heading3,
+          text: 'What slipped?',
+        ),
         NoteBlock(id: _id(), kind: NoteBlockKind.paragraph),
         NoteBlock(id: _id(), kind: NoteBlockKind.heading3, text: 'Why?'),
         NoteBlock(id: _id(), kind: NoteBlockKind.paragraph),
         NoteBlock(
-            id: _id(), kind: NoteBlockKind.heading3, text: 'One small fix'),
+          id: _id(),
+          kind: NoteBlockKind.heading3,
+          text: 'One small fix',
+        ),
         NoteBlock(id: _id(), kind: NoteBlockKind.task),
       ]);
 
     case NoteTemplateKind.brainstorm:
       return NoteDocument([
         NoteBlock(
-            id: _id(), kind: NoteBlockKind.heading2, text: 'Central question'),
+          id: _id(),
+          kind: NoteBlockKind.heading2,
+          text: 'Central question',
+        ),
         NoteBlock(id: _id(), kind: NoteBlockKind.paragraph),
         NoteBlock(id: _id(), kind: NoteBlockKind.heading3, text: 'Ideas'),
         NoteBlock(id: _id(), kind: NoteBlockKind.bulletItem),
         NoteBlock(id: _id(), kind: NoteBlockKind.bulletItem),
         NoteBlock(id: _id(), kind: NoteBlockKind.bulletItem),
         NoteBlock(
-            id: _id(),
-            kind: NoteBlockKind.heading3,
-            text: 'Related notes'),
+          id: _id(),
+          kind: NoteBlockKind.heading3,
+          text: 'Related notes',
+        ),
         NoteBlock(id: _id(), kind: NoteBlockKind.paragraph),
       ]);
   }
@@ -130,10 +146,10 @@ NoteDocument buildTemplate(NoteTemplateKind kind) {
 
 /// Returns the suggested title for a template.
 String templateTitle(NoteTemplateKind kind) => switch (kind) {
-      NoteTemplateKind.blank => '',
-      NoteTemplateKind.whatHappenedToday => 'What happened today?',
-      NoteTemplateKind.whatDidYouLearnToday => 'What did I learn today?',
-      NoteTemplateKind.summaryOfTheDay => 'Summary of the day',
-      NoteTemplateKind.whereDidYouFallBack => 'Where did I fall back?',
-      NoteTemplateKind.brainstorm => 'Brainstorm',
-    };
+  NoteTemplateKind.blank => '',
+  NoteTemplateKind.whatHappenedToday => 'What happened today?',
+  NoteTemplateKind.whatDidYouLearnToday => 'What did I learn today?',
+  NoteTemplateKind.summaryOfTheDay => 'Summary of the day',
+  NoteTemplateKind.whereDidYouFallBack => 'Where did I fall back?',
+  NoteTemplateKind.brainstorm => 'Brainstorm',
+};

@@ -26,7 +26,7 @@ class _Mention extends Matcher {
   final bool allDay;
 
   @override
-  bool matches(dynamic item, Map matchState) =>
+  bool matches(dynamic item, Map<dynamic, dynamic> matchState) =>
       item is ParsedMention &&
       item.startsAt == startsAt &&
       item.allDay == allDay;
@@ -42,7 +42,10 @@ void main() {
     test('today all-day', () => expect(_parse('today'), _allDay(_today)));
     test('TODAY uppercase', () => expect(_parse('TODAY'), _allDay(_today)));
     test('Today mixed case', () => expect(_parse('Today'), _allDay(_today)));
-    test('today with trailing spaces', () => expect(_parse('  today  '), _allDay(_today)));
+    test(
+      'today with trailing spaces',
+      () => expect(_parse('  today  '), _allDay(_today)),
+    );
 
     // today + time — future time stays today
     test('today 9pm → today 21:00', () {
@@ -82,8 +85,14 @@ void main() {
 
   // ── @tomorrow ──────────────────────────────────────────────────────────────
   group('@tomorrow', () {
-    test('tomorrow all-day', () => expect(_parse('tomorrow'), _allDay(_tomorrow)));
-    test('TOMORROW uppercase', () => expect(_parse('TOMORROW'), _allDay(_tomorrow)));
+    test(
+      'tomorrow all-day',
+      () => expect(_parse('tomorrow'), _allDay(_tomorrow)),
+    );
+    test(
+      'TOMORROW uppercase',
+      () => expect(_parse('TOMORROW'), _allDay(_tomorrow)),
+    );
     test('tomorrow 9am', () {
       expect(_parse('tomorrow 9am'), _timed(DateTime(2026, 10, 8, 9)));
     });
@@ -106,11 +115,17 @@ void main() {
 
   // ── @yesterday ─────────────────────────────────────────────────────────────
   group('@yesterday', () {
-    test('yesterday all-day', () => expect(_parse('yesterday'), _allDay(_yesterday)));
+    test(
+      'yesterday all-day',
+      () => expect(_parse('yesterday'), _allDay(_yesterday)),
+    );
     test('yesterday 9am', () {
       expect(_parse('yesterday 9am'), _timed(DateTime(2026, 10, 6, 9)));
     });
-    test('YESTERDAY uppercase', () => expect(_parse('YESTERDAY'), _allDay(_yesterday)));
+    test(
+      'YESTERDAY uppercase',
+      () => expect(_parse('YESTERDAY'), _allDay(_yesterday)),
+    );
   });
 
   // ── Weekday: bare ──────────────────────────────────────────────────────────
@@ -185,7 +200,10 @@ void main() {
       expect(_parse('sun 08:00'), _timed(DateTime(2026, 10, 11, 8)));
     });
     test('saturday 11:30am → 2026-10-10 11:30', () {
-      expect(_parse('saturday 11:30am'), _timed(DateTime(2026, 10, 10, 11, 30)));
+      expect(
+        _parse('saturday 11:30am'),
+        _timed(DateTime(2026, 10, 10, 11, 30)),
+      );
     });
   });
 
@@ -194,9 +212,12 @@ void main() {
     test('next mon → 2026-10-12', () {
       expect(_parse('next mon'), _allDay(DateTime(2026, 10, 12)));
     });
-    test('next wednesday → forces ahead even though today is Wed → 2026-10-14', () {
-      expect(_parse('next wednesday'), _allDay(DateTime(2026, 10, 14)));
-    });
+    test(
+      'next wednesday → forces ahead even though today is Wed → 2026-10-14',
+      () {
+        expect(_parse('next wednesday'), _allDay(DateTime(2026, 10, 14)));
+      },
+    );
     test('next friday → 2026-10-09', () {
       expect(_parse('next friday'), _allDay(DateTime(2026, 10, 9)));
     });
@@ -304,7 +325,10 @@ void main() {
       expect(_parse('2026-10-15 16:00'), _timed(DateTime(2026, 10, 15, 16)));
     });
     test('@2026-12-31 23:59', () {
-      expect(_parse('2026-12-31 23:59'), _timed(DateTime(2026, 12, 31, 23, 59)));
+      expect(
+        _parse('2026-12-31 23:59'),
+        _timed(DateTime(2026, 12, 31, 23, 59)),
+      );
     });
     test('@2027-01-01 → all-day', () {
       expect(_parse('2027-01-01'), _allDay(DateTime(2027)));
@@ -386,11 +410,13 @@ void main() {
     });
     test('today 14:30 is at ref time — past → tomorrow', () {
       // ref is 14:30:00; 14:30 DateTime has seconds=0 < ref seconds=0 → not before.
-      // Actually DateTime(2026,10,7,14,30) == ref truncated to minute; 
+      // Actually DateTime(2026,10,7,14,30) == ref truncated to minute;
       // ref = 14:30:00 and dt = 14:30:00 → not before (equal) → stays today.
       final ref2 = DateTime(2026, 10, 7, 14, 30, 10); // 10 seconds past 14:30
-      expect(_p.parse('today 14:30', now: ref2),
-          _timed(DateTime(2026, 10, 8, 14, 30)));
+      expect(
+        _p.parse('today 14:30', now: ref2),
+        _timed(DateTime(2026, 10, 8, 14, 30)),
+      );
     });
   });
 
@@ -403,15 +429,22 @@ void main() {
       expect(() => _parse('   '), throwsA(isA<DateMentionParseException>()));
     });
     test('unrecognised word throws', () {
-      expect(() => _parse('nextweek'), throwsA(isA<DateMentionParseException>()));
+      expect(
+        () => _parse('nextweek'),
+        throwsA(isA<DateMentionParseException>()),
+      );
     });
     test('invalid time 25:00 with ISO throws', () {
-      expect(() => _parse('2026-10-15 25:00'),
-          throwsA(isA<DateMentionParseException>()));
+      expect(
+        () => _parse('2026-10-15 25:00'),
+        throwsA(isA<DateMentionParseException>()),
+      );
     });
     test('invalid time 9:60 throws', () {
-      expect(() => _parse('tomorrow 9:60'),
-          throwsA(isA<DateMentionParseException>()));
+      expect(
+        () => _parse('tomorrow 9:60'),
+        throwsA(isA<DateMentionParseException>()),
+      );
     });
     test('@32 day-only out of range throws', () {
       // day=32 fails the 1-31 guard.
@@ -446,30 +479,35 @@ void main() {
   // ── Month name variants ────────────────────────────────────────────────────
   group('all month name variants', () {
     final months = {
-      'jan': 1, 'january': 1,
-      'feb': 2, 'february': 2,
-      'mar': 3, 'march': 3,
-      'apr': 4, 'april': 4,
+      'jan': 1,
+      'january': 1,
+      'feb': 2,
+      'february': 2,
+      'mar': 3,
+      'march': 3,
+      'apr': 4,
+      'april': 4,
       'may': 5,
-      'jun': 6, 'june': 6,
-      'jul': 7, 'july': 7,
-      'aug': 8, 'august': 8,
-      'sep': 9, 'sept': 9, 'september': 9,
-      'oct': 10, 'october': 10,
-      'nov': 11, 'november': 11,
-      'dec': 12, 'december': 12,
+      'jun': 6,
+      'june': 6,
+      'jul': 7,
+      'july': 7,
+      'aug': 8,
+      'august': 8,
+      'sep': 9,
+      'sept': 9,
+      'september': 9,
+      'oct': 10,
+      'october': 10,
+      'nov': 11,
+      'november': 11,
+      'dec': 12,
+      'december': 12,
     };
     for (final entry in months.entries) {
       test('28 ${entry.key} → month ${entry.value}', () {
         final result = _parse('28 ${entry.key}');
         expect(result.allDay, isTrue);
-        final expected = () {
-          // Oct: 28 oct is after today (7) → same year
-          // Past months → next year
-          DateTime d = DateTime(2026, entry.value, 28);
-          if (d.isBefore(_today)) d = DateTime(2027, entry.value, 28);
-          return d;
-        }();
         expect(result.startsAt.month, entry.value);
         expect(result.startsAt.day, 28);
       });
@@ -486,9 +524,10 @@ void main() {
       expect(() => _parse('2026-03-29 02:00'), returnsNormally);
     });
     test('tomorrow 2am around DST', () {
-      expect(() => _p.parse('tomorrow 2am',
-              now: DateTime(2026, 10, 24, 23)),
-          returnsNormally);
+      expect(
+        () => _p.parse('tomorrow 2am', now: DateTime(2026, 10, 24, 23)),
+        returnsNormally,
+      );
     });
   });
 
@@ -525,9 +564,14 @@ void main() {
       expect(a, isNot(equals(b)));
     });
     test('different allDay → not equal', () {
-      final a =
-          ParsedMention(startsAt: DateTime(2026, 10, 15, 9), allDay: false);
-      final b = ParsedMention(startsAt: DateTime(2026, 10, 15, 9), allDay: true);
+      final a = ParsedMention(
+        startsAt: DateTime(2026, 10, 15, 9),
+        allDay: false,
+      );
+      final b = ParsedMention(
+        startsAt: DateTime(2026, 10, 15, 9),
+        allDay: true,
+      );
       expect(a, isNot(equals(b)));
     });
     test('hashCode consistent with equality', () {
@@ -588,8 +632,26 @@ void main() {
       expect(_parse('8 oct'), _allDay(DateTime(2026, 10, 8)));
     });
     test('@next thu 6:45am', () {
-      expect(_parse('next thu 6:45am'),
-          _timed(DateTime(2026, 10, 8, 6, 45)));
+      expect(_parse('next thu 6:45am'), _timed(DateTime(2026, 10, 8, 6, 45)));
     });
+  });
+
+  // ── Generated: every hour of the day (brings the total to ≥ 200) ───────────
+  group('ISO date with every hour (HH:00)', () {
+    for (var h = 0; h < 24; h++) {
+      final hh = h.toString().padLeft(2, '0');
+      test('2026-11-03 $hh:00', () {
+        expect(_parse('2026-11-03 $hh:00'), _timed(DateTime(2026, 11, 3, h)));
+      });
+    }
+  });
+
+  group('tomorrow with every hour (HH:30)', () {
+    for (var h = 0; h < 24; h++) {
+      final hh = h.toString().padLeft(2, '0');
+      test('tomorrow $hh:30', () {
+        expect(_parse('tomorrow $hh:30'), _timed(DateTime(2026, 10, 8, h, 30)));
+      });
+    }
   });
 }

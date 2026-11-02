@@ -5,8 +5,6 @@ import 'package:go_router/go_router.dart';
 import 'package:streakin/core/design/tokens.dart';
 import 'package:streakin/features/goals/application/goal_providers.dart';
 import 'package:streakin/features/goals/domain/goal.dart';
-import 'package:streakin/features/goals/domain/goal_repository.dart';
-import 'package:streakin/features/goals/presentation/goal_create_sheet.dart';
 
 class GoalHistoryScreen extends ConsumerWidget {
   const GoalHistoryScreen({super.key});
@@ -22,29 +20,24 @@ class GoalHistoryScreen extends ConsumerWidget {
       body: historyAsync.when(
         loading: () =>
             const Center(child: CircularProgressIndicator.adaptive()),
-        error: (_, __) =>
-            const Center(child: Text('Could not load history')),
+        error: (_, _) => const Center(child: Text('Could not load history')),
         data: (goals) {
           if (goals.isEmpty) {
             return Center(
-              child: Text('No past goals yet.',
-                  style: TextStyle(color: colors.textMuted)),
+              child: Text(
+                'No past goals yet.',
+                style: TextStyle(color: colors.textMuted),
+              ),
             );
           }
           return ListView.separated(
             padding: const EdgeInsets.all(16),
             itemCount: goals.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 8),
+            separatorBuilder: (_, _) => const SizedBox(height: 8),
             itemBuilder: (ctx, i) =>
                 _GoalHistoryTile(goal: goals[i], colors: colors),
           );
         },
-      ),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: colors.brand,
-        foregroundColor: colors.onBrand,
-        onPressed: () => showGoalCreateSheet(context),
-        child: const Icon(Icons.add),
       ),
     );
   }
@@ -78,28 +71,28 @@ class _GoalHistoryTile extends ConsumerWidget {
                 Row(
                   children: [
                     Expanded(
-                      child: Text(goal.title,
-                          style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                              color: colors.text)),
+                      child: Text(
+                        goal.title,
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: colors.text,
+                        ),
+                      ),
                     ),
-                    _ReasonChip(
-                        reason: goal.archiveReason, colors: colors),
+                    _ReasonChip(reason: goal.archiveReason, colors: colors),
                   ],
                 ),
                 const SizedBox(height: 4),
                 Text(
                   '${goal.startDate.toIso()} → ${goal.endDate?.toIso() ?? 'open-ended'}',
-                  style:
-                      TextStyle(fontSize: 12, color: colors.textMuted),
+                  style: TextStyle(fontSize: 12, color: colors.textMuted),
                 ),
                 if (summary != null) ...[
                   const SizedBox(height: 6),
                   Text(
                     '${summary.elapsedDays} days · ${summary.alignmentPct != null ? '${summary.alignmentPct}% aligned' : 'No alignment data'} · ${summary.perfectDays} perfect days',
-                    style:
-                        TextStyle(fontSize: 12, color: colors.textMuted),
+                    style: TextStyle(fontSize: 12, color: colors.textMuted),
                   ),
                 ],
               ],
@@ -120,21 +113,18 @@ class _ReasonChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final (label, color) = switch (reason) {
       GoalArchiveReason.completed => ('Completed', colors.success),
-      GoalArchiveReason.completedEarly =>
-        ('Completed early', colors.success),
+      GoalArchiveReason.completedEarly => ('Completed early', colors.success),
       GoalArchiveReason.abandoned => ('Abandoned', colors.danger),
       GoalArchiveReason.replaced => ('Replaced', colors.textMuted),
       null => ('Archived', colors.textMuted),
     };
     return Container(
-      padding:
-          const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
         color: color.withAlpha(25),
         borderRadius: BorderRadius.circular(8),
       ),
-      child: Text(label,
-          style: TextStyle(fontSize: 11, color: color)),
+      child: Text(label, style: TextStyle(fontSize: 11, color: color)),
     );
   }
 }

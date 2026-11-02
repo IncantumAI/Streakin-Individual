@@ -36,8 +36,7 @@ Note _note({String? id, String body = '[]', String title = 'Test note'}) =>
       hlc: '2026-10-07T00:00:00.000Z-0000-test',
     );
 
-(Note, String) _noteWithTask(
-    {String? noteId, String taskText = 'Buy milk'}) {
+(Note, String) _noteWithTask({String? noteId, String taskText = 'Buy milk'}) {
   final blockId = _uuid.v4();
   final doc = NoteDocument([
     NoteBlock(id: blockId, kind: NoteBlockKind.task, text: taskText),
@@ -52,7 +51,7 @@ Note _note({String? id, String body = '[]', String title = 'Test note'}) =>
 
 class _StubNoteRepository implements NoteRepository {
   _StubNoteRepository(AppDatabase db)
-      : _real = DriftNoteRepository(NoteDao(db), _NoOpFts());
+    : _real = DriftNoteRepository(NoteDao(db), _NoOpFts());
 
   final DriftNoteRepository _real;
 
@@ -129,8 +128,7 @@ void main() {
       await noteRepo.saveNote(note);
       await bridge.promoteCheckbox(note.id, blockId, 'Buy milk');
 
-      final todo =
-          await todoRepo.watchBySourceBlock(note.id, blockId).first;
+      final todo = await todoRepo.watchBySourceBlock(note.id, blockId).first;
       expect(todo, isNotNull);
       expect(todo!.title, 'Buy milk');
       expect(todo.sourceNoteId, note.id);
@@ -155,8 +153,7 @@ void main() {
       await noteRepo.saveNote(note);
       await bridge.promoteCheckbox(note.id, blockId, 'Buy milk');
 
-      final todo =
-          await todoRepo.watchBySourceBlock(note.id, blockId).first;
+      final todo = await todoRepo.watchBySourceBlock(note.id, blockId).first;
       final updatedNote = await noteRepo.watchNote(note.id).first;
       final doc = NoteDocument.fromJson(updatedNote!.body);
       final block = doc.blocks.firstWhere((b) => b.id == blockId);
@@ -169,8 +166,7 @@ void main() {
       await bridge.promoteCheckbox(note.id, blockId, 'Buy milk');
       await bridge.promoteCheckbox(note.id, blockId, 'Buy milk');
 
-      final todo =
-          await todoRepo.watchBySourceBlock(note.id, blockId).first;
+      final todo = await todoRepo.watchBySourceBlock(note.id, blockId).first;
       expect(todo, isNotNull);
     });
 
@@ -193,8 +189,7 @@ void main() {
       await bridge.promoteCheckbox(note.id, blockId, 'Buy milk');
       await bridge.demoteCheckbox(note.id, blockId);
 
-      final todo =
-          await todoRepo.watchBySourceBlock(note.id, blockId).first;
+      final todo = await todoRepo.watchBySourceBlock(note.id, blockId).first;
       expect(todo, isNull);
     });
 
@@ -238,16 +233,14 @@ void main() {
     test('emits false when no linked task', () async {
       final (note, blockId) = _noteWithTask();
       await noteRepo.saveNote(note);
-      expect(
-          await bridge.watchCheckboxState(note.id, blockId).first, isFalse);
+      expect(await bridge.watchCheckboxState(note.id, blockId).first, isFalse);
     });
 
     test('emits false when linked task is pending', () async {
       final (note, blockId) = _noteWithTask();
       await noteRepo.saveNote(note);
       await bridge.promoteCheckbox(note.id, blockId, 'Buy milk');
-      expect(
-          await bridge.watchCheckboxState(note.id, blockId).first, isFalse);
+      expect(await bridge.watchCheckboxState(note.id, blockId).first, isFalse);
     });
 
     test('emits true when linked task is completed', () async {
@@ -255,12 +248,10 @@ void main() {
       await noteRepo.saveNote(note);
       await bridge.promoteCheckbox(note.id, blockId, 'Buy milk');
 
-      final todo =
-          await todoRepo.watchBySourceBlock(note.id, blockId).first;
+      final todo = await todoRepo.watchBySourceBlock(note.id, blockId).first;
       await todoRepo.complete(todo!.id);
 
-      expect(
-          await bridge.watchCheckboxState(note.id, blockId).first, isTrue);
+      expect(await bridge.watchCheckboxState(note.id, blockId).first, isTrue);
     });
 
     test('emits false after uncomplete', () async {
@@ -268,13 +259,11 @@ void main() {
       await noteRepo.saveNote(note);
       await bridge.promoteCheckbox(note.id, blockId, 'Buy milk');
 
-      final todo =
-          await todoRepo.watchBySourceBlock(note.id, blockId).first;
+      final todo = await todoRepo.watchBySourceBlock(note.id, blockId).first;
       await todoRepo.complete(todo!.id);
       await todoRepo.uncomplete(todo.id);
 
-      expect(
-          await bridge.watchCheckboxState(note.id, blockId).first, isFalse);
+      expect(await bridge.watchCheckboxState(note.id, blockId).first, isFalse);
     });
 
     test('emits false after demotion', () async {
@@ -283,8 +272,7 @@ void main() {
       await bridge.promoteCheckbox(note.id, blockId, 'Buy milk');
       await bridge.demoteCheckbox(note.id, blockId);
 
-      expect(
-          await bridge.watchCheckboxState(note.id, blockId).first, isFalse);
+      expect(await bridge.watchCheckboxState(note.id, blockId).first, isFalse);
     });
   });
 
@@ -296,12 +284,10 @@ void main() {
       await noteRepo.saveNote(note);
       await bridge.promoteCheckbox(note.id, blockId, 'Meditate');
 
-      final todo =
-          await todoRepo.watchBySourceBlock(note.id, blockId).first;
+      final todo = await todoRepo.watchBySourceBlock(note.id, blockId).first;
       await todoRepo.complete(todo!.id);
 
-      expect(
-          await bridge.watchCheckboxState(note.id, blockId).first, isTrue);
+      expect(await bridge.watchCheckboxState(note.id, blockId).first, isTrue);
     });
 
     test('source note soft-deleted → task persists', () async {
@@ -310,8 +296,7 @@ void main() {
       await bridge.promoteCheckbox(note.id, blockId, 'Exercise');
       await noteRepo.softDeleteNote(note.id);
 
-      final todo =
-          await todoRepo.watchBySourceBlock(note.id, blockId).first;
+      final todo = await todoRepo.watchBySourceBlock(note.id, blockId).first;
       expect(todo, isNotNull);
       expect(todo!.title, 'Exercise');
     });
@@ -336,10 +321,8 @@ void main() {
       await bridge.promoteCheckbox(note.id, blockId1, 'Task A');
       await bridge.promoteCheckbox(note.id, blockId2, 'Task B');
 
-      final todoA =
-          await todoRepo.watchBySourceBlock(note.id, blockId1).first;
-      final todoB =
-          await todoRepo.watchBySourceBlock(note.id, blockId2).first;
+      final todoA = await todoRepo.watchBySourceBlock(note.id, blockId1).first;
+      final todoB = await todoRepo.watchBySourceBlock(note.id, blockId2).first;
       expect(todoA?.title, 'Task A');
       expect(todoB?.title, 'Task B');
       expect(todoA?.id, isNot(todoB?.id));
@@ -360,12 +343,13 @@ void main() {
       await bridge.demoteCheckbox(note.id, blockId1);
 
       expect(
-          await todoRepo.watchBySourceBlock(note.id, blockId1).first,
-          isNull);
+        await todoRepo.watchBySourceBlock(note.id, blockId1).first,
+        isNull,
+      );
       expect(
-          (await todoRepo.watchBySourceBlock(note.id, blockId2).first)
-              ?.title,
-          'Task B');
+        (await todoRepo.watchBySourceBlock(note.id, blockId2).first)?.title,
+        'Task B',
+      );
     });
   });
 }

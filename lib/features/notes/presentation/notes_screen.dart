@@ -3,6 +3,10 @@
 //   Mobile  — hamburger drawer for folder sidebar
 //   Desktop — 3-pane layout via NotesLayout
 
+import 'package:streakin/core/design/icons.dart';
+
+import 'dart:async' show unawaited;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -17,6 +21,11 @@ import 'package:streakin/features/notes/presentation/folder_breadcrumbs.dart';
 import 'package:streakin/features/notes/presentation/folder_sidebar.dart';
 import 'package:streakin/features/notes/presentation/notes_layout.dart';
 
+/// Opens the template picker and creates the chosen note (used by the
+/// dashboard "New note" quick action).
+void showNewNoteFlow(BuildContext context, WidgetRef ref) =>
+    NotesScreen._showTemplatePicker(context, ref);
+
 class NotesScreen extends ConsumerWidget {
   const NotesScreen({super.key});
 
@@ -27,7 +36,9 @@ class NotesScreen extends ConsumerWidget {
 
     if (isDesktop) {
       return NotesLayout(
-        noteList: _NoteListPane(onNewNote: () => _showTemplatePicker(context, ref)),
+        noteList: _NoteListPane(
+          onNewNote: () => _showTemplatePicker(context, ref),
+        ),
       );
     }
 
@@ -36,6 +47,13 @@ class NotesScreen extends ConsumerWidget {
       drawer: const Drawer(child: FolderSidebar()),
       appBar: AppBar(
         title: const Text('Notes'),
+        actions: [
+          IconButton(
+            icon: const Icon(AppIcons.search),
+            tooltip: 'Search notes',
+            onPressed: () => context.push('/notes/search'),
+          ),
+        ],
       ),
       body: _NoteListPane(
         onNewNote: () => _showTemplatePicker(context, ref),
@@ -46,7 +64,7 @@ class NotesScreen extends ConsumerWidget {
         foregroundColor: colors.onBrand,
         onPressed: () => _showTemplatePicker(context, ref),
         tooltip: 'New note',
-        child: const Icon(Icons.add),
+        child: const Icon(AppIcons.add),
       ),
     );
   }
@@ -67,7 +85,10 @@ class NotesScreen extends ConsumerWidget {
   }
 
   static Future<void> _createNote(
-      BuildContext context, WidgetRef ref, NoteTemplateKind kind) async {
+    BuildContext context,
+    WidgetRef ref,
+    NoteTemplateKind kind,
+  ) async {
     final repo = ref.read(noteRepositoryProvider);
     final folderId = ref.read(activeFolderIdProvider);
     final now = DateTime.now();
@@ -86,7 +107,7 @@ class NotesScreen extends ConsumerWidget {
     );
     await repo.saveNote(note);
     if (context.mounted) {
-      context.push('/notes/$id');
+      unawaited(context.push('/notes/$id'));
     }
   }
 }
@@ -94,10 +115,7 @@ class NotesScreen extends ConsumerWidget {
 // ── Note list pane ────────────────────────────────────────────────────────────
 
 class _NoteListPane extends ConsumerWidget {
-  const _NoteListPane({
-    required this.onNewNote,
-    this.showAppBar = true,
-  });
+  const _NoteListPane({required this.onNewNote, this.showAppBar = true});
   final VoidCallback onNewNote;
   final bool showAppBar;
 
@@ -143,7 +161,7 @@ class _NoteListPane extends ConsumerWidget {
         title: Text(folderName),
         actions: [
           IconButton(
-            icon: const Icon(Icons.add),
+            icon: const Icon(AppIcons.add),
             tooltip: 'New note',
             onPressed: onNewNote,
           ),
@@ -181,27 +199,37 @@ class _NoteListTile extends ConsumerWidget {
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         style: TextStyle(
-            fontWeight: FontWeight.w500, color: colors.text, fontSize: 15),
+          fontWeight: FontWeight.w500,
+          color: colors.text,
+          fontSize: 15,
+        ),
       ),
       subtitle: Text(
         _formatDate(note.updatedAt),
         style: TextStyle(fontSize: 12, color: colors.textMuted),
       ),
-      leading: Icon(Icons.article_outlined, color: colors.textMuted, size: 22),
+      leading: Icon(
+        AppIcons.articleOutlined,
+        color: colors.textMuted,
+        size: 22,
+      ),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           if (note.isPinned)
             Padding(
               padding: const EdgeInsets.only(right: 4),
-              child: Icon(Icons.push_pin_outlined, size: 16, color: colors.brand),
+              child: Icon(AppIcons.pin, size: 16, color: colors.brand),
             ),
           PopupMenuButton<_NoteAction>(
-            icon: Icon(Icons.more_vert, size: 18, color: colors.textMuted),
+            icon: Icon(AppIcons.more, size: 18, color: colors.textMuted),
             onSelected: (action) => _handleAction(context, ref, action),
             itemBuilder: (_) => const [
               PopupMenuItem(value: _NoteAction.pin, child: Text('Pin / Unpin')),
-              PopupMenuItem(value: _NoteAction.move, child: Text('Move to folder')),
+              PopupMenuItem(
+                value: _NoteAction.move,
+                child: Text('Move to folder'),
+              ),
               PopupMenuItem(value: _NoteAction.delete, child: Text('Delete')),
             ],
           ),
@@ -211,15 +239,20 @@ class _NoteListTile extends ConsumerWidget {
   }
 
   Future<void> _handleAction(
-      BuildContext context, WidgetRef ref, _NoteAction action) async {
+    BuildContext context,
+    WidgetRef ref,
+    _NoteAction action,
+  ) async {
     final repo = ref.read(noteRepositoryProvider);
     switch (action) {
       case _NoteAction.pin:
-        await repo.saveNote(note.copyWith(
-          isPinned: !note.isPinned,
-          updatedAt: DateTime.now(),
-          hlc: Hlc.now().toIso(),
-        ));
+        await repo.saveNote(
+          note.copyWith(
+            isPinned: !note.isPinned,
+            updatedAt: DateTime.now(),
+            hlc: Hlc.now().toIso(),
+          ),
+        );
       case _NoteAction.delete:
         await repo.softDeleteNote(note.id);
       case _NoteAction.move:
@@ -265,23 +298,28 @@ class _MoveFolderSheet extends ConsumerWidget {
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-              child: Text('Move to folder',
-                  style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 15,
-                      color: colors.text)),
+              child: Text(
+                'Move to folder',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 15,
+                  color: colors.text,
+                ),
+              ),
             ),
             const Divider(),
             ListTile(
-              leading: Icon(Icons.inbox_outlined, color: colors.textMuted),
+              leading: Icon(AppIcons.inboxOutlined, color: colors.textMuted),
               title: const Text('Inbox'),
               onTap: () => Navigator.of(context).pop(''),
             ),
-            ...?foldersAsync.value?.map((f) => ListTile(
-                  leading: Icon(Icons.folder_outlined, color: colors.textMuted),
-                  title: Text(f.name),
-                  onTap: () => Navigator.of(context).pop(f.id),
-                )),
+            ...?foldersAsync.value?.map(
+              (f) => ListTile(
+                leading: Icon(AppIcons.folder, color: colors.textMuted),
+                title: Text(f.name),
+                onTap: () => Navigator.of(context).pop(f.id),
+              ),
+            ),
           ],
         ),
       ),
@@ -300,16 +338,21 @@ class _EmptyNotesState extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.article_outlined, size: 56, color: colors.outline),
+          Icon(AppIcons.articleOutlined, size: 56, color: colors.outline),
           const SizedBox(height: 16),
-          Text('No notes yet',
-              style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: colors.text)),
+          Text(
+            'No notes yet',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: colors.text,
+            ),
+          ),
           const SizedBox(height: 8),
-          Text('Tap + to create your first note.',
-              style: TextStyle(fontSize: 14, color: colors.textMuted)),
+          Text(
+            'Tap + to create your first note.',
+            style: TextStyle(fontSize: 14, color: colors.textMuted),
+          ),
         ],
       ),
     );
@@ -335,34 +378,45 @@ class _TemplatePickerSheet extends StatelessWidget {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                    color: colors.outline,
-                    borderRadius: BorderRadius.circular(2)),
+                  color: colors.outline,
+                  borderRadius: BorderRadius.circular(2),
+                ),
               ),
             ),
             const SizedBox(height: 16),
-            Text('Choose a template',
-                style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: colors.text)),
+            Text(
+              'Choose a template',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: colors.text,
+              ),
+            ),
             const SizedBox(height: 12),
-            ...kAllTemplates.map((t) => ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(t.label,
-                      style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w500,
-                          color: colors.text)),
-                  subtitle: Text(t.description,
-                      style: TextStyle(fontSize: 13, color: colors.textMuted)),
-                  leading: Icon(
-                    t.kind == NoteTemplateKind.blank
-                        ? Icons.add
-                        : Icons.description_outlined,
-                    color: colors.brand,
+            ...kAllTemplates.map(
+              (t) => ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text(
+                  t.label,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                    color: colors.text,
                   ),
-                  onTap: () => Navigator.of(context).pop(t.kind),
-                )),
+                ),
+                subtitle: Text(
+                  t.description,
+                  style: TextStyle(fontSize: 13, color: colors.textMuted),
+                ),
+                leading: Icon(
+                  t.kind == NoteTemplateKind.blank
+                      ? AppIcons.add
+                      : AppIcons.descriptionOutlined,
+                  color: colors.brand,
+                ),
+                onTap: () => Navigator.of(context).pop(t.kind),
+              ),
+            ),
           ],
         ),
       ),

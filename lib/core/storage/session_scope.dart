@@ -2,16 +2,23 @@
 // Opens the SQLCipher DB after unlock and writes the repository into
 // habitRepositoryStateProvider (a root-level StateProvider).
 
-import 'dart:async' show Completer, unawaited;
+import 'package:streakin/core/design/icons.dart';
+
+import 'dart:async' show Completer, StreamSubscription, unawaited;
 import 'dart:typed_data';
 
 import 'package:drift/native.dart' show SqliteException;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:streakin/core/crypto/hkdf.dart';
+import 'package:streakin/core/storage/identifiers.dart';
 import 'package:streakin/core/crypto/secure_bytes.dart';
 import 'package:streakin/core/security/lock_controller.dart';
+import 'package:streakin/core/security/vault_manager.dart';
+import 'package:streakin/core/storage/drift_vault_store.dart';
+import 'package:streakin/core/storage/session_database.dart';
 import 'package:streakin/core/storage/app_database.dart';
 import 'package:streakin/core/time/local_date.dart';
 import 'package:streakin/features/habits/data/drift_habit_repository.dart';
@@ -20,6 +27,7 @@ import 'package:streakin/features/habits/application/habit_providers.dart';
 import 'package:streakin/features/notes/application/note_providers.dart';
 import 'package:streakin/features/notes/data/note_dao.dart';
 import 'package:streakin/features/notes/data/drift_note_repository.dart';
+import 'package:streakin/features/notes/data/drift_date_mention_source.dart';
 import 'package:streakin/core/notifications/notification_reconciler.dart';
 import 'package:streakin/features/notes/application/todo_bridge_impl.dart';
 import 'package:streakin/features/todos/application/todo_providers.dart';
@@ -39,24 +47,45 @@ class SessionScope extends ConsumerStatefulWidget {
   ConsumerState<SessionScope> createState() => _SessionScopeState();
 }
 
-class _SessionScopeState extends ConsumerState<SessionScope> {
+class _SessionScopeState extends ConsumerState<SessionScope>
+    with WidgetsBindingObserver {
   AppDatabase? _db;
   bool _ready = false;
   bool _wrongKey = false;
   Object? _error;
   Completer<void>? _closeCompleter;
+  StreamSubscription<dynamic>? _todoLockInSub;
+  VoidCallback? _stopReconcilerWatch;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _openDatabase();
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Resume (also covers time-zone change / reboot recovery): re-derive the
+    // expected notification set.
+    if (state == AppLifecycleState.resumed) {
+      final r = ref.read(reconcilerStateProvider);
+      if (r != null) unawaited(r.reconcile());
+    }
+  }
+
+  @override
   void dispose() {
+    _todoLockInSub?.cancel();
+    _stopReconcilerWatch?.call();
+    WidgetsBinding.instance.removeObserver(this);
     // 1. Clear all repository providers first.
     try {
       ref.read(habitRepositoryStateProvider.notifier).clear();
+      ref.read(lockInGateStateProvider.notifier).clear();
+      ref.read(vaultManagerStateProvider.notifier).clear();
+      ref.read(sessionDatabaseProvider.notifier).clear();
+      ref.read(unlockedVaultIdsProvider.notifier).set(const {});
       ref.read(noteRepositoryStateProvider.notifier).clear();
       ref.read(attachmentRepositoryStateProvider.notifier).clear();
       ref.read(ftsRepositoryStateProvider.notifier).clear();
@@ -113,22 +142,37 @@ class _SessionScopeState extends ConsumerState<SessionScope> {
       // This will throw SqliteException if the key is wrong.
       await db.customSelect('SELECT 1').get();
 
+      ref.read(sessionDatabaseProvider.notifier).set(db);
       final repo = DriftHabitRepository(HabitDao(db));
       ref.read(habitRepositoryStateProvider.notifier).set(repo);
+
+      // ── Vaults (Phase 5) ─────────────────────────────────────────────────
+      final vaultManager = VaultManager(
+        store: DriftVaultStore(db),
+        onChanged: (ids) =>
+            ref.read(unlockedVaultIdsProvider.notifier).set(ids),
+      );
+      ref.read(vaultManagerStateProvider.notifier).set(vaultManager);
+      // "Use app credential" vaults open with the app.
+      final appDek = await ref
+          .read(keyVaultProvider)
+          .use((k) async => Uint8List.fromList(k));
+      await vaultManager.unlockAppCredentialVaults(appDek);
+      SecureBytes.zeroFill(appDek);
 
       // ── Notes repositories ───────────────────────────────────────────────
       final noteDao = NoteDao(db);
       final ftsDao = NoteFtsDao(db);
       final attachmentDao = AttachmentDao(db);
-      ref.read(noteRepositoryStateProvider.notifier).set(
-            DriftNoteRepository(noteDao, ftsDao),
-          );
-      ref.read(attachmentRepositoryStateProvider.notifier).set(
-            DriftAttachmentRepository(attachmentDao),
-          );
-      ref.read(ftsRepositoryStateProvider.notifier).set(
-            DriftFtsRepository(ftsDao),
-          );
+      ref
+          .read(noteRepositoryStateProvider.notifier)
+          .set(DriftNoteRepository(noteDao, ftsDao, vault: vaultManager));
+      ref
+          .read(attachmentRepositoryStateProvider.notifier)
+          .set(DriftAttachmentRepository(attachmentDao));
+      ref
+          .read(ftsRepositoryStateProvider.notifier)
+          .set(DriftFtsRepository(ftsDao));
 
       // ── Todos repository ─────────────────────────────────────────────────
       final todoDao = TodoDao(db);
@@ -136,21 +180,40 @@ class _SessionScopeState extends ConsumerState<SessionScope> {
       ref.read(todoRepositoryStateProvider.notifier).set(todoRepo);
 
       // ── Todo bridge (notes ↔ todos) ──────────────────────────────────────
-      final noteRepoForBridge = DriftNoteRepository(noteDao, ftsDao);
-      ref.read(todoBridgeStateProvider.notifier).set(
-            TodoBridgeImpl(
-              noteRepo: noteRepoForBridge,
-              todoRepo: todoRepo,
-            ),
-          );
+      final noteRepoForBridge = DriftNoteRepository(
+        noteDao,
+        ftsDao,
+        vault: vaultManager,
+      );
+      ref
+          .read(todoBridgeStateProvider.notifier)
+          .set(TodoBridgeImpl(noteRepo: noteRepoForBridge, todoRepo: todoRepo));
+
+      // ── Lock-in gate: flagged to-dos (setting: countTodosForLockIn) ────
+      ref.read(lockInGateStateProvider.notifier).set((today) async {
+        final prefs = await SharedPreferences.getInstance();
+        if (!(prefs.getBool(AppIdentifiers.prefCountTodosForLockIn) ?? false)) {
+          return true;
+        }
+        final pending = await todoRepo.watchToday().first;
+        return !pending.any(
+          (t) => t.countsForLockin && t.dueDate == today.toIso(),
+        );
+      });
+      _todoLockInSub = todoRepo.watchToday().listen((_) {
+        unawaited(ref.read(habitUseCasesProvider).reevaluateLockIn());
+      }, onError: (_) {});
 
       // ── Notification reconciler ──────────────────────────────────────────
       final reconciler = NotificationReconciler(
         habitRepo: repo,
         todoRepo: todoRepo,
+        mentionSource: DriftDateMentionSource(noteDao),
       );
       ref.read(reconcilerStateProvider.notifier).set(reconciler);
       unawaited(reconciler.reconcile());
+      // Re-run on any habit/todo/@date change (debounced).
+      _stopReconcilerWatch = reconciler.watch();
 
       // ── Goals ─────────────────────────────────────────────────────────────
       final goalDao = GoalDao(db);
@@ -195,7 +258,7 @@ class _SessionScopeState extends ConsumerState<SessionScope> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.lock_reset, size: 56, color: Colors.orange),
+                Icon(AppIcons.lockReset, size: 56, color: Colors.orange),
                 SizedBox(height: 20),
                 Text(
                   'Database key mismatch',

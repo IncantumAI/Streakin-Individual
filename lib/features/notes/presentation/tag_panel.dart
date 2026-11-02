@@ -3,6 +3,7 @@
 // Displays all unique tags as chips; tapping one filters the note list.
 // Spec §4.4.1 (tags), §4.4.3 (sort by tag).
 
+import 'package:streakin/core/design/icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -44,14 +45,11 @@ class TagPanel extends ConsumerWidget {
                   if (activeTag != null) ...[
                     const Spacer(),
                     GestureDetector(
-                      onTap: () => ref
-                          .read(activeTagFilterProvider.notifier)
-                          .set(null),
+                      onTap: () =>
+                          ref.read(activeTagFilterProvider.notifier).set(null),
                       child: Text(
                         'Clear',
-                        style: TextStyle(
-                            fontSize: 11,
-                            color: colors.brand),
+                        style: TextStyle(fontSize: 11, color: colors.brand),
                       ),
                     ),
                   ],
@@ -69,8 +67,9 @@ class TagPanel extends ConsumerWidget {
                     tag: tag,
                     isActive: isActive,
                     onTap: () {
-                      final notifier =
-                          ref.read(activeTagFilterProvider.notifier);
+                      final notifier = ref.read(
+                        activeTagFilterProvider.notifier,
+                      );
                       if (isActive) {
                         notifier.set(null);
                       } else {
@@ -113,16 +112,14 @@ class _TagChip extends StatelessWidget {
           color: isActive
               ? colors.brand.withValues(alpha: 0.15)
               : colors.surfaceAlt,
-          border: Border.all(
-            color: isActive ? colors.brand : colors.outline,
-          ),
+          border: Border.all(color: isActive ? colors.brand : colors.outline),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
-              Icons.tag,
+              AppIcons.tagIcon,
               size: 12,
               color: isActive ? colors.brand : colors.textMuted,
             ),
@@ -132,8 +129,7 @@ class _TagChip extends StatelessWidget {
               style: TextStyle(
                 fontSize: 12,
                 color: isActive ? colors.brand : colors.textMuted,
-                fontWeight:
-                    isActive ? FontWeight.w600 : FontWeight.normal,
+                fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
               ),
             ),
           ],

@@ -13,22 +13,22 @@ enum NoteTemplateKind {
 
 extension NoteTemplateKindExt on NoteTemplateKind {
   String get serialized => switch (this) {
-        NoteTemplateKind.blank => 'blank',
-        NoteTemplateKind.whatHappenedToday => 'what_happened_today',
-        NoteTemplateKind.whatDidYouLearnToday => 'what_did_you_learn_today',
-        NoteTemplateKind.summaryOfTheDay => 'summary_of_the_day',
-        NoteTemplateKind.whereDidYouFallBack => 'where_did_you_fall_back',
-        NoteTemplateKind.brainstorm => 'brainstorm',
-      };
+    NoteTemplateKind.blank => 'blank',
+    NoteTemplateKind.whatHappenedToday => 'what_happened_today',
+    NoteTemplateKind.whatDidYouLearnToday => 'what_did_you_learn_today',
+    NoteTemplateKind.summaryOfTheDay => 'summary_of_the_day',
+    NoteTemplateKind.whereDidYouFallBack => 'where_did_you_fall_back',
+    NoteTemplateKind.brainstorm => 'brainstorm',
+  };
 
   static NoteTemplateKind fromString(String s) => switch (s) {
-        'what_happened_today' => NoteTemplateKind.whatHappenedToday,
-        'what_did_you_learn_today' => NoteTemplateKind.whatDidYouLearnToday,
-        'summary_of_the_day' => NoteTemplateKind.summaryOfTheDay,
-        'where_did_you_fall_back' => NoteTemplateKind.whereDidYouFallBack,
-        'brainstorm' => NoteTemplateKind.brainstorm,
-        _ => NoteTemplateKind.blank,
-      };
+    'what_happened_today' => NoteTemplateKind.whatHappenedToday,
+    'what_did_you_learn_today' => NoteTemplateKind.whatDidYouLearnToday,
+    'summary_of_the_day' => NoteTemplateKind.summaryOfTheDay,
+    'where_did_you_fall_back' => NoteTemplateKind.whereDidYouFallBack,
+    'brainstorm' => NoteTemplateKind.brainstorm,
+    _ => NoteTemplateKind.blank,
+  };
 }
 
 class Note {
@@ -47,9 +47,10 @@ class Note {
   });
 
   final String id;
-  final String? folderId;      // null = Root Inbox
+  final String? folderId; // null = Root Inbox
   final String title;
   final NoteTemplateKind templateKind;
+
   /// Block-JSON string for unlocked notes. Encrypted base-64 for vault notes.
   final String body;
   final bool isPinned;

@@ -3,7 +3,6 @@
 // re-encode (main isolate, images only) → encrypt → save.
 // Spec §9.
 
-
 import 'package:crypto/crypto.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
@@ -21,7 +20,7 @@ class AttachmentPipeline {
   const AttachmentPipeline({
     required AttachmentRepository attachmentRepository,
     required this._encryptionKey,
-  })  : _attachmentRepo = attachmentRepository;
+  }) : _attachmentRepo = attachmentRepository;
 
   final AttachmentRepository _attachmentRepo;
   final Uint8List _encryptionKey;
@@ -30,9 +29,7 @@ class AttachmentPipeline {
   /// Returns the saved [Attachment], null if the user cancelled,
   /// or throws [ValidationFailure] on rejection.
   Future<Attachment?> pickAndAttach(String noteId) async {
-    final result = await FilePicker.platform.pickFiles(
-      withData: true,
-    );
+    final result = await FilePicker.platform.pickFiles(withData: true);
     if (result == null || result.files.isEmpty) return null;
     final file = result.files.first;
     if (file.bytes == null) {
@@ -52,8 +49,10 @@ class AttachmentPipeline {
     final validated = await validateInIsolate(bytes, filename);
 
     // 2 — Deduplicate within the same note.
-    final existing =
-        await _attachmentRepo.dedupeCheck(validated.sha256, noteId);
+    final existing = await _attachmentRepo.dedupeCheck(
+      validated.sha256,
+      noteId,
+    );
     if (existing != null) return existing;
 
     // 3 — Image re-encoding (strips EXIF). Uses compute() so Flutter
@@ -61,10 +60,7 @@ class AttachmentPipeline {
     Uint8List finalBytes = validated.sanitizedBytes;
     if (validated.kind == AttachmentKind.png ||
         validated.kind == AttachmentKind.jpeg) {
-      finalBytes = await compute(
-        _reEncodePassthrough,
-        finalBytes,
-      );
+      finalBytes = await compute(_reEncodePassthrough, finalBytes);
     }
 
     // 4 — Final SHA-256 after re-encoding.

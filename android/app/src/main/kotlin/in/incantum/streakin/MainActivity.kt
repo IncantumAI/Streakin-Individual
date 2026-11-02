@@ -14,6 +14,11 @@ class MainActivity : FlutterFragmentActivity() {
         // guarantee a clean initialization.
         deleteObsoleteCorruptedPrefs()
         super.onCreate(savedInstanceState)
+        // Default on: blank recents thumbnail + screenshots (Dart can toggle).
+        window.setFlags(
+            android.view.WindowManager.LayoutParams.FLAG_SECURE,
+            android.view.WindowManager.LayoutParams.FLAG_SECURE
+        )
     }
 
     private fun deleteObsoleteCorruptedPrefs() {
@@ -42,7 +47,20 @@ class MainActivity : FlutterFragmentActivity() {
         super.configureFlutterEngine(flutterEngine)
         io.flutter.plugin.common.MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "streakin.native")
             .setMethodCallHandler { call, result ->
-                if (call.method == "clearCorruptedBiometrics") {
+                if (call.method == "setSecure") {
+                    val secure = call.arguments as? Boolean ?: true
+                    runOnUiThread {
+                        if (secure) {
+                            window.setFlags(
+                                android.view.WindowManager.LayoutParams.FLAG_SECURE,
+                                android.view.WindowManager.LayoutParams.FLAG_SECURE
+                            )
+                        } else {
+                            window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
+                        }
+                        result.success(true)
+                    }
+                } else if (call.method == "clearCorruptedBiometrics") {
                     try {
                         val prefsDir = applicationContext.filesDir.parentFile?.let {
                             java.io.File(it, "shared_prefs")

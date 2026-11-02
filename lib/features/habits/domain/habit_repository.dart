@@ -26,4 +26,7 @@ abstract interface class HabitRepository {
     List<String> habitIds,
     DateRange range,
   );
+
+  /// Watch all logs for a specific date across all habits (reactive, for Today view).
+  Stream<List<HabitLog>> watchLogsForDate(LocalDate date);
 }

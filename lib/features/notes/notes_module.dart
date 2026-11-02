@@ -14,10 +14,14 @@
 
 // ── Routing ───────────────────────────────────────────────────────────────────
 export 'presentation/notes_routes.dart' show notesRoutes;
+export 'presentation/notes_screen.dart' show showNewNoteFlow;
 
 // ── Calendar integration ──────────────────────────────────────────────────────
 export 'application/notes_calendar_source.dart'
-    show NotesCalendarSource, notesCalendarEntriesProvider, notesDateMentionsByDateProvider;
+    show
+        NotesCalendarSource,
+        notesCalendarEntriesProvider,
+        notesDateMentionsByDateProvider;
 
 // ── Dashboard integration ─────────────────────────────────────────────────────
 export 'domain/dashboard_section_provider.dart'
@@ -26,9 +30,15 @@ export 'application/notes_dashboard_provider.dart'
     show NotesDashboardProvider, recentNotesProvider, pinnedNotesProvider;
 
 // ── Phase 4 bridge interface (stub — implemented in Phase 4 todo module) ──────
+export 'domain/attachment.dart' show AttachmentKind, AttachmentKindExt;
 export 'domain/todo_bridge.dart' show TodoBridge;
 export 'application/todo_bridge_impl.dart'
     show TodoBridgeImpl, todoBridgeStateProvider, todoBridgeProvider;
+
+export 'application/note_source_status.dart' show noteSourceRemovedProvider;
+export 'application/vault_lock_hook.dart'
+    show isVaultLockedProvider, IsVaultLocked;
+export 'application/vault_migration.dart' show VaultMigrationService;
 
 // ── Riverpod providers (needed by SessionScope and AppShell) ──────────────────
 export 'application/note_providers.dart'

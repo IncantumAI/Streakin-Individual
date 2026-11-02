@@ -1,6 +1,7 @@
 // lib/features/notes/presentation/folder_breadcrumbs.dart
 // Breadcrumb row shown above the note list. Tapping a crumb navigates up.
 
+import 'package:streakin/core/design/icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -36,20 +37,24 @@ class FolderBreadcrumbs extends ConsumerWidget {
                 onTap: () =>
                     ref.read(activeFolderIdProvider.notifier).set(null),
               ),
-              ...crumbs.map((c) => Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.chevron_right,
-                          size: 16, color: colors.textMuted),
-                      _Crumb(
-                        label: c.name,
-                        isLast: c.id == crumbs.last.id,
-                        onTap: () => ref
-                            .read(activeFolderIdProvider.notifier)
-                            .set(c.id),
-                      ),
-                    ],
-                  )),
+              ...crumbs.map(
+                (c) => Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      AppIcons.chevronRight,
+                      size: 16,
+                      color: colors.textMuted,
+                    ),
+                    _Crumb(
+                      label: c.name,
+                      isLast: c.id == crumbs.last.id,
+                      onTap: () =>
+                          ref.read(activeFolderIdProvider.notifier).set(c.id),
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
         );

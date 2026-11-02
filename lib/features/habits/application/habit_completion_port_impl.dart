@@ -1,5 +1,5 @@
 import 'package:streakin/core/time/local_date.dart';
-import 'package:streakin/features/goals/domain/goal_repository.dart';
+import 'package:streakin/features/goals/goals_module.dart';
 import 'package:streakin/features/habits/domain/habit.dart';
 import 'package:streakin/features/habits/domain/habit_repository.dart';
 
@@ -36,8 +36,7 @@ class HabitCompletionPortImpl implements HabitCompletionPort {
       if (h != null) habitsMap[id] = h;
     }
 
-    final logsMap =
-        await _habitRepo.fetchLogsForHabits(habitIds, range);
+    final logsMap = await _habitRepo.fetchLogsForHabits(habitIds, range);
 
     // Rest token pool tracking (goal-level, non-retroactive)
     int tokensLeft = goalRestTokenPool;
@@ -68,9 +67,9 @@ class HabitCompletionPortImpl implements HabitCompletionPort {
         // Find log for this habit+day
         final logs = logsMap[window.habitId] ?? [];
         final log = logs.cast<HabitLog?>().firstWhere(
-              (l) => l != null && l.localDate == day && !l.isDeleted,
-              orElse: () => null,
-            );
+          (l) => l != null && l.localDate == day && !l.isDeleted,
+          orElse: () => null,
+        );
 
         if (log == null) {
           // No log = missed
@@ -79,8 +78,7 @@ class HabitCompletionPortImpl implements HabitCompletionPort {
           dayScheduled++;
           dayDone++;
           final ph = perHabit[window.habitId] ?? (sched: 0, done: 0);
-          perHabit[window.habitId] =
-              (sched: ph.sched + 1, done: ph.done + 1);
+          perHabit[window.habitId] = (sched: ph.sched + 1, done: ph.done + 1);
         } else if (log.status == HabitLogStatus.rest) {
           if (tokensLeft > 0) {
             tokensLeft--;
@@ -127,10 +125,12 @@ class HabitCompletionPortImpl implements HabitCompletionPort {
 
   @override
   Stream<List<HabitRef>> watchHabits(Set<String> habitIds) {
-    return _habitRepo.watchAll().map((habits) => habits
-        .where((h) => habitIds.contains(h.id))
-        .map((h) => HabitRef(id: h.id, name: h.name))
-        .toList());
+    return _habitRepo.watchAll().map(
+      (habits) => habits
+          .where((h) => habitIds.contains(h.id))
+          .map((h) => HabitRef(id: h.id, name: h.name))
+          .toList(),
+    );
   }
 
   @override

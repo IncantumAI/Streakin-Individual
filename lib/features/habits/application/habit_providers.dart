@@ -23,7 +23,8 @@ class _HabitRepositoryNotifier extends Notifier<HabitRepository?> {
 
 final habitRepositoryStateProvider =
     NotifierProvider<_HabitRepositoryNotifier, HabitRepository?>(
-        _HabitRepositoryNotifier.new);
+      _HabitRepositoryNotifier.new,
+    );
 
 // Kept for use-cases that call it inside user actions (ref.read, never null
 // at that point because the UI is only reachable when SessionScope is live).
@@ -32,6 +33,23 @@ final habitRepositoryProvider = Provider<HabitRepository>((ref) {
   if (repo == null) throw StateError('HabitRepository not available');
   return repo;
 });
+
+// ── Extra lock-in gate (set by SessionScope; e.g. flagged to-dos) ─────────
+//
+// Keeps the habits feature free of any to-do imports: the session layer
+// supplies a callback that returns true when nothing else blocks lock-in.
+
+typedef LockInGate = Future<bool> Function(LocalDate today);
+
+class _LockInGateNotifier extends Notifier<LockInGate?> {
+  @override
+  LockInGate? build() => null;
+  void set(LockInGate gate) => state = gate;
+  void clear() => state = null;
+}
+
+final lockInGateStateProvider =
+    NotifierProvider<_LockInGateNotifier, LockInGate?>(_LockInGateNotifier.new);
 
 // ── Streak engine ──────────────────────────────────────────────────────────
 
@@ -55,9 +73,7 @@ final habitsForTodayProvider = StreamProvider<List<Habit>>((ref) {
 final allHabitsProvider = StreamProvider<List<Habit>>((ref) {
   final repo = ref.watch(habitRepositoryStateProvider);
   if (repo == null) return const Stream.empty();
-  return repo
-      .watchAll()
-      .handleError((_) => <Habit>[], test: _isSqliteError);
+  return repo.watchAll().handleError((_) => <Habit>[], test: _isSqliteError);
 });
 
 final todayDayLockProvider = StreamProvider<DayLock?>((ref) {
@@ -69,22 +85,33 @@ final todayDayLockProvider = StreamProvider<DayLock?>((ref) {
       .handleError((_) => null, test: _isSqliteError);
 });
 
-// ── Future providers ───────────────────────────────────────────────────────
+// ── Logs & all habits providers ────────────────────────────────────────────
 
-final todayLogsProvider = FutureProvider<Map<String, HabitLog?>>((ref) async {
+// All active habits regardless of schedule (shows unscheduled ones too)
+final habitsForAllTodayProvider = StreamProvider<List<Habit>>((ref) {
   final repo = ref.watch(habitRepositoryStateProvider);
-  if (repo == null) return {};
-  final today = ref.watch(todayProvider);
-  final habits = await ref.watch(habitsForTodayProvider.future);
-  final result = <String, HabitLog?>{};
-  for (final h in habits) {
-    result[h.id] = await repo.getLog(h.id, today);
-  }
-  return result;
+  if (repo == null) return const Stream.empty();
+  return repo
+      .watchAll()
+      .map((all) => all.where((h) => h.isActive).toList())
+      .handleError((_) => <Habit>[], test: _isSqliteError);
 });
 
-final habitStreakProvider =
-    FutureProvider.family<int, String>((ref, habitId) async {
+// Streams today's logs keyed by habit id, live on every check/uncheck.
+final todayLogsProvider = StreamProvider<Map<String, HabitLog?>>((ref) {
+  final repo = ref.watch(habitRepositoryStateProvider);
+  if (repo == null) return const Stream.empty();
+  final today = ref.watch(todayProvider);
+  return repo
+      .watchLogsForDate(today)
+      .map((logs) => <String, HabitLog?>{for (final l in logs) l.habitId: l})
+      .handleError((_) => <String, HabitLog?>{}, test: _isSqliteError);
+});
+
+final habitStreakProvider = FutureProvider.family<int, String>((
+  ref,
+  habitId,
+) async {
   final repo = ref.watch(habitRepositoryStateProvider);
   if (repo == null) return 0;
   final engine = ref.watch(streakEngineProvider);
@@ -133,13 +160,15 @@ class HabitUseCases {
     final repo = _repo;
     if (repo == null) return;
     final today = _ref.read(todayProvider);
-    await repo.saveLog(HabitLog(
-      id: _uuid.v4(),
-      habitId: habitId,
-      localDate: today,
-      status: HabitLogStatus.done,
-      hlc: Hlc.now().toIso(),
-    ));
+    await repo.saveLog(
+      HabitLog(
+        id: _uuid.v4(),
+        habitId: habitId,
+        localDate: today,
+        status: HabitLogStatus.done,
+        hlc: Hlc.now().toIso(),
+      ),
+    );
     await _checkLockIn(repo);
   }
 
@@ -155,26 +184,30 @@ class HabitUseCases {
     final repo = _repo;
     if (repo == null) return;
     final today = _ref.read(todayProvider);
-    await repo.saveLog(HabitLog(
-      id: _uuid.v4(),
-      habitId: habitId,
-      localDate: today,
-      status: HabitLogStatus.skipped,
-      hlc: Hlc.now().toIso(),
-    ));
+    await repo.saveLog(
+      HabitLog(
+        id: _uuid.v4(),
+        habitId: habitId,
+        localDate: today,
+        status: HabitLogStatus.skipped,
+        hlc: Hlc.now().toIso(),
+      ),
+    );
   }
 
   Future<void> useRestToken(String habitId) async {
     final repo = _repo;
     if (repo == null) return;
     final today = _ref.read(todayProvider);
-    await repo.saveLog(HabitLog(
-      id: _uuid.v4(),
-      habitId: habitId,
-      localDate: today,
-      status: HabitLogStatus.rest,
-      hlc: Hlc.now().toIso(),
-    ));
+    await repo.saveLog(
+      HabitLog(
+        id: _uuid.v4(),
+        habitId: habitId,
+        localDate: today,
+        status: HabitLogStatus.rest,
+        hlc: Hlc.now().toIso(),
+      ),
+    );
     await _checkLockIn(repo);
   }
 
@@ -190,6 +223,13 @@ class HabitUseCases {
     await _repo?.archive(habitId);
   }
 
+  /// Re-runs the lock-in check (e.g. after a flagged to-do changes state).
+  Future<void> reevaluateLockIn() async {
+    final repo = _repo;
+    if (repo == null) return;
+    await _checkLockIn(repo);
+  }
+
   Future<void> _checkLockIn(HabitRepository repo) async {
     final engine = _ref.read(streakEngineProvider);
     final today = _ref.read(todayProvider);
@@ -200,10 +240,13 @@ class HabitUseCases {
     );
     final logs = logMap.values.expand((l) => l).toList();
     if (engine.isLockedIn(habits, logs, today)) {
+      final gate = _ref.read(lockInGateStateProvider);
+      if (gate != null && !await gate(today)) return;
       final existing = await repo.watchDayLock(today).first;
       if (existing == null) {
         await repo.saveDayLock(
-            DayLock(localDate: today, lockedAt: DateTime.now()));
+          DayLock(localDate: today, lockedAt: DateTime.now()),
+        );
       }
     }
   }

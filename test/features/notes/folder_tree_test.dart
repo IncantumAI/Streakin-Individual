@@ -50,18 +50,24 @@ void main() {
     });
 
     test('sort by name orders alphabetically', () {
-      final tree = buildFolderTree(
-        [_f('z', name: 'Zebra'), _f('a', name: 'Apple'), _f('m', name: 'Mango')],
-        sort: FolderSortMode.name,
-      );
-      expect(tree.map((n) => n.folder.name).toList(),
-          ['Apple', 'Mango', 'Zebra']);
+      final tree = buildFolderTree([
+        _f('z', name: 'Zebra'),
+        _f('a', name: 'Apple'),
+        _f('m', name: 'Mango'),
+      ], sort: FolderSortMode.name);
+      expect(tree.map((n) => n.folder.name).toList(), [
+        'Apple',
+        'Mango',
+        'Zebra',
+      ]);
     });
 
     test('sort by manual uses sortOrder', () {
-      final tree = buildFolderTree(
-        [_f('b', sort: 2), _f('a'), _f('c', sort: 1)],
-      );
+      final tree = buildFolderTree([
+        _f('b', sort: 2),
+        _f('a'),
+        _f('c', sort: 1),
+      ]);
       expect(tree.map((n) => n.folder.id).toList(), ['a', 'c', 'b']);
     });
 
@@ -77,10 +83,7 @@ void main() {
 
   group('flattenTree', () {
     test('collapsed root only shows roots', () {
-      final tree = buildFolderTree([
-        _f('root'),
-        _f('child', parentId: 'root'),
-      ]);
+      final tree = buildFolderTree([_f('root'), _f('child', parentId: 'root')]);
       final flat = flattenTree(tree, {});
       expect(flat.length, 1);
       expect(flat[0].folder.id, 'root');

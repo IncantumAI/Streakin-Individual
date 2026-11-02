@@ -17,7 +17,7 @@ class NoteAutosaveService extends ChangeNotifier {
     required NoteRepository repository,
     required this._noteId,
     this._debounce = const Duration(seconds: 2),
-  })  : _repo = repository;
+  }) : _repo = repository;
 
   final NoteRepository _repo;
   final String _noteId;

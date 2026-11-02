@@ -4,10 +4,10 @@
 // types inside the notes feature — everything else uses NoteDocument/NoteBlock.
 
 import 'package:super_editor/super_editor.dart';
+import 'package:streakin/features/notes/editor/date_mention_picker.dart';
 import 'package:uuid/uuid.dart';
 
-import 'package:streakin/features/notes/domain/note_document.dart'
-    as domain;
+import 'package:streakin/features/notes/domain/note_document.dart' as domain;
 
 const _uuid = Uuid();
 
@@ -27,12 +27,12 @@ domain.NoteBlock? _nodeToBlock(DocumentNode node) {
   if (node is ParagraphNode) {
     final blockType =
         node.getMetadataValue('blockType') as Attribution? ??
-            paragraphAttribution;
+        paragraphAttribution;
     final kind = _attributionToKind(blockType);
     return domain.NoteBlock(
       id: node.id,
       kind: kind,
-      text: node.text.text,
+      text: node.text.toPlainText(),
     );
   }
   if (node is ListItemNode) {
@@ -41,29 +41,30 @@ domain.NoteBlock? _nodeToBlock(DocumentNode node) {
       kind: node.type == ListItemType.ordered
           ? domain.NoteBlockKind.orderedItem
           : domain.NoteBlockKind.bulletItem,
-      text: node.text.text,
+      text: node.text.toPlainText(),
     );
   }
   if (node is TaskNode) {
     return domain.NoteBlock(
       id: node.id,
       kind: domain.NoteBlockKind.task,
-      text: node.text.text,
+      text: node.text.toPlainText(),
       isComplete: node.isComplete,
+      attrs: {
+        if (node.metadata['linkedTodoId'] is String)
+          'linkedTodoId': node.metadata['linkedTodoId'],
+      },
     );
   }
   if (node is HorizontalRuleNode) {
-    return domain.NoteBlock(
-      id: node.id,
-      kind: domain.NoteBlockKind.divider,
-    );
+    return domain.NoteBlock(id: node.id, kind: domain.NoteBlockKind.divider);
   }
   // Unknown node types — preserve as paragraph with text if possible.
   if (node is TextNode) {
     return domain.NoteBlock(
       id: node.id,
       kind: domain.NoteBlockKind.paragraph,
-      text: node.text.text,
+      text: node.text.toPlainText(),
     );
   }
   return null;
@@ -82,9 +83,9 @@ domain.NoteBlockKind _attributionToKind(Attribution attr) {
 /// Convert our [domain.NoteDocument] to a [MutableDocument] for super_editor.
 MutableDocument noteDocumentToSuperEditor(domain.NoteDocument doc) {
   if (doc.isEmpty) {
-    return MutableDocument(nodes: [
-      ParagraphNode(id: _uuid.v4(), text: AttributedText('')),
-    ]);
+    return MutableDocument(
+      nodes: [ParagraphNode(id: _uuid.v4(), text: AttributedText(''))],
+    );
   }
 
   final nodes = <DocumentNode>[];
@@ -106,42 +107,40 @@ DocumentNode? _blockToNode(domain.NoteBlock block) {
     case domain.NoteBlockKind.heading1:
       return ParagraphNode(
         id: block.id,
-        text: AttributedText(block.text),
+        text: _chipText(block.text),
         metadata: {'blockType': header1Attribution},
       );
     case domain.NoteBlockKind.heading2:
       return ParagraphNode(
         id: block.id,
-        text: AttributedText(block.text),
+        text: _chipText(block.text),
         metadata: {'blockType': header2Attribution},
       );
     case domain.NoteBlockKind.heading3:
       return ParagraphNode(
         id: block.id,
-        text: AttributedText(block.text),
+        text: _chipText(block.text),
         metadata: {'blockType': header3Attribution},
       );
     case domain.NoteBlockKind.blockquote:
       return ParagraphNode(
         id: block.id,
-        text: AttributedText(block.text),
+        text: _chipText(block.text),
         metadata: {'blockType': blockquoteAttribution},
       );
     case domain.NoteBlockKind.bulletItem:
-      return ListItemNode.unordered(
-        id: block.id,
-        text: AttributedText(block.text),
-      );
+      return ListItemNode.unordered(id: block.id, text: _chipText(block.text));
     case domain.NoteBlockKind.orderedItem:
-      return ListItemNode.ordered(
-        id: block.id,
-        text: AttributedText(block.text),
-      );
+      return ListItemNode.ordered(id: block.id, text: _chipText(block.text));
     case domain.NoteBlockKind.task:
       return TaskNode(
         id: block.id,
-        text: AttributedText(block.text),
+        text: _chipText(block.text),
         isComplete: block.isComplete,
+        metadata: {
+          if (block.attrs['linkedTodoId'] is String)
+            'linkedTodoId': block.attrs['linkedTodoId'],
+        },
       );
     case domain.NoteBlockKind.divider:
       return HorizontalRuleNode(id: block.id);
@@ -151,11 +150,18 @@ DocumentNode? _blockToNode(domain.NoteBlock block) {
     case domain.NoteBlockKind.table:
     case domain.NoteBlockKind.image:
       // code/table/image/wikilink fall back to paragraph for now (Phase 3C custom nodes TBD)
-      return ParagraphNode(
-        id: block.id,
-        text: AttributedText(block.text),
-      );
+      return ParagraphNode(id: block.id, text: _chipText(block.text));
   }
+}
+
+/// Plain text → [AttributedText] with date chips (`@2026-10-15 16:00`)
+/// re-styled as chips.
+AttributedText _chipText(String text) {
+  final at = AttributedText(text);
+  for (final m in dateChipPattern.allMatches(text)) {
+    at.addAttribution(dateChipAttribution, SpanRange(m.start, m.end - 1));
+  }
+  return at;
 }
 
 // ── NoteEditorController ──────────────────────────────────────────────────────
@@ -167,10 +173,7 @@ class NoteEditorController {
     _doc = noteDocumentToSuperEditor(initialDocument);
     _composer = MutableDocumentComposer();
     _editor = Editor(
-      editables: {
-        Editor.documentKey: _doc,
-        Editor.composerKey: _composer,
-      },
+      editables: {Editor.documentKey: _doc, Editor.composerKey: _composer},
       requestHandlers: List.from(defaultRequestHandlers),
       reactionPipeline: List.from(defaultEditorReactions),
     );

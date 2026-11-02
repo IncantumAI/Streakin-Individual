@@ -4,11 +4,7 @@ import 'package:streakin/features/goals/domain/goal.dart';
 // ── HabitLinkWindow ───────────────────────────────────────────────────────────
 
 class HabitLinkWindow {
-  const HabitLinkWindow({
-    required this.habitId,
-    required this.from,
-    this.to,
-  });
+  const HabitLinkWindow({required this.habitId, required this.from, this.to});
   final String habitId;
   final LocalDate from;
   final LocalDate? to;

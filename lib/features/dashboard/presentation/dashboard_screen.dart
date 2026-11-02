@@ -16,16 +16,19 @@ import 'package:streakin/features/habits/domain/habit.dart';
 import 'package:streakin/features/habits/domain/habit_repository.dart';
 import 'package:streakin/features/habits/domain/streak_engine.dart';
 import 'package:streakin/features/habits/presentation/habit_form.dart';
+import 'package:streakin/features/habits/presentation/habit_heatmap.dart';
 import 'package:streakin/features/notes/application/note_providers.dart';
 import 'package:streakin/features/notes/domain/note.dart';
 import 'package:streakin/features/notes/notes_module.dart'
-    show recentNotesProvider, pinnedNotesProvider,
-        notesDateMentionsByDateProvider;
+    show
+        recentNotesProvider,
+        pinnedNotesProvider,
+        notesDateMentionsByDateProvider,
+        showNewNoteFlow;
 import 'package:streakin/features/todos/application/todo_providers.dart';
 import 'package:streakin/features/todos/presentation/todos_screen.dart'
     show showAddTaskSheet;
-import 'package:streakin/features/goals/goals_module.dart'
-    show GoalHeroCard;
+import 'package:streakin/features/goals/goals_module.dart' show GoalHeroCard;
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -39,7 +42,7 @@ class DashboardScreen extends ConsumerWidget {
         title: const Text('Dashboard'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.settings_outlined),
+            icon: const Icon(AppIcons.settings),
             tooltip: 'Settings',
             onPressed: () => context.push('/settings'),
           ),
@@ -55,6 +58,8 @@ class DashboardScreen extends ConsumerWidget {
           _StreakCard(),
           SizedBox(height: 12),
           _ConsistencyChartCard(),
+          SizedBox(height: 12),
+          _HeatmapCard(),
           SizedBox(height: 12),
           _AtRiskHabitsCard(),
           SizedBox(height: 12),
@@ -85,7 +90,8 @@ class _TodayRingCard extends ConsumerWidget {
     final lockedIn = ref.watch(lockedInTodayProvider);
 
     final total = habitsAsync.value?.length ?? 0;
-    final done = logsAsync.value?.values
+    final done =
+        logsAsync.value?.values
             .where((l) => l != null && (l.isDone || l.isRest))
             .length ??
         0;
@@ -114,11 +120,14 @@ class _TodayRingCard extends ConsumerWidget {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text('$done/$total',
-                            style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w700,
-                                color: colors.text)),
+                        Text(
+                          '$done/$total',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                            color: colors.text,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -134,17 +143,18 @@ class _TodayRingCard extends ConsumerWidget {
                 Text(
                   lockedIn.value == true ? 'Day locked in! 🔒' : 'Today',
                   style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      color: colors.text),
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: colors.text,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   total == 0
                       ? 'No habits scheduled'
                       : done == total
-                          ? 'All habits complete!'
-                          : '${total - done} habit${total - done == 1 ? '' : 's'} remaining',
+                      ? 'All habits complete!'
+                      : '${total - done} habit${total - done == 1 ? '' : 's'} remaining',
                   style: TextStyle(fontSize: 14, color: colors.textMuted),
                 ),
               ],
@@ -157,10 +167,11 @@ class _TodayRingCard extends ConsumerWidget {
 }
 
 class _RingPainter extends CustomPainter {
-  _RingPainter(
-      {required this.fraction,
-      required this.color,
-      required this.background});
+  _RingPainter({
+    required this.fraction,
+    required this.color,
+    required this.background,
+  });
   final double fraction;
   final Color color;
   final Color background;
@@ -169,7 +180,9 @@ class _RingPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     const stroke = 8.0;
     final rect = Rect.fromCircle(
-        center: size.center(Offset.zero), radius: size.width / 2 - stroke / 2);
+      center: size.center(Offset.zero),
+      radius: size.width / 2 - stroke / 2,
+    );
     final bgPaint = Paint()
       ..color = background
       ..style = PaintingStyle.stroke
@@ -210,24 +223,34 @@ class _StreakCard extends ConsumerWidget {
         future: _computeStreak(habitsAsync.value ?? [], repo, engine, today),
         builder: (context, snap) {
           final streak = snap.data ?? 0;
-          final nextMilestone =
-              StreakEngine.milestones.firstWhere((m) => m > streak, orElse: () => 0);
+          final nextMilestone = StreakEngine.milestones.firstWhere(
+            (m) => m > streak,
+            orElse: () => 0,
+          );
           return Row(
             children: [
-              const Icon(AppIcons.streakFill, color: AppColors.streakLight, size: 36),
+              const Icon(
+                AppIcons.streakFill,
+                color: AppColors.streakLight,
+                size: 36,
+              ),
               const SizedBox(width: 12),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('$streak day streak',
-                      style: const TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.streakLight)),
+                  Text(
+                    '$streak day streak',
+                    style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.streakLight,
+                    ),
+                  ),
                   if (nextMilestone > 0)
-                    Text('Next milestone: $nextMilestone days',
-                        style:
-                            TextStyle(fontSize: 13, color: colors.textMuted)),
+                    Text(
+                      'Next milestone: $nextMilestone days',
+                      style: TextStyle(fontSize: 13, color: colors.textMuted),
+                    ),
                 ],
               ),
             ],
@@ -237,8 +260,12 @@ class _StreakCard extends ConsumerWidget {
     );
   }
 
-  Future<int> _computeStreak(List<Habit> habits, HabitRepository repo,
-      StreakEngine engine, LocalDate today) async {
+  Future<int> _computeStreak(
+    List<Habit> habits,
+    HabitRepository repo,
+    StreakEngine engine,
+    LocalDate today,
+  ) async {
     if (habits.isEmpty) return 0;
     final ids = habits.where((h) => h.isActive).map((h) => h.id).toList();
     if (ids.isEmpty) return 0;
@@ -248,20 +275,33 @@ class _StreakCard extends ConsumerWidget {
     for (int i = 0; i <= 365; i++) {
       final d = today.subtractDays(i);
       // Approximate: use lock-in check per day rather than stored DayLocks.
-      final scheduled =
-          habits.where((h) => h.isActive && h.scheduleMask.isScheduled(d));
+      final scheduled = habits.where(
+        (h) => h.isActive && h.scheduleMask.isScheduled(d),
+      );
       if (scheduled.isEmpty) continue;
       final allDone = scheduled.every((h) {
-        final l = logMap[h.id]?.firstWhere((x) => x.localDate == d,
-            orElse: () => HabitLog(
-                id: '', habitId: h.id, localDate: d,
-                status: HabitLogStatus.skipped, hlc: ''));
+        final l = logMap[h.id]?.firstWhere(
+          (x) => x.localDate == d,
+          orElse: () => HabitLog(
+            id: '',
+            habitId: h.id,
+            localDate: d,
+            status: HabitLogStatus.skipped,
+            hlc: '',
+          ),
+        );
         return l?.isDone == true || l?.isRest == true;
       });
-      if (allDone) dayLocks.add(DayLock(localDate: d, lockedAt: DateTime.now()));
+      if (allDone) {
+        dayLocks.add(DayLock(localDate: d, lockedAt: DateTime.now()));
+      }
     }
     return engine.lockInStreak(
-        habits.where((h) => h.isActive).toList(), logMap, dayLocks, today);
+      habits.where((h) => h.isActive).toList(),
+      logMap,
+      dayLocks,
+      today,
+    );
   }
 }
 
@@ -290,14 +330,32 @@ class _ConsistencyChartCardState extends ConsumerState<_ConsistencyChartCard> {
         children: [
           Row(
             children: [
-              Text('Consistency',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: colors.text)),
+              Text(
+                'Consistency',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: colors.text,
+                ),
+              ),
               const Spacer(),
-              _Chip(label: '7d', selected: _days == 7, onTap: () => setState(() => _days = 7)),
+              _Chip(
+                label: '7d',
+                selected: _days == 7,
+                onTap: () => setState(() => _days = 7),
+              ),
               const SizedBox(width: 6),
-              _Chip(label: '30d', selected: _days == 30, onTap: () => setState(() => _days = 30)),
+              _Chip(
+                label: '30d',
+                selected: _days == 30,
+                onTap: () => setState(() => _days = 30),
+              ),
               const SizedBox(width: 6),
-              _Chip(label: '90d', selected: _days == 90, onTap: () => setState(() => _days = 90)),
+              _Chip(
+                label: '90d',
+                selected: _days == 90,
+                onTap: () => setState(() => _days = 90),
+              ),
             ],
           ),
           const SizedBox(height: 16),
@@ -317,6 +375,21 @@ class _ConsistencyChartCardState extends ConsumerState<_ConsistencyChartCard> {
                         gridData: const FlGridData(show: false),
                         titlesData: const FlTitlesData(show: false),
                         borderData: FlBorderData(show: false),
+                        lineTouchData: LineTouchData(
+                          touchTooltipData: LineTouchTooltipData(
+                            getTooltipColor: (_) => AppColors.tooltipBackground,
+                            getTooltipItems: (spots) => [
+                              for (final s in spots)
+                                LineTooltipItem(
+                                  '${s.y.round()}%',
+                                  const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
                         lineBarsData: [
                           LineChartBarData(
                             spots: spots,
@@ -344,25 +417,31 @@ class _ConsistencyChartCardState extends ConsumerState<_ConsistencyChartCard> {
     );
   }
 
-  Future<List<FlSpot>> _buildSpots(List<Habit> habits, LocalDate today,
-      int days, WidgetRef ref) async {
+  Future<List<FlSpot>> _buildSpots(
+    List<Habit> habits,
+    LocalDate today,
+    int days,
+    WidgetRef ref,
+  ) async {
     if (habits.isEmpty) return [];
     setState(() => _animated = true);
     final repo = ref.read(habitRepositoryStateProvider);
     if (repo == null) return [];
     final active = habits.where((h) => h.isActive).toList();
     final ids = active.map((h) => h.id).toList();
-    final range =
-        DateRange(start: today.subtractDays(days - 1), end: today);
+    final range = DateRange(start: today.subtractDays(days - 1), end: today);
     final logMap = await repo.fetchLogsForHabits(ids, range);
     final spots = <FlSpot>[];
     for (int i = 0; i < days; i++) {
       final d = today.subtractDays(days - 1 - i);
-      final scheduled = active.where((h) => h.scheduleMask.isScheduled(d)).length;
+      final scheduled = active
+          .where((h) => h.scheduleMask.isScheduled(d))
+          .length;
       if (scheduled == 0) continue;
       final done = active.where((h) {
         final l = logMap[h.id];
-        return l?.any((x) => x.localDate == d && (x.isDone || x.isRest)) == true;
+        return l?.any((x) => x.localDate == d && (x.isDone || x.isRest)) ==
+            true;
       }).length;
       spots.add(FlSpot(i.toDouble(), (done / scheduled * 100)));
     }
@@ -371,6 +450,58 @@ class _ConsistencyChartCardState extends ConsumerState<_ConsistencyChartCard> {
 }
 
 // ── At Risk Habits ────────────────────────────────────────────────────────────
+
+class _HeatmapCard extends ConsumerWidget {
+  const _HeatmapCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.colors;
+    final habits = (ref.watch(allHabitsProvider).value ?? const <Habit>[])
+        .where((h) => h.isActive)
+        .toList();
+    final data = ref.watch(
+      habitHeatmapProvider([for (final h in habits) h.id]),
+    );
+    return _DashCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(
+                'Habit Heatmap',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: colors.text,
+                ),
+              ),
+              const Spacer(),
+              GestureDetector(
+                onTap: () => context.push('/habits/heatmaps'),
+                child: Text(
+                  'See all',
+                  style: TextStyle(fontSize: 13, color: colors.brand),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          data.when(
+            loading: () => const SizedBox(height: 120),
+            error: (_, _) => const SizedBox(height: 120),
+            data: (values) => HeatmapGrid(
+              values: values,
+              today: ref.watch(todayProvider),
+              color: colors.brand,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 class _AtRiskHabitsCard extends ConsumerWidget {
   const _AtRiskHabitsCard();
@@ -385,8 +516,14 @@ class _AtRiskHabitsCard extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('At risk today',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: colors.text)),
+          Text(
+            'At risk today',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: colors.text,
+            ),
+          ),
           const SizedBox(height: 12),
           habitsAsync.when(
             loading: () => const CircularProgressIndicator(),
@@ -394,27 +531,49 @@ class _AtRiskHabitsCard extends ConsumerWidget {
             data: (habits) {
               final logs = logsAsync.value ?? {};
               final atRisk = habits
-                  .where((h) =>
-                      !(logs[h.id]?.isDone == true) &&
-                      !(logs[h.id]?.isRest == true))
+                  .where(
+                    (h) =>
+                        !(logs[h.id]?.isDone == true) &&
+                        !(logs[h.id]?.isRest == true),
+                  )
                   .take(3)
                   .toList();
               if (atRisk.isEmpty) {
-                return Text('All caught up! ✓',
-                    style: TextStyle(color: colors.success));
+                return Text(
+                  'All caught up! ✓',
+                  style: TextStyle(color: colors.success),
+                );
               }
               return Column(
-                children: atRisk.map((h) => Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: Row(children: [
-                    Icon(AppIcons.habitIcons[h.iconIndex % AppIcons.habitIcons.length],
-                        size: 20,
-                        color: AppColors.habitAccents[h.accentIndex % 8]),
-                    const SizedBox(width: 10),
-                    Expanded(child: Text(h.name, style: TextStyle(color: colors.text))),
-                    const Icon(AppIcons.streakFill, size: 16, color: AppColors.streakLight),
-                  ]),
-                )).toList(),
+                children: atRisk
+                    .map(
+                      (h) => Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Row(
+                          children: [
+                            Icon(
+                              AppIcons.habitIcons[h.iconIndex %
+                                  AppIcons.habitIcons.length],
+                              size: 20,
+                              color: AppColors.habitAccents[h.accentIndex % 8],
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                h.name,
+                                style: TextStyle(color: colors.text),
+                              ),
+                            ),
+                            const Icon(
+                              AppIcons.streakFill,
+                              size: 16,
+                              color: AppColors.streakLight,
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                    .toList(),
               );
             },
           ),
@@ -436,32 +595,35 @@ class _UpcomingCard extends ConsumerWidget {
     final range = DateRange(start: today, end: today.addDays(7));
 
     final todosAsync = ref.watch(todosUpcomingProvider);
-    final noteMentionsAsync =
-        ref.watch(notesDateMentionsByDateProvider(range));
+    final noteMentionsAsync = ref.watch(notesDateMentionsByDateProvider(range));
 
     final todos = todosAsync.value ?? [];
     final noteMentions = noteMentionsAsync.value ?? {};
 
     final items = <_UpcomingItem>[];
     for (final t in todos.where((x) => x.dueDate != null).take(5)) {
-      items.add(_UpcomingItem(
-        label: t.title,
-        isoDate: t.dueDate!,
-        icon: Icons.check_box_outlined,
-        color: colors.warning,
-        onTap: () => context.go('/tasks'),
-      ));
+      items.add(
+        _UpcomingItem(
+          label: t.title,
+          isoDate: t.dueDate!,
+          icon: AppIcons.habits,
+          color: colors.warning,
+          onTap: () => context.go('/tasks'),
+        ),
+      );
     }
     for (final entry in noteMentions.entries) {
       for (final nid in entry.value.take(2)) {
-        items.add(_UpcomingItem(
-          label: nid,
-          isoDate: entry.key,
-          icon: Icons.article_outlined,
-          color: colors.success,
-          isNoteId: true,
-          onTap: () => context.push('/notes/$nid'),
-        ));
+        items.add(
+          _UpcomingItem(
+            label: nid,
+            isoDate: entry.key,
+            icon: AppIcons.articleOutlined,
+            color: colors.success,
+            isNoteId: true,
+            onTap: () => context.push('/notes/$nid'),
+          ),
+        );
       }
     }
 
@@ -472,15 +634,20 @@ class _UpcomingCard extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Upcoming',
-              style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: colors.text)),
+          Text(
+            'Upcoming',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: colors.text,
+            ),
+          ),
           const SizedBox(height: 8),
           if (top.isEmpty)
-            Text('Nothing coming up',
-                style: TextStyle(color: colors.textMuted, fontSize: 13))
+            Text(
+              'Nothing coming up',
+              style: TextStyle(color: colors.textMuted, fontSize: 13),
+            )
           else
             ...top.map((item) => _UpcomingTile(item: item)),
         ],
@@ -515,14 +682,16 @@ class _UpcomingTile extends ConsumerWidget {
     final colors = context.colors;
     final today = LocalDate.today();
     final itemDate = LocalDate.parse(item.isoDate);
-    final diff = DateTime(itemDate.year, itemDate.month, itemDate.day)
-        .difference(DateTime(today.year, today.month, today.day))
-        .inDays;
+    final diff = DateTime(
+      itemDate.year,
+      itemDate.month,
+      itemDate.day,
+    ).difference(DateTime(today.year, today.month, today.day)).inDays;
     final dateLabel = diff == 0
         ? 'Today'
         : diff == 1
-            ? 'Tomorrow'
-            : item.isoDate;
+        ? 'Tomorrow'
+        : item.isoDate;
 
     return ListTile(
       dense: true,
@@ -530,12 +699,16 @@ class _UpcomingTile extends ConsumerWidget {
       leading: Icon(item.icon, color: item.color, size: 18),
       title: item.isNoteId
           ? _NoteTitle(noteId: item.label)
-          : Text(item.label,
+          : Text(
+              item.label,
               style: TextStyle(color: colors.text, fontSize: 13),
               maxLines: 1,
-              overflow: TextOverflow.ellipsis),
-      subtitle: Text(dateLabel,
-          style: TextStyle(color: colors.textMuted, fontSize: 11)),
+              overflow: TextOverflow.ellipsis,
+            ),
+      subtitle: Text(
+        dateLabel,
+        style: TextStyle(color: colors.textMuted, fontSize: 11),
+      ),
       onTap: item.onTap,
     );
   }
@@ -548,7 +721,9 @@ class _NoteTitle extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.colors;
     final repo = ref.watch(noteRepositoryStateProvider);
-    if (repo == null) return Text('Note', style: TextStyle(color: colors.text, fontSize: 13));
+    if (repo == null) {
+      return Text('Note', style: TextStyle(color: colors.text, fontSize: 13));
+    }
     return FutureBuilder<Note?>(
       future: repo.getById(noteId),
       builder: (_, snap) {
@@ -580,40 +755,53 @@ class _RecentNotesCard extends ConsumerWidget {
         children: [
           Row(
             children: [
-              Text('Recent Notes',
-                  style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: colors.text)),
+              Text(
+                'Recent Notes',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: colors.text,
+                ),
+              ),
               const Spacer(),
               GestureDetector(
                 onTap: () => context.go('/notes'),
-                child: Text('See all',
-                    style: TextStyle(fontSize: 13, color: colors.brand)),
+                child: Text(
+                  'See all',
+                  style: TextStyle(fontSize: 13, color: colors.brand),
+                ),
               ),
             ],
           ),
           const SizedBox(height: 12),
           recentAsync.when(
             loading: () => const Center(
-                child: SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2))),
-            error: (_, _) => Text('Could not load notes',
-                style: TextStyle(fontSize: 13, color: colors.textMuted)),
+              child: SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            ),
+            error: (_, _) => Text(
+              'Could not load notes',
+              style: TextStyle(fontSize: 13, color: colors.textMuted),
+            ),
             data: (notes) {
               if (notes.isEmpty) {
-                return Text('No notes yet — tap Notes to create one.',
-                    style: TextStyle(fontSize: 13, color: colors.textMuted));
+                return Text(
+                  'No notes yet — tap Notes to create one.',
+                  style: TextStyle(fontSize: 13, color: colors.textMuted),
+                );
               }
               return Column(
                 children: notes
-                    .map((n) => _NoteRow(
-                          id: n.id,
-                          title: n.title,
-                          subtitle: _ago(n.updatedAt),
-                        ))
+                    .map(
+                      (n) => _NoteRow(
+                        id: n.id,
+                        title: n.title,
+                        subtitle: _ago(n.updatedAt),
+                      ),
+                    )
                     .toList(),
               );
             },
@@ -651,11 +839,14 @@ class _PinnedNotesCard extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Pinned',
-                  style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: colors.text)),
+              Text(
+                'Pinned',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: colors.text,
+                ),
+              ),
               const SizedBox(height: 12),
               ...notes.map((n) => _NoteRow(id: n.id, title: n.title)),
             ],
@@ -684,7 +875,7 @@ class _NoteRow extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 6),
         child: Row(
           children: [
-            Icon(Icons.article_outlined, size: 18, color: colors.textMuted),
+            Icon(AppIcons.articleOutlined, size: 18, color: colors.textMuted),
             const SizedBox(width: 10),
             Expanded(
               child: Column(
@@ -695,18 +886,20 @@ class _NoteRow extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        color: colors.text),
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: colors.text,
+                    ),
                   ),
                   if (subtitle != null)
-                    Text(subtitle!,
-                        style: TextStyle(
-                            fontSize: 12, color: colors.textMuted)),
+                    Text(
+                      subtitle!,
+                      style: TextStyle(fontSize: 12, color: colors.textMuted),
+                    ),
                 ],
               ),
             ),
-            Icon(Icons.chevron_right, size: 18, color: colors.outline),
+            Icon(AppIcons.chevronRight, size: 18, color: colors.outline),
           ],
         ),
       ),
@@ -725,8 +918,14 @@ class _QuickActionsCard extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Quick actions',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: colors.text)),
+          Text(
+            'Quick actions',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: colors.text,
+            ),
+          ),
           const SizedBox(height: 12),
           Wrap(
             spacing: 10,
@@ -740,7 +939,17 @@ class _QuickActionsCard extends ConsumerWidget {
               _QuickAction(
                 icon: AppIcons.note,
                 label: 'New note',
-                onTap: () => _quickCreateNote(context, ref),
+                onTap: () => showNewNoteFlow(context, ref),
+              ),
+              _QuickAction(
+                icon: AppIcons.edit,
+                label: 'Quick capture',
+                onTap: () => _quickCapture(context, ref),
+              ),
+              _QuickAction(
+                icon: AppIcons.check,
+                label: 'Check-in',
+                onTap: () => context.go('/habits'),
               ),
               _QuickAction(
                 icon: AppIcons.todoCircle,
@@ -750,7 +959,7 @@ class _QuickActionsCard extends ConsumerWidget {
               _QuickAction(
                 icon: AppIcons.zen,
                 label: 'Zen',
-                onTap: () {}, // Phase 7
+                onTap: () => context.push('/zen'),
               ),
             ],
           ),
@@ -759,37 +968,63 @@ class _QuickActionsCard extends ConsumerWidget {
     );
   }
 
-  Future<void> _quickCreateNote(BuildContext context, WidgetRef ref) async {
-    // Guard: repo may not be set yet (shouldn't happen inside SessionScope,
-    // but defensive against race conditions).
+  /// Minimal single-field sheet → creates a note in the Inbox (no folder).
+  Future<void> _quickCapture(BuildContext context, WidgetRef ref) async {
+    final ctrl = TextEditingController();
+    final text = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.fromLTRB(
+          16,
+          16,
+          16,
+          16 + MediaQuery.of(ctx).viewInsets.bottom,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: ctrl,
+              autofocus: true,
+              textInputAction: TextInputAction.done,
+              decoration: const InputDecoration(
+                hintText: 'Capture a thought…',
+                border: OutlineInputBorder(),
+              ),
+              onSubmitted: (v) => Navigator.of(ctx).pop(v),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: () => Navigator.of(ctx).pop(ctrl.text),
+                child: const Text('Save to Inbox'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+    ctrl.dispose();
+    final title = text?.trim() ?? '';
+    if (title.isEmpty) return;
     final repo = ref.read(noteRepositoryStateProvider);
-    if (repo == null) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Notes not ready yet. Please try again.')),
-        );
-      }
-      return;
-    }
-    try {
-      final now = DateTime.now();
-      final id = const Uuid().v4();
-      final note = Note(
-        id: id,
-        title: '',
+    if (repo == null) return;
+    final now = DateTime.now();
+    await repo.saveNote(
+      Note(
+        id: const Uuid().v4(),
+        title: title,
         body: '[]',
         createdAt: now,
         updatedAt: now,
         hlc: Hlc.now().toIso(),
-      );
-      await repo.saveNote(note);
-      if (context.mounted) context.push('/notes/$id');
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to create note: $e')),
-        );
-      }
+      ),
+    );
+    if (context.mounted) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Saved to Inbox')));
     }
   }
 
@@ -799,7 +1034,11 @@ class _QuickActionsCard extends ConsumerWidget {
 }
 
 class _QuickAction extends StatelessWidget {
-  const _QuickAction({required this.icon, required this.label, required this.onTap});
+  const _QuickAction({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
   final IconData icon;
   final String label;
   final VoidCallback onTap;
@@ -807,22 +1046,29 @@ class _QuickAction extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        decoration: BoxDecoration(
-          color: colors.surfaceAlt,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: colors.outline),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 18, color: colors.brand),
-            const SizedBox(width: 6),
-            Text(label, style: TextStyle(fontSize: 13, color: colors.text)),
-          ],
+    return Semantics(
+      button: true,
+      label: label,
+      excludeSemantics: true,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 48),
+          alignment: Alignment.center,
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: colors.surfaceAlt,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: colors.outline),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 18, color: colors.brand),
+              const SizedBox(width: 6),
+              Text(label, style: TextStyle(fontSize: 13, color: colors.text)),
+            ],
+          ),
         ),
       ),
     );
@@ -851,7 +1097,11 @@ class _DashCard extends StatelessWidget {
 }
 
 class _Chip extends StatelessWidget {
-  const _Chip({required this.label, required this.selected, required this.onTap});
+  const _Chip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
   final String label;
   final bool selected;
   final VoidCallback onTap;
@@ -866,11 +1116,14 @@ class _Chip extends StatelessWidget {
           color: selected ? colors.brand : colors.surfaceAlt,
           borderRadius: BorderRadius.circular(8),
         ),
-        child: Text(label,
-            style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: selected ? colors.onBrand : colors.textMuted)),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: selected ? colors.onBrand : colors.textMuted,
+          ),
+        ),
       ),
     );
   }

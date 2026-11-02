@@ -105,10 +105,12 @@ class _HabitFormState extends ConsumerState<HabitForm> {
             // Drag handle
             Center(
               child: Container(
-                width: 36, height: 4,
+                width: 36,
+                height: 4,
                 decoration: BoxDecoration(
-                    color: colors.outline,
-                    borderRadius: BorderRadius.circular(2)),
+                  color: colors.outline,
+                  borderRadius: BorderRadius.circular(2),
+                ),
               ),
             ),
             const SizedBox(height: 16),
@@ -127,7 +129,10 @@ class _HabitFormState extends ConsumerState<HabitForm> {
             const SizedBox(height: 20),
 
             // Icon picker
-            Text('Icon', style: TextStyle(color: colors.textMuted, fontSize: 13)),
+            Text(
+              'Icon',
+              style: TextStyle(color: colors.textMuted, fontSize: 13),
+            ),
             const SizedBox(height: 8),
             SizedBox(
               height: 52,
@@ -140,22 +145,28 @@ class _HabitFormState extends ConsumerState<HabitForm> {
                   return GestureDetector(
                     onTap: () => setState(() => _iconIndex = i),
                     child: Container(
-                      width: 44, height: 44,
+                      width: 44,
+                      height: 44,
                       decoration: BoxDecoration(
                         color: selected
-                            ? AppColors.habitAccents[_accentIndex].withValues(alpha: 0.2)
+                            ? AppColors.habitAccents[_accentIndex].withValues(
+                                alpha: 0.2,
+                              )
                             : colors.surfaceAlt,
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(
-                            color: selected
-                                ? AppColors.habitAccents[_accentIndex]
-                                : colors.outline),
-                      ),
-                      child: Icon(AppIcons.habitIcons[i],
-                          size: 22,
                           color: selected
                               ? AppColors.habitAccents[_accentIndex]
-                              : colors.textMuted),
+                              : colors.outline,
+                        ),
+                      ),
+                      child: Icon(
+                        AppIcons.habitIcons[i],
+                        size: 22,
+                        color: selected
+                            ? AppColors.habitAccents[_accentIndex]
+                            : colors.textMuted,
+                      ),
                     ),
                   );
                 },
@@ -164,7 +175,10 @@ class _HabitFormState extends ConsumerState<HabitForm> {
             const SizedBox(height: 20),
 
             // Accent colour
-            Text('Colour', style: TextStyle(color: colors.textMuted, fontSize: 13)),
+            Text(
+              'Colour',
+              style: TextStyle(color: colors.textMuted, fontSize: 13),
+            ),
             const SizedBox(height: 8),
             Row(
               children: List.generate(
@@ -173,7 +187,8 @@ class _HabitFormState extends ConsumerState<HabitForm> {
                   onTap: () => setState(() => _accentIndex = i),
                   child: Container(
                     margin: const EdgeInsets.only(right: 10),
-                    width: 30, height: 30,
+                    width: 30,
+                    height: 30,
                     decoration: BoxDecoration(
                       color: AppColors.habitAccents[i],
                       shape: BoxShape.circle,
@@ -188,7 +203,10 @@ class _HabitFormState extends ConsumerState<HabitForm> {
             const SizedBox(height: 20),
 
             // Schedule — weekday toggles
-            Text('Schedule', style: TextStyle(color: colors.textMuted, fontSize: 13)),
+            Text(
+              'Schedule',
+              style: TextStyle(color: colors.textMuted, fontSize: 13),
+            ),
             const SizedBox(height: 8),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -203,23 +221,31 @@ class _HabitFormState extends ConsumerState<HabitForm> {
                         : _schedule.value | bit;
                     setState(() {
                       _schedule = ScheduleMask(newMask.clamp(0, 127));
-                      _restTokens = _restTokens.clamp(0, _schedule.maxRestTokens);
+                      _restTokens = _restTokens.clamp(
+                        0,
+                        _schedule.maxRestTokens,
+                      );
                     });
                   },
                   child: Container(
-                    width: 36, height: 36,
+                    width: 36,
+                    height: 36,
                     decoration: BoxDecoration(
                       color: on ? colors.brand : colors.surfaceAlt,
                       shape: BoxShape.circle,
                       border: Border.all(
-                          color: on ? colors.brand : colors.outline),
+                        color: on ? colors.brand : colors.outline,
+                      ),
                     ),
                     child: Center(
-                      child: Text(labels[i],
-                          style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: on ? colors.onBrand : colors.textMuted)),
+                      child: Text(
+                        labels[i],
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: on ? colors.onBrand : colors.textMuted,
+                        ),
+                      ),
                     ),
                   ),
                 );
@@ -232,8 +258,10 @@ class _HabitFormState extends ConsumerState<HabitForm> {
               Row(
                 children: [
                   Expanded(
-                    child: Text('Rest tokens / week',
-                        style: TextStyle(color: colors.textMuted, fontSize: 13)),
+                    child: Text(
+                      'Rest tokens / week',
+                      style: TextStyle(color: colors.textMuted, fontSize: 13),
+                    ),
                   ),
                   DropdownButton<int>(
                     value: _restTokens.clamp(0, _maxRestTokens),
@@ -254,9 +282,17 @@ class _HabitFormState extends ConsumerState<HabitForm> {
               child: ElevatedButton(
                 onPressed: _saving ? null : _save,
                 child: _saving
-                    ? const SizedBox(height: 20, width: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                    : Text(widget.existing == null ? 'Add habit' : 'Save changes'),
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : Text(
+                        widget.existing == null ? 'Add habit' : 'Save changes',
+                      ),
               ),
             ),
 
@@ -267,8 +303,10 @@ class _HabitFormState extends ConsumerState<HabitForm> {
                 width: double.infinity,
                 child: OutlinedButton(
                   onPressed: () async {
-                    await ref.read(habitUseCasesProvider).archiveHabit(widget.existing!.id);
-                    if (mounted) Navigator.pop(context);
+                    await ref
+                        .read(habitUseCasesProvider)
+                        .archiveHabit(widget.existing!.id);
+                    if (context.mounted) Navigator.pop(context);
                   },
                   child: const Text('Archive habit'),
                 ),

@@ -20,12 +20,15 @@ class _NoteRepositoryNotifier extends Notifier<NoteRepository?> {
 
 final noteRepositoryStateProvider =
     NotifierProvider<_NoteRepositoryNotifier, NoteRepository?>(
-        _NoteRepositoryNotifier.new);
+      _NoteRepositoryNotifier.new,
+    );
 
 final noteRepositoryProvider = Provider<NoteRepository>((ref) {
   final repo = ref.watch(noteRepositoryStateProvider);
   if (repo == null) {
-    throw StateError('noteRepositoryProvider: SessionScope has not set the repository yet.');
+    throw StateError(
+      'noteRepositoryProvider: SessionScope has not set the repository yet.',
+    );
   }
   return repo;
 });
@@ -41,12 +44,15 @@ class _AttachmentRepositoryNotifier extends Notifier<AttachmentRepository?> {
 
 final attachmentRepositoryStateProvider =
     NotifierProvider<_AttachmentRepositoryNotifier, AttachmentRepository?>(
-        _AttachmentRepositoryNotifier.new);
+      _AttachmentRepositoryNotifier.new,
+    );
 
 final attachmentRepositoryProvider = Provider<AttachmentRepository>((ref) {
   final repo = ref.watch(attachmentRepositoryStateProvider);
   if (repo == null) {
-    throw StateError('attachmentRepositoryProvider: SessionScope has not set the repository yet.');
+    throw StateError(
+      'attachmentRepositoryProvider: SessionScope has not set the repository yet.',
+    );
   }
   return repo;
 });
@@ -62,18 +68,25 @@ class _FtsRepositoryNotifier extends Notifier<FtsRepository?> {
 
 final ftsRepositoryStateProvider =
     NotifierProvider<_FtsRepositoryNotifier, FtsRepository?>(
-        _FtsRepositoryNotifier.new);
+      _FtsRepositoryNotifier.new,
+    );
 
 // ── Notes in a folder ─────────────────────────────────────────────────────────
 
-final notesInFolderProvider =
-    StreamProvider.family<List<Note>, String?>((ref, folderId) {
+final notesInFolderProvider = StreamProvider.family<List<Note>, String?>((
+  ref,
+  folderId,
+) {
   final repo = ref.watch(noteRepositoryStateProvider);
   if (repo == null) return const Stream.empty();
-  return repo.watchFolder(folderId).handleError(
-      (_) => <Note>[],
-      test: (e) => e.toString().contains('SqliteException') ||
-          e.toString().contains('database_closed'));
+  return repo
+      .watchFolder(folderId)
+      .handleError(
+        (_) => <Note>[],
+        test: (e) =>
+            e.toString().contains('SqliteException') ||
+            e.toString().contains('database_closed'),
+      );
 });
 
 // ── Single note ───────────────────────────────────────────────────────────────
@@ -84,9 +97,14 @@ final noteProvider = StreamProvider.family<Note?, String>((ref, id) {
   // Handle SqliteException gracefully — repo may be cleared mid-stream
   // when SessionScope disposes (lock/sign-out). Return null instead of
   // letting the exception escape to the root zone.
-  return repo.watchNote(id).handleError((e) => null,
-      test: (e) => e.toString().contains('SqliteException') ||
-          e.toString().contains('database_closed'));
+  return repo
+      .watchNote(id)
+      .handleError(
+        (e) => null,
+        test: (e) =>
+            e.toString().contains('SqliteException') ||
+            e.toString().contains('database_closed'),
+      );
 });
 
 // ── Folder tree ───────────────────────────────────────────────────────────────
@@ -95,9 +113,11 @@ final foldersProvider = StreamProvider<List<Folder>>((ref) {
   final repo = ref.watch(noteRepositoryStateProvider);
   if (repo == null) return const Stream.empty();
   return repo.watchFolders().handleError(
-      (_) => <Folder>[],
-      test: (e) => e.toString().contains('SqliteException') ||
-          e.toString().contains('database_closed'));
+    (_) => <Folder>[],
+    test: (e) =>
+        e.toString().contains('SqliteException') ||
+        e.toString().contains('database_closed'),
+  );
 });
 
 // ── Tags ──────────────────────────────────────────────────────────────────────
@@ -106,50 +126,71 @@ final allTagsProvider = StreamProvider<List<String>>((ref) {
   final repo = ref.watch(noteRepositoryStateProvider);
   if (repo == null) return const Stream.empty();
   return repo.watchTags().handleError(
-      (_) => <String>[],
-      test: (e) => e.toString().contains('SqliteException') ||
-          e.toString().contains('database_closed'));
+    (_) => <String>[],
+    test: (e) =>
+        e.toString().contains('SqliteException') ||
+        e.toString().contains('database_closed'),
+  );
 });
 
-final notesByTagProvider =
-    StreamProvider.family<List<Note>, String>((ref, tag) {
+final notesByTagProvider = StreamProvider.family<List<Note>, String>((
+  ref,
+  tag,
+) {
   final repo = ref.watch(noteRepositoryStateProvider);
   if (repo == null) return const Stream.empty();
-  return repo.watchNotesByTag(tag).handleError(
-      (_) => <Note>[],
-      test: (e) => e.toString().contains('SqliteException') ||
-          e.toString().contains('database_closed'));
+  return repo
+      .watchNotesByTag(tag)
+      .handleError(
+        (_) => <Note>[],
+        test: (e) =>
+            e.toString().contains('SqliteException') ||
+            e.toString().contains('database_closed'),
+      );
 });
 
 // ── Backlinks ─────────────────────────────────────────────────────────────────
 
-final backlinksProvider =
-    StreamProvider.family<List<Note>, String>((ref, noteId) {
+final backlinksProvider = StreamProvider.family<List<Note>, String>((
+  ref,
+  noteId,
+) {
   final repo = ref.watch(noteRepositoryStateProvider);
   if (repo == null) return const Stream.empty();
-  return repo.watchBacklinks(noteId).handleError(
-      (_) => <Note>[],
-      test: (e) => e.toString().contains('SqliteException') ||
-          e.toString().contains('database_closed'));
+  return repo
+      .watchBacklinks(noteId)
+      .handleError(
+        (_) => <Note>[],
+        test: (e) =>
+            e.toString().contains('SqliteException') ||
+            e.toString().contains('database_closed'),
+      );
 });
 
-final outgoingLinksProvider =
-    StreamProvider.family<List<Note>, String>((ref, noteId) {
+final outgoingLinksProvider = StreamProvider.family<List<Note>, String>((
+  ref,
+  noteId,
+) {
   final repo = ref.watch(noteRepositoryStateProvider);
   if (repo == null) return const Stream.empty();
-  return repo.watchOutgoingLinks(noteId).handleError(
-      (_) => <Note>[],
-      test: (e) => e.toString().contains('SqliteException') ||
-          e.toString().contains('database_closed'));
+  return repo
+      .watchOutgoingLinks(noteId)
+      .handleError(
+        (_) => <Note>[],
+        test: (e) =>
+            e.toString().contains('SqliteException') ||
+            e.toString().contains('database_closed'),
+      );
 });
 
 // ── Attachments for a note ────────────────────────────────────────────────────
 
-final noteAttachmentsProvider =
-    StreamProvider.family<List<Attachment>, String>((ref, noteId) {
-  final repo = ref.watch(attachmentRepositoryProvider);
-  return repo.watchForNote(noteId);
-});
+final noteAttachmentsProvider = StreamProvider.family<List<Attachment>, String>(
+  (ref, noteId) {
+    final repo = ref.watch(attachmentRepositoryProvider);
+    return repo.watchForNote(noteId);
+  },
+);
 
 // ── Active folder filter (UI state) ──────────────────────────────────────────
 
@@ -159,8 +200,9 @@ class _ActiveFolderNotifier extends Notifier<String?> {
   void set(String? id) => state = id;
 }
 
-final activeFolderIdProvider =
-    NotifierProvider<_ActiveFolderNotifier, String?>(_ActiveFolderNotifier.new);
+final activeFolderIdProvider = NotifierProvider<_ActiveFolderNotifier, String?>(
+  _ActiveFolderNotifier.new,
+);
 
 // ── Active tag filter (UI state) ─────────────────────────────────────────────
 
@@ -170,8 +212,9 @@ class _ActiveTagNotifier extends Notifier<String?> {
   void set(String? tag) => state = tag;
 }
 
-final activeTagFilterProvider =
-    NotifierProvider<_ActiveTagNotifier, String?>(_ActiveTagNotifier.new);
+final activeTagFilterProvider = NotifierProvider<_ActiveTagNotifier, String?>(
+  _ActiveTagNotifier.new,
+);
 
 // ── Folder sort mode (UI state) ───────────────────────────────────────────────
 
@@ -182,7 +225,9 @@ class _FolderSortNotifier extends Notifier<FolderSortMode> {
 }
 
 final folderSortModeProvider =
-    NotifierProvider<_FolderSortNotifier, FolderSortMode>(_FolderSortNotifier.new);
+    NotifierProvider<_FolderSortNotifier, FolderSortMode>(
+      _FolderSortNotifier.new,
+    );
 
 // ── Expanded folder IDs (UI state) ────────────────────────────────────────────
 
@@ -211,4 +256,5 @@ class _ExpandedFoldersNotifier extends Notifier<Set<String>> {
 
 final expandedFolderIdsProvider =
     NotifierProvider<_ExpandedFoldersNotifier, Set<String>>(
-        _ExpandedFoldersNotifier.new);
+      _ExpandedFoldersNotifier.new,
+    );

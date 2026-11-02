@@ -15,8 +15,11 @@ int _bi(Color c) => c.toARGB32() & 0xFF;
 double _relativeLuminance(Color c) {
   double linearise(int v) {
     final s = v / 255.0;
-    return s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) * ((s + 0.055) / 1.055);
+    return s <= 0.04045
+        ? s / 12.92
+        : ((s + 0.055) / 1.055) * ((s + 0.055) / 1.055);
   }
+
   return 0.2126 * linearise(_ri(c)) +
       0.7152 * linearise(_gi(c)) +
       0.0722 * linearise(_bi(c));

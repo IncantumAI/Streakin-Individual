@@ -1,13 +1,13 @@
 // lib/features/habits/presentation/habits_screen.dart
 // Tab container for Today / Week / Month views.
 
+import 'package:streakin/core/design/icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:streakin/core/design/tokens.dart';
 import 'package:streakin/features/habits/presentation/today_view.dart';
 import 'package:streakin/features/habits/presentation/week_view.dart';
-import 'package:streakin/features/habits/presentation/month_view.dart';
 import 'package:streakin/features/habits/presentation/habit_form.dart';
 
 class HabitsScreen extends ConsumerStatefulWidget {
@@ -23,7 +23,7 @@ class _HabitsScreenState extends ConsumerState<HabitsScreen>
   @override
   void initState() {
     super.initState();
-    _tab = TabController(length: 3, vsync: this);
+    _tab = TabController(length: 2, vsync: this);
   }
 
   @override
@@ -47,20 +47,19 @@ class _HabitsScreenState extends ConsumerState<HabitsScreen>
           tabs: const [
             Tab(text: 'Today'),
             Tab(text: 'Week'),
-            Tab(text: 'Month'),
           ],
         ),
       ),
       body: TabBarView(
         controller: _tab,
-        children: const [TodayView(), WeekView(), MonthView()],
+        children: const [TodayView(), WeekView()],
       ),
       floatingActionButton: FloatingActionButton(
         backgroundColor: colors.brand,
         foregroundColor: colors.onBrand,
         onPressed: () => HabitForm.show(context),
         tooltip: 'Add habit',
-        child: const Icon(Icons.add),
+        child: const Icon(AppIcons.add),
       ),
     );
   }

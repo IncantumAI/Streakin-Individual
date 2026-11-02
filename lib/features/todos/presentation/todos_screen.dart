@@ -1,12 +1,17 @@
 // lib/features/todos/presentation/todos_screen.dart
 // Spec §4.3: To-do list with Today / Upcoming / Anytime / Done views.
 
+import 'package:streakin/core/design/icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import 'package:streakin/core/design/tokens.dart';
 import 'package:streakin/core/time/local_date.dart';
+import 'package:streakin/features/settings/application/settings_providers.dart'
+    show countTodosForLockInProvider;
+import 'package:streakin/features/notes/notes_module.dart'
+    show noteSourceRemovedProvider;
 import 'package:streakin/features/todos/application/todo_providers.dart';
 import 'package:streakin/features/todos/domain/todo.dart';
 
@@ -45,11 +50,14 @@ class _TodosScreenState extends ConsumerState<TodosScreen>
       appBar: AppBar(
         backgroundColor: colors.bg,
         surfaceTintColor: Colors.transparent,
-        title: Text('Tasks',
-            style: TextStyle(
-                color: colors.text,
-                fontSize: 20,
-                fontWeight: FontWeight.w600)),
+        title: Text(
+          'Tasks',
+          style: TextStyle(
+            color: colors.text,
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
         bottom: TabBar(
           controller: _tab,
           labelColor: colors.brand,
@@ -73,13 +81,13 @@ class _TodosScreenState extends ConsumerState<TodosScreen>
         foregroundColor: colors.onBrand,
         onPressed: () => _openAddSheet(context),
         tooltip: 'Add task',
-        child: const Icon(Icons.add),
+        child: const Icon(AppIcons.add),
       ),
     );
   }
 
   void _openAddSheet(BuildContext context) {
-    showModalBottomSheet(
+    showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
@@ -101,7 +109,7 @@ class _TodayView extends ConsumerWidget {
       error: (e, _) => _ErrorState(error: e),
       data: (todos) => todos.isEmpty
           ? const _EmptyState(
-              icon: Icons.check_circle_outline,
+              icon: AppIcons.checkCircleOutline,
               message: 'Nothing due today — enjoy your day!',
             )
           : _TodoList(todos: todos, showDate: false),
@@ -122,7 +130,7 @@ class _UpcomingView extends ConsumerWidget {
       error: (e, _) => _ErrorState(error: e),
       data: (todos) => todos.isEmpty
           ? const _EmptyState(
-              icon: Icons.event_outlined,
+              icon: AppIcons.eventOutlined,
               message: 'No upcoming tasks.',
             )
           : _TodoList(todos: todos, showDate: true),
@@ -143,7 +151,7 @@ class _AnytimeView extends ConsumerWidget {
       error: (e, _) => _ErrorState(error: e),
       data: (todos) => todos.isEmpty
           ? const _EmptyState(
-              icon: Icons.inbox_outlined,
+              icon: AppIcons.inboxOutlined,
               message: 'No tasks without a due date.',
             )
           : _TodoList(todos: todos, showDate: false),
@@ -164,7 +172,7 @@ class _DoneView extends ConsumerWidget {
       error: (e, _) => _ErrorState(error: e),
       data: (todos) => todos.isEmpty
           ? const _EmptyState(
-              icon: Icons.done_all,
+              icon: AppIcons.doneAll,
               message: 'No completed tasks yet.',
             )
           : _TodoList(todos: todos, showDate: true, isDoneList: true),
@@ -190,11 +198,8 @@ class _TodoList extends ConsumerWidget {
     return ListView.builder(
       padding: const EdgeInsets.symmetric(vertical: 8),
       itemCount: todos.length,
-      itemBuilder: (context, i) => _TodoTile(
-        todo: todos[i],
-        showDate: showDate,
-        isDoneList: isDoneList,
-      ),
+      itemBuilder: (context, i) =>
+          _TodoTile(todo: todos[i], showDate: showDate, isDoneList: isDoneList),
     );
   }
 }
@@ -224,7 +229,7 @@ class _TodoTile extends ConsumerWidget {
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: 20),
         color: colors.danger,
-        child: const Icon(Icons.delete_outline, color: Colors.white),
+        child: const Icon(AppIcons.delete, color: Colors.white),
       ),
       onDismissed: (_) async {
         await useCases.deleteTodo(todo.id);
@@ -237,75 +242,98 @@ class _TodoTile extends ConsumerWidget {
                 label: 'Undo',
                 onPressed: () async {
                   // Restore by saving the original todo without deletedAt.
-                  await ref.read(todoRepositoryProvider).save(
-                        todo.copyWith(deletedAt: () => null),
-                      );
+                  await ref
+                      .read(todoRepositoryProvider)
+                      .save(todo.copyWith(deletedAt: () => null));
                 },
               ),
             ),
           );
         }
       },
-      child: ListTile(
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-        leading: Semantics(
-          label: todo.isDone ? 'Mark task pending' : 'Mark task done',
-          child: GestureDetector(
-            onTap: () async {
-              if (todo.isDone) {
-                await useCases.uncompleteTodo(todo.id);
-              } else {
-                await useCases.completeTodo(todo.id);
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: const Text('Task completed'),
-                      duration: const Duration(seconds: 10),
-                      action: SnackBarAction(
-                        label: 'Undo',
-                        onPressed: () => useCases.uncompleteTodo(todo.id),
+      child: Semantics(
+        container: true,
+        label: _a11ySummary(),
+        child: ListTile(
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 4,
+          ),
+          leading: Semantics(
+            label: todo.isDone ? 'Mark task pending' : 'Mark task done',
+            child: GestureDetector(
+              onTap: () async {
+                if (todo.isDone) {
+                  await useCases.uncompleteTodo(todo.id);
+                } else {
+                  await useCases.completeTodo(todo.id);
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: const Text('Task completed'),
+                        duration: const Duration(seconds: 10),
+                        action: SnackBarAction(
+                          label: 'Undo',
+                          onPressed: () => useCases.uncompleteTodo(todo.id),
+                        ),
                       ),
-                    ),
-                  );
+                    );
+                  }
                 }
-              }
-            },
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              width: 24,
-              height: 24,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: todo.isDone ? colors.success : colors.outline,
-                  width: 2,
+              },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                width: 24,
+                height: 24,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: todo.isDone ? colors.success : colors.outline,
+                    width: 2,
+                  ),
+                  color: todo.isDone ? colors.success : Colors.transparent,
                 ),
-                color: todo.isDone ? colors.success : Colors.transparent,
+                child: todo.isDone
+                    ? const Icon(AppIcons.check, size: 14, color: Colors.white)
+                    : null,
               ),
-              child: todo.isDone
-                  ? const Icon(Icons.check, size: 14, color: Colors.white)
-                  : null,
             ),
           ),
-        ),
-        title: Text(
-          todo.title,
-          style: TextStyle(
-            color: todo.isDone ? colors.textMuted : colors.text,
-            decoration:
-                todo.isDone ? TextDecoration.lineThrough : null,
-            fontSize: 15,
+          title: Text(
+            todo.title,
+            style: TextStyle(
+              color: todo.isDone ? colors.textMuted : colors.text,
+              decoration: todo.isDone ? TextDecoration.lineThrough : null,
+              fontSize: 15,
+            ),
           ),
+          subtitle: _buildSubtitle(context, ref, colors),
+          trailing: _buildPriorityDot(colors),
+          onTap: () => _openEditSheet(context, ref),
         ),
-        subtitle: _buildSubtitle(context, colors),
-        trailing: _buildPriorityDot(colors),
-        onTap: () => _openEditSheet(context, ref),
       ),
     );
   }
 
-  Widget? _buildSubtitle(BuildContext context, AppColorTokens colors) {
+  String _a11ySummary() {
+    final b = StringBuffer(todo.title)
+      ..write(', ')
+      ..write(todo.isDone ? 'done' : 'pending');
+    if (todo.priority != TodoPriority.none) {
+      b.write(', ${todo.priority.name} priority');
+    }
+    if (todo.dueDate != null) {
+      b.write(', due ${todo.dueDate}');
+      if (todo.dueTime != null) b.write(' at ${todo.dueTime}');
+    }
+    return b.toString();
+  }
+
+  Widget? _buildSubtitle(
+    BuildContext context,
+    WidgetRef ref,
+    AppColorTokens colors,
+  ) {
     final parts = <String>[];
 
     if (showDate && todo.dueDate != null) {
@@ -327,11 +355,24 @@ class _TodoTile extends ConsumerWidget {
       parts.add(todo.dueTime!);
     }
 
-    if (todo.hasSourceNote) parts.add('From note');
+    if (todo.hasSourceNote) {
+      final removed =
+          ref
+              .watch(
+                noteSourceRemovedProvider((
+                  noteId: todo.sourceNoteId!,
+                  blockId: todo.sourceBlockId!,
+                )),
+              )
+              .value ??
+          false;
+      parts.add(removed ? 'Source removed' : 'From note');
+    }
 
     if (parts.isEmpty) return null;
 
-    final isOverdue = !todo.isDone &&
+    final isOverdue =
+        !todo.isDone &&
         todo.dueDate != null &&
         LocalDate.parse(todo.dueDate!) < LocalDate.today();
 
@@ -362,7 +403,7 @@ class _TodoTile extends ConsumerWidget {
   }
 
   void _openEditSheet(BuildContext context, WidgetRef ref) {
-    showModalBottomSheet(
+    showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
@@ -374,8 +415,11 @@ class _TodoTile extends ConsumerWidget {
 // ── Task form sheet (Add / Edit) ──────────────────────────────────────────
 
 class _TaskFormSheet extends ConsumerStatefulWidget {
-  const _TaskFormSheet({this.existing});
+  const _TaskFormSheet({this.existing, this.initialDueDate});
   final Todo? existing;
+
+  /// Pre-fills the due date for new tasks (e.g. created from the calendar).
+  final LocalDate? initialDueDate;
 
   @override
   ConsumerState<_TaskFormSheet> createState() => _TaskFormSheetState();
@@ -399,10 +443,14 @@ class _TaskFormSheetState extends ConsumerState<_TaskFormSheet> {
       if (t.dueTime != null) {
         final parts = t.dueTime!.split(':');
         _dueTime = TimeOfDay(
-            hour: int.parse(parts[0]), minute: int.parse(parts[1]));
+          hour: int.parse(parts[0]),
+          minute: int.parse(parts[1]),
+        );
       }
       _priority = t.priority;
       _countsForLockin = t.countsForLockin;
+    } else {
+      _dueDate = widget.initialDueDate;
     }
   }
 
@@ -435,14 +483,15 @@ class _TaskFormSheetState extends ConsumerState<_TaskFormSheet> {
               Text(
                 isEdit ? 'Edit task' : 'New task',
                 style: TextStyle(
-                    color: colors.text,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600),
+                  color: colors.text,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
               const Spacer(),
               if (isEdit)
                 IconButton(
-                  icon: Icon(Icons.delete_outline, color: colors.danger),
+                  icon: Icon(AppIcons.delete, color: colors.danger),
                   tooltip: 'Delete task',
                   onPressed: _delete,
                 ),
@@ -460,18 +509,23 @@ class _TaskFormSheetState extends ConsumerState<_TaskFormSheet> {
               hintText: 'Task title',
               hintStyle: TextStyle(color: colors.textMuted),
               border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: colors.outline)),
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: colors.outline),
+              ),
               enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: colors.outline)),
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: colors.outline),
+              ),
               focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: colors.brand, width: 2)),
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: colors.brand, width: 2),
+              ),
               filled: true,
               fillColor: colors.surfaceAlt,
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: 14,
+              ),
             ),
           ),
           const SizedBox(height: 16),
@@ -481,10 +535,8 @@ class _TaskFormSheetState extends ConsumerState<_TaskFormSheet> {
             children: [
               Expanded(
                 child: _FieldButton(
-                  icon: Icons.calendar_today_outlined,
-                  label: _dueDate != null
-                      ? _formatDate(_dueDate!)
-                      : 'Due date',
+                  icon: AppIcons.calendarTodayOutlined,
+                  label: _dueDate != null ? _formatDate(_dueDate!) : 'Due date',
                   hasValue: _dueDate != null,
                   onTap: _pickDate,
                   onClear: () => setState(() => _dueDate = null),
@@ -493,10 +545,8 @@ class _TaskFormSheetState extends ConsumerState<_TaskFormSheet> {
               const SizedBox(width: 8),
               Expanded(
                 child: _FieldButton(
-                  icon: Icons.schedule_outlined,
-                  label: _dueTime != null
-                      ? _dueTime!.format(context)
-                      : 'Time',
+                  icon: AppIcons.scheduleOutlined,
+                  label: _dueTime != null ? _dueTime!.format(context) : 'Time',
                   hasValue: _dueTime != null,
                   onTap: _pickTime,
                   onClear: () => setState(() => _dueTime = null),
@@ -509,9 +559,10 @@ class _TaskFormSheetState extends ConsumerState<_TaskFormSheet> {
           // ── Priority row ──────────────────────────────────────────────────
           Row(
             children: [
-              Text('Priority',
-                  style:
-                      TextStyle(color: colors.textMuted, fontSize: 13)),
+              Text(
+                'Priority',
+                style: TextStyle(color: colors.textMuted, fontSize: 13),
+              ),
               const SizedBox(width: 12),
               ...TodoPriority.values.map(
                 (p) => Padding(
@@ -527,20 +578,23 @@ class _TaskFormSheetState extends ConsumerState<_TaskFormSheet> {
           ),
           const SizedBox(height: 12),
 
-          // ── Counts for lock-in toggle ─────────────────────────────────────
-          Row(
-            children: [
-              Expanded(
-                child: Text('Counts for lock-in',
-                    style: TextStyle(color: colors.text, fontSize: 14)),
-              ),
-              Switch.adaptive(
-                value: _countsForLockin,
-                activeColor: colors.brand,
-                onChanged: (v) => setState(() => _countsForLockin = v),
-              ),
-            ],
-          ),
+          // ── Counts for lock-in toggle (only when the global setting is on) ─
+          if (ref.watch(countTodosForLockInProvider))
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Counts for lock-in',
+                    style: TextStyle(color: colors.text, fontSize: 14),
+                  ),
+                ),
+                Switch.adaptive(
+                  value: _countsForLockin,
+                  activeThumbColor: colors.brand,
+                  onChanged: (v) => setState(() => _countsForLockin = v),
+                ),
+              ],
+            ),
           const SizedBox(height: 20),
 
           // ── Save button ───────────────────────────────────────────────────
@@ -552,12 +606,17 @@ class _TaskFormSheetState extends ConsumerState<_TaskFormSheet> {
                 backgroundColor: colors.brand,
                 foregroundColor: colors.onBrand,
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
               onPressed: _saving ? null : _save,
-              child: Text(isEdit ? 'Save changes' : 'Add task',
-                  style: const TextStyle(
-                      fontSize: 15, fontWeight: FontWeight.w600)),
+              child: Text(
+                isEdit ? 'Save changes' : 'Add task',
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
           ),
         ],
@@ -586,8 +645,9 @@ class _TaskFormSheetState extends ConsumerState<_TaskFormSheet> {
       lastDate: now.add(const Duration(days: 365 * 5)),
     );
     if (picked != null) {
-      setState(() =>
-          _dueDate = LocalDate(picked.year, picked.month, picked.day));
+      setState(
+        () => _dueDate = LocalDate(picked.year, picked.month, picked.day),
+      );
     }
   }
 
@@ -602,7 +662,7 @@ class _TaskFormSheetState extends ConsumerState<_TaskFormSheet> {
   String? get _dueDateIso => _dueDate?.toIso();
   String? get _dueTimeStr => _dueTime != null
       ? '${_dueTime!.hour.toString().padLeft(2, '0')}:'
-          '${_dueTime!.minute.toString().padLeft(2, '0')}'
+            '${_dueTime!.minute.toString().padLeft(2, '0')}'
       : null;
 
   Future<void> _save() async {
@@ -672,13 +732,17 @@ class _PriorityChip extends StatelessWidget {
         decoration: BoxDecoration(
           color: selected ? color.withAlpha(30) : Colors.transparent,
           border: Border.all(
-              color: selected ? color : colors.outline, width: 1.5),
+            color: selected ? color : colors.outline,
+            width: 1.5,
+          ),
           borderRadius: BorderRadius.circular(20),
         ),
         child: Text(
           label,
           style: TextStyle(
-              color: selected ? color : colors.textMuted, fontSize: 12),
+            color: selected ? color : colors.textMuted,
+            fontSize: 12,
+          ),
         ),
       ),
     );
@@ -722,15 +786,16 @@ class _FieldButton extends StatelessWidget {
               child: Text(
                 label,
                 style: TextStyle(
-                    color: hasValue ? colors.text : colors.textMuted,
-                    fontSize: 13),
+                  color: hasValue ? colors.text : colors.textMuted,
+                  fontSize: 13,
+                ),
                 overflow: TextOverflow.ellipsis,
               ),
             ),
             if (hasValue)
               GestureDetector(
                 onTap: onClear,
-                child: Icon(Icons.close, size: 14, color: colors.textMuted),
+                child: Icon(AppIcons.close, size: 14, color: colors.textMuted),
               ),
           ],
         ),
@@ -755,8 +820,7 @@ class _ErrorState extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     return Center(
-      child: Text('Error: $error',
-          style: TextStyle(color: colors.danger)),
+      child: Text('Error: $error', style: TextStyle(color: colors.danger)),
     );
   }
 }
@@ -775,9 +839,11 @@ class _EmptyState extends StatelessWidget {
         children: [
           Icon(icon, size: 64, color: colors.textMuted),
           const SizedBox(height: 16),
-          Text(message,
-              textAlign: TextAlign.center,
-              style: TextStyle(color: colors.textMuted, fontSize: 15)),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: TextStyle(color: colors.textMuted, fontSize: 15),
+          ),
         ],
       ),
     );
@@ -786,11 +852,16 @@ class _EmptyState extends StatelessWidget {
 
 /// Public helper — shows the full Add Task sheet from anywhere in the app.
 /// Used by the Dashboard quick action.
-void showAddTaskSheet(BuildContext context, {Todo? existing}) {
-  showModalBottomSheet(
+void showAddTaskSheet(
+  BuildContext context, {
+  Todo? existing,
+  LocalDate? initialDueDate,
+}) {
+  showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
-    builder: (_) => _TaskFormSheet(existing: existing),
+    builder: (_) =>
+        _TaskFormSheet(existing: existing, initialDueDate: initialDueDate),
   );
 }

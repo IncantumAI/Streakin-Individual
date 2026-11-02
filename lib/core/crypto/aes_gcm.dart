@@ -18,7 +18,8 @@ import 'package:streakin/core/crypto/secure_bytes.dart';
 class AesGcm256 {
   AesGcm256._();
 
-  static final _algo = DartAesGcm.with256bits(); // pure-Dart, safe in any isolate
+  static final _algo =
+      DartAesGcm.with256bits(); // pure-Dart, safe in any isolate
 
   /// Encrypt [plaintext] with [keyBytes] (must be 32 bytes).
   /// Returns nonce+ciphertext concatenated.
@@ -40,11 +41,7 @@ class AesGcm256 {
     final result = Uint8List(12 + box.cipherText.length + box.mac.bytes.length);
     result.setRange(0, 12, nonce);
     result.setRange(12, 12 + box.cipherText.length, box.cipherText);
-    result.setRange(
-      12 + box.cipherText.length,
-      result.length,
-      box.mac.bytes,
-    );
+    result.setRange(12 + box.cipherText.length, result.length, box.mac.bytes);
     return result;
   }
 
@@ -74,7 +71,9 @@ class AesGcm256 {
       );
       return Uint8List.fromList(plaintext);
     } on SecretBoxAuthenticationError catch (_) {
-      throw const CryptoFailure('AEAD authentication failed — wrong key or tampered data');
+      throw const CryptoFailure(
+        'AEAD authentication failed — wrong key or tampered data',
+      );
     } catch (e) {
       throw CryptoFailure('Decryption error: $e');
     }

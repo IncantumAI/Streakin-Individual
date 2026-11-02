@@ -38,18 +38,14 @@ class _LeftPaneWidthNotifier extends Notifier<double> {
   }
 }
 
-final leftPaneWidthProvider =
-    NotifierProvider<_LeftPaneWidthNotifier, double>(
-        _LeftPaneWidthNotifier.new);
+final leftPaneWidthProvider = NotifierProvider<_LeftPaneWidthNotifier, double>(
+  _LeftPaneWidthNotifier.new,
+);
 
 // ── Notes layout widget ───────────────────────────────────────────────────────
 
 class NotesLayout extends ConsumerWidget {
-  const NotesLayout({
-    required this.noteList,
-    this.editor,
-    super.key,
-  });
+  const NotesLayout({required this.noteList, this.editor, super.key});
 
   final Widget noteList;
   final Widget? editor;
@@ -120,19 +116,13 @@ class _DesktopLayoutState extends ConsumerState<_DesktopLayout> {
         // Pane 2: Note list
         Expanded(
           flex: widget.editor != null ? 1 : 2,
-          child: Container(
-            color: colors.surface,
-            child: widget.noteList,
-          ),
+          child: Container(color: colors.surface, child: widget.noteList),
         ),
 
         // Pane 3: Editor (only when a note is open on desktop)
         if (widget.editor != null) ...[
           VerticalDivider(width: 1, color: colors.outline),
-          Expanded(
-            flex: 2,
-            child: widget.editor!,
-          ),
+          Expanded(flex: 2, child: widget.editor!),
         ],
       ],
     );

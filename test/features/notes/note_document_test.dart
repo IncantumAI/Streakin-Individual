@@ -15,7 +15,12 @@ void main() {
       final doc = NoteDocument([
         const NoteBlock(id: 'b1', kind: NoteBlockKind.heading1, text: 'Hello'),
         const NoteBlock(id: 'b2', kind: NoteBlockKind.paragraph, text: 'World'),
-        const NoteBlock(id: 'b3', kind: NoteBlockKind.task, text: 'Do it', isComplete: true),
+        const NoteBlock(
+          id: 'b3',
+          kind: NoteBlockKind.task,
+          text: 'Do it',
+          isComplete: true,
+        ),
         const NoteBlock(id: 'b4', kind: NoteBlockKind.divider),
       ]);
       final json = doc.toJson();
@@ -47,7 +52,11 @@ void main() {
     test('Includes text from all text blocks', () {
       final doc = NoteDocument([
         const NoteBlock(id: 'b1', kind: NoteBlockKind.heading1, text: 'Title'),
-        const NoteBlock(id: 'b2', kind: NoteBlockKind.paragraph, text: 'Body text'),
+        const NoteBlock(
+          id: 'b2',
+          kind: NoteBlockKind.paragraph,
+          text: 'Body text',
+        ),
         const NoteBlock(id: 'b3', kind: NoteBlockKind.divider),
       ]);
       final pt = doc.toPlainText();
@@ -67,27 +76,39 @@ void main() {
   group('NoteDocument — extractLinks', () {
     test('Extracts [[wiki link]] targets', () {
       final doc = NoteDocument([
-        const NoteBlock(id: 'b1', kind: NoteBlockKind.paragraph,
-            text: 'See [[Project Alpha]] and [[Daily Review]]'),
+        const NoteBlock(
+          id: 'b1',
+          kind: NoteBlockKind.paragraph,
+          text: 'See [[Project Alpha]] and [[Daily Review]]',
+        ),
       ]);
       final links = doc.extractLinks();
       expect(links.length, 2);
-      expect(links.map((l) => l.targetTitle).toList(),
-          containsAll(['Project Alpha', 'Daily Review']));
+      expect(
+        links.map((l) => l.targetTitle).toList(),
+        containsAll(['Project Alpha', 'Daily Review']),
+      );
       expect(links.every((l) => l.blockId == 'b1'), isTrue);
     });
 
     test('No links returns empty list', () {
       final doc = NoteDocument([
-        const NoteBlock(id: 'b1', kind: NoteBlockKind.paragraph, text: 'No links here'),
+        const NoteBlock(
+          id: 'b1',
+          kind: NoteBlockKind.paragraph,
+          text: 'No links here',
+        ),
       ]);
       expect(doc.extractLinks(), isEmpty);
     });
 
     test('Multiple links in same block all captured', () {
       final doc = NoteDocument([
-        const NoteBlock(id: 'b1', kind: NoteBlockKind.paragraph,
-            text: '[[A]] and [[B]] and [[C]]'),
+        const NoteBlock(
+          id: 'b1',
+          kind: NoteBlockKind.paragraph,
+          text: '[[A]] and [[B]] and [[C]]',
+        ),
       ]);
       expect(doc.extractLinks().length, 3);
     });
@@ -96,8 +117,16 @@ void main() {
   group('NoteDocument — extractTags', () {
     test('Extracts #hashtags from text', () {
       final doc = NoteDocument([
-        const NoteBlock(id: 'b1', kind: NoteBlockKind.paragraph, text: 'Tagged #work and #learning'),
-        const NoteBlock(id: 'b2', kind: NoteBlockKind.paragraph, text: 'Also #health'),
+        const NoteBlock(
+          id: 'b1',
+          kind: NoteBlockKind.paragraph,
+          text: 'Tagged #work and #learning',
+        ),
+        const NoteBlock(
+          id: 'b2',
+          kind: NoteBlockKind.paragraph,
+          text: 'Also #health',
+        ),
       ]);
       final tags = doc.extractTags();
       expect(tags, containsAll(['work', 'learning', 'health']));
@@ -105,7 +134,11 @@ void main() {
 
     test('Tags are lowercased', () {
       final doc = NoteDocument([
-        const NoteBlock(id: 'b1', kind: NoteBlockKind.paragraph, text: '#Work #LEARNING'),
+        const NoteBlock(
+          id: 'b1',
+          kind: NoteBlockKind.paragraph,
+          text: '#Work #LEARNING',
+        ),
       ]);
       final tags = doc.extractTags();
       expect(tags, containsAll(['work', 'learning']));
@@ -121,7 +154,11 @@ void main() {
 
     test('No tags returns empty set', () {
       final doc = NoteDocument([
-        const NoteBlock(id: 'b1', kind: NoteBlockKind.paragraph, text: 'No hashtags here'),
+        const NoteBlock(
+          id: 'b1',
+          kind: NoteBlockKind.paragraph,
+          text: 'No hashtags here',
+        ),
       ]);
       expect(doc.extractTags(), isEmpty);
     });
@@ -130,19 +167,28 @@ void main() {
   group('NoteDocument — extractDateMentions', () {
     test('Extracts @YYYY-MM-DD date mentions', () {
       final doc = NoteDocument([
-        const NoteBlock(id: 'b1', kind: NoteBlockKind.paragraph,
-            text: 'Meeting @2026-10-05 and deadline @2026-12-31'),
+        const NoteBlock(
+          id: 'b1',
+          kind: NoteBlockKind.paragraph,
+          text: 'Meeting @2026-10-05 and deadline @2026-12-31',
+        ),
       ]);
       final mentions = doc.extractDateMentions();
       expect(mentions.length, 2);
-      expect(mentions.map((m) => m.isoDate).toList(),
-          containsAll(['2026-10-05', '2026-12-31']));
+      expect(
+        mentions.map((m) => m.isoDate).toList(),
+        containsAll(['2026-10-05', '2026-12-31']),
+      );
       expect(mentions.every((m) => m.blockId == 'b1'), isTrue);
     });
 
     test('No date mentions returns empty list', () {
       final doc = NoteDocument([
-        const NoteBlock(id: 'b1', kind: NoteBlockKind.paragraph, text: 'No dates here'),
+        const NoteBlock(
+          id: 'b1',
+          kind: NoteBlockKind.paragraph,
+          text: 'No dates here',
+        ),
       ]);
       expect(doc.extractDateMentions(), isEmpty);
     });

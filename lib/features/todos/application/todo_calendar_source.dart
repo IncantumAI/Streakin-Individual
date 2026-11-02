@@ -4,6 +4,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:streakin/core/design/tokens.dart';
 import 'package:streakin/core/time/local_date.dart';
 import 'package:streakin/features/calendar/domain/calendar_source.dart';
 import 'package:streakin/features/todos/application/todo_providers.dart';
@@ -24,9 +25,11 @@ class TodoCalendarSource implements CalendarSource {
       final done = await _repo.watchDone().first;
       final all = [...today, ...upcoming, ...done];
       yield all
-          .where((t) =>
-              t.dueDate != null &&
-              range.contains(LocalDate.parse(t.dueDate!)))
+          .where(
+            (t) =>
+                t.dueDate != null &&
+                range.contains(LocalDate.parse(t.dueDate!)),
+          )
           .map(_toEntry)
           .toList();
     }
@@ -44,10 +47,10 @@ class TodoCalendarSource implements CalendarSource {
   }
 
   static Color _priorityColor(TodoPriority p) => switch (p) {
-        TodoPriority.high => const Color(0xFFE5484D),   // danger
-        TodoPriority.medium => const Color(0xFFF5A524), // warning
-        TodoPriority.none => const Color(0xFF6B6B78),   // muted
-      };
+    TodoPriority.high => AppColors.dangerLight,
+    TodoPriority.medium => AppColors.warningLight,
+    TodoPriority.none => AppColors.textMutedLight,
+  };
 }
 
 // ── Riverpod provider ─────────────────────────────────────────────────────
@@ -56,7 +59,7 @@ class TodoCalendarSource implements CalendarSource {
 /// Emits empty stream when repository is not yet available.
 final todoCalendarEntriesProvider =
     StreamProvider.family<List<CalendarEntry>, DateRange>((ref, range) {
-  final repo = ref.watch(todoRepositoryStateProvider);
-  if (repo == null) return const Stream.empty();
-  return TodoCalendarSource(repo).watch(range);
-});
+      final repo = ref.watch(todoRepositoryStateProvider);
+      if (repo == null) return const Stream.empty();
+      return TodoCalendarSource(repo).watch(range);
+    });

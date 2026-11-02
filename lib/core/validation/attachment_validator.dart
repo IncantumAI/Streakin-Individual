@@ -47,27 +47,29 @@ class AttachmentValidator {
     final ext = _extension(sanitizedName);
     final extKind = _kindFromExtension(ext);
     if (extKind == null) {
-      throw const ValidationFailure(
-          'This file type isn\'t supported.');
+      throw const ValidationFailure('This file type isn\'t supported.');
     }
 
     // Step 3: size check.
     if (bytes.length > extKind.maxBytes) {
       throw ValidationFailure(
-          'This file is too large. Maximum size is ${extKind.maxBytes ~/ (1024 * 1024)} MB.');
+        'This file is too large. Maximum size is ${extKind.maxBytes ~/ (1024 * 1024)} MB.',
+      );
     }
 
     // Step 4: magic bytes → detected kind.
     final magicKind = _kindFromMagic(bytes, extKind);
     if (magicKind == null) {
       throw const ValidationFailure(
-          'The file content doesn\'t match its extension.');
+        'The file content doesn\'t match its extension.',
+      );
     }
 
     // Step 5: triple-agreement (extension kind == magic kind).
     if (extKind != magicKind) {
       throw const ValidationFailure(
-          'The file extension doesn\'t match its content.');
+        'The file extension doesn\'t match its content.',
+      );
     }
 
     // Step 6: kind-specific structural validation.
@@ -204,7 +206,8 @@ class AttachmentValidator {
     // Reject > 50 megapixels (decompression bomb guard).
     if (width * height > 50000000) {
       throw const ValidationFailure(
-          'This image is too large to attach (over 50 megapixels).');
+        'This image is too large to attach (over 50 megapixels).',
+      );
     }
     // Reject absurd aspect ratios (> 100:1).
     final ratio = width > height ? width / height : height / width;
@@ -234,12 +237,14 @@ class AttachmentValidator {
           final width = _readUint16BE(bytes, offset + 7);
           if (width > 0 && height > 0 && width * height > 50000000) {
             throw const ValidationFailure(
-                'This image is too large to attach (over 50 megapixels).');
+              'This image is too large to attach (over 50 megapixels).',
+            );
           }
           final ratio = width > height ? width / height : height / width;
           if (ratio > 100) {
             throw const ValidationFailure(
-                'This image has an invalid aspect ratio.');
+              'This image has an invalid aspect ratio.',
+            );
           }
         }
         return;
@@ -256,33 +261,43 @@ class AttachmentValidator {
     // Reject DOCTYPE (entity injection).
     if (text.toLowerCase().contains('<!doctype')) {
       throw const ValidationFailure(
-          'This SVG file contains a DOCTYPE declaration and cannot be attached.');
+        'This SVG file contains a DOCTYPE declaration and cannot be attached.',
+      );
     }
     // Reject entity declarations.
     if (text.toLowerCase().contains('<!entity')) {
       throw const ValidationFailure(
-          'This SVG file contains entity declarations and cannot be attached.');
+        'This SVG file contains entity declarations and cannot be attached.',
+      );
     }
     // Reject script elements.
     if (RegExp(r'<script', caseSensitive: false).hasMatch(text)) {
       throw const ValidationFailure(
-          'This SVG file contains scripts and cannot be attached.');
+        'This SVG file contains scripts and cannot be attached.',
+      );
     }
     // Reject javascript: URIs.
     if (RegExp(r'javascript:', caseSensitive: false).hasMatch(text)) {
       throw const ValidationFailure(
-          'This SVG file contains JavaScript URIs and cannot be attached.');
+        'This SVG file contains JavaScript URIs and cannot be attached.',
+      );
     }
     // Reject external references (xlink:href to http).
-    if (RegExp(r'xlink:href\s*=\s*["' "'" r']https?://', caseSensitive: false)
-        .hasMatch(text)) {
+    if (RegExp(
+      r'xlink:href\s*=\s*["'
+      "'"
+      r']https?://',
+      caseSensitive: false,
+    ).hasMatch(text)) {
       throw const ValidationFailure(
-          'This SVG file references external resources and cannot be attached.');
+        'This SVG file references external resources and cannot be attached.',
+      );
     }
     // Reject event handlers (onload, onclick, etc.).
     if (RegExp(r'\bon\w+\s*=', caseSensitive: false).hasMatch(text)) {
       throw const ValidationFailure(
-          'This SVG file contains event handlers and cannot be attached.');
+        'This SVG file contains event handlers and cannot be attached.',
+      );
     }
   }
 
@@ -312,7 +327,8 @@ class AttachmentValidator {
     for (final token in dangerous) {
       if (lower.contains(token)) {
         throw ValidationFailure(
-            'This PDF contains $token actions and cannot be attached.');
+          'This PDF contains $token actions and cannot be attached.',
+        );
       }
     }
   }
@@ -327,21 +343,25 @@ class AttachmentValidator {
     // Reject macro-enabled variants by content type.
     if (text.contains('vbaProject.bin')) {
       throw const ValidationFailure(
-          'This file contains macros (vbaProject.bin) and cannot be attached.');
+        'This file contains macros (vbaProject.bin) and cannot be attached.',
+      );
     }
     if (text.contains('.docm') || text.contains('.pptm')) {
       throw const ValidationFailure(
-          'Macro-enabled Office files (.docm, .pptm) cannot be attached.');
+        'Macro-enabled Office files (.docm, .pptm) cannot be attached.',
+      );
     }
     if (text.contains('vnd.ms-office.activeX')) {
       throw const ValidationFailure(
-          'This file contains ActiveX components and cannot be attached.');
+        'This file contains ActiveX components and cannot be attached.',
+      );
     }
 
     // Reject path traversal in entry names.
     if (text.contains('..\\') || text.contains('../')) {
       throw const ValidationFailure(
-          'This file contains invalid paths and cannot be attached.');
+        'This file contains invalid paths and cannot be attached.',
+      );
     }
 
     // ZIP bomb guard: count local file headers (PK\x03\x04).
@@ -355,7 +375,8 @@ class AttachmentValidator {
         count++;
         if (count > 5000) {
           throw const ValidationFailure(
-              'This file has too many entries and cannot be attached (possible zip bomb).');
+            'This file has too many entries and cannot be attached (possible zip bomb).',
+          );
         }
         offset += 4;
       } else {
@@ -386,11 +407,11 @@ class AttachmentValidator {
       throw const ValidationFailure('This text file appears to be empty.');
     }
     final decoded = utf8.decode(bytes, allowMalformed: true);
-    final replacements =
-        RegExp('\uFFFD').allMatches(decoded).length;
+    final replacements = RegExp('\uFFFD').allMatches(decoded).length;
     if (replacements > decoded.length * 0.05) {
       throw const ValidationFailure(
-          'This file doesn\'t appear to be a valid text file.');
+        'This file doesn\'t appear to be a valid text file.',
+      );
     }
   }
 

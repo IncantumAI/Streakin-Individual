@@ -10,15 +10,27 @@ void main() {
   group('NoteDocument tag extraction (Track 3E integration)', () {
     test('Single tag extracted correctly', () {
       final doc = NoteDocument([
-        const NoteBlock(id: 'b1', kind: NoteBlockKind.paragraph, text: 'Working on #flutter today'),
+        const NoteBlock(
+          id: 'b1',
+          kind: NoteBlockKind.paragraph,
+          text: 'Working on #flutter today',
+        ),
       ]);
       expect(doc.extractTags(), {'flutter'});
     });
 
     test('Multiple tags across blocks', () {
       final doc = NoteDocument([
-        const NoteBlock(id: 'b1', kind: NoteBlockKind.paragraph, text: 'Tag #work and #health'),
-        const NoteBlock(id: 'b2', kind: NoteBlockKind.paragraph, text: 'Also #learning'),
+        const NoteBlock(
+          id: 'b1',
+          kind: NoteBlockKind.paragraph,
+          text: 'Tag #work and #health',
+        ),
+        const NoteBlock(
+          id: 'b2',
+          kind: NoteBlockKind.paragraph,
+          text: 'Also #learning',
+        ),
       ]);
       final tags = doc.extractTags();
       expect(tags, containsAll(['work', 'health', 'learning']));
@@ -26,25 +38,45 @@ void main() {
 
     test('Tags are deduplicated across blocks', () {
       final doc = NoteDocument([
-        const NoteBlock(id: 'b1', kind: NoteBlockKind.paragraph, text: '#work today'),
-        const NoteBlock(id: 'b2', kind: NoteBlockKind.paragraph, text: '#work again'),
+        const NoteBlock(
+          id: 'b1',
+          kind: NoteBlockKind.paragraph,
+          text: '#work today',
+        ),
+        const NoteBlock(
+          id: 'b2',
+          kind: NoteBlockKind.paragraph,
+          text: '#work again',
+        ),
       ]);
       expect(doc.extractTags().length, 1);
     });
 
     test('Tags are lowercased', () {
       final doc = NoteDocument([
-        const NoteBlock(id: 'b1', kind: NoteBlockKind.paragraph, text: '#Flutter #DART'),
+        const NoteBlock(
+          id: 'b1',
+          kind: NoteBlockKind.paragraph,
+          text: '#Flutter #DART',
+        ),
       ]);
       expect(doc.extractTags(), containsAll(['flutter', 'dart']));
     });
 
     test('Tag removed from body means no tag extracted', () {
       final docWith = NoteDocument([
-        const NoteBlock(id: 'b1', kind: NoteBlockKind.paragraph, text: 'Has #work'),
+        const NoteBlock(
+          id: 'b1',
+          kind: NoteBlockKind.paragraph,
+          text: 'Has #work',
+        ),
       ]);
       final docWithout = NoteDocument([
-        const NoteBlock(id: 'b1', kind: NoteBlockKind.paragraph, text: 'No tag here'),
+        const NoteBlock(
+          id: 'b1',
+          kind: NoteBlockKind.paragraph,
+          text: 'No tag here',
+        ),
       ]);
       expect(docWith.extractTags(), contains('work'));
       expect(docWithout.extractTags(), isEmpty);
@@ -52,19 +84,24 @@ void main() {
 
     test('Tag with numbers and hyphens extracted', () {
       final doc = NoteDocument([
-        const NoteBlock(id: 'b1', kind: NoteBlockKind.paragraph, text: 'Task #q1-2026 done'),
+        const NoteBlock(
+          id: 'b1',
+          kind: NoteBlockKind.paragraph,
+          text: 'Task #q1-2026 done',
+        ),
       ]);
       expect(doc.extractTags(), contains('q1-2026'));
     });
 
     test('Inline # not followed by word char not extracted', () {
-      final doc = NoteDocument([
-        const NoteBlock(id: 'b1', kind: NoteBlockKind.paragraph, text: 'Price is #100'),
-      ]);
       // #100 is a number, regex is [A-Za-z0-9_\-]+, so it DOES match — that's fine
       // What should NOT match is isolated '#' or '# '
       final doc2 = NoteDocument([
-        const NoteBlock(id: 'b2', kind: NoteBlockKind.paragraph, text: 'Use # for headings'),
+        const NoteBlock(
+          id: 'b2',
+          kind: NoteBlockKind.paragraph,
+          text: 'Use # for headings',
+        ),
       ]);
       expect(doc2.extractTags(), isEmpty);
     });
@@ -75,14 +112,22 @@ void main() {
 
     test('Task block text also searched for tags', () {
       final doc = NoteDocument([
-        const NoteBlock(id: 'b1', kind: NoteBlockKind.task, text: 'Fix bug #critical'),
+        const NoteBlock(
+          id: 'b1',
+          kind: NoteBlockKind.task,
+          text: 'Fix bug #critical',
+        ),
       ]);
       expect(doc.extractTags(), contains('critical'));
     });
 
     test('Tags serialise/deserialise round-trip', () {
       final doc = NoteDocument([
-        const NoteBlock(id: 'b1', kind: NoteBlockKind.paragraph, text: 'Work #project #deadline'),
+        const NoteBlock(
+          id: 'b1',
+          kind: NoteBlockKind.paragraph,
+          text: 'Work #project #deadline',
+        ),
       ]);
       final json = doc.toJson();
       final restored = NoteDocument.fromJson(json);
@@ -96,7 +141,10 @@ void main() {
       if (cursor == 0) return null;
       int hashPos = -1;
       for (int i = cursor - 1; i >= 0; i--) {
-        if (text[i] == '#') { hashPos = i; break; }
+        if (text[i] == '#') {
+          hashPos = i;
+          break;
+        }
         if (text[i] == ' ' || text[i] == '\n') break;
       }
       if (hashPos < 0) return null;

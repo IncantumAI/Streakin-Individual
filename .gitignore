@@ -7,7 +7,7 @@
 .buildlog/
 .history
 .env*
-
+tool/release
 
 # Flutter repo-specific
 /bin/cache/
@@ -123,8 +123,8 @@ app.*.symbols
 Implementation
 .vscode
 .antigravity
-tool/spikes
-tool/decisions.md
+graphify-out
+CLAUDE.md
 
 # Agents
 .claude
@@ -167,12 +167,6 @@ devtools_options.yaml
 
 # Font placeholders (empty stub files — real fonts added manually)
 assets/fonts/*.ttf
-
-# Spike projects (development/research only, not production code)
-tool/spikes/
-
-# Spike decisions log is useful to keep — override the above
-!tool/spikes/decisions.md
 
 # Android signing (never commit keystores or key.properties)
 android/key.properties

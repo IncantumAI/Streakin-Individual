@@ -26,24 +26,24 @@ Note _note({
   bool isPinned = false,
   String? vaultId,
   DateTime? updatedAt,
-}) =>
-    Note(
-      id: id,
-      title: title,
-      body: body,
-      isPinned: isPinned,
-      vaultId: vaultId,
-      createdAt: DateTime(2026, 10),
-      updatedAt: updatedAt ?? DateTime(2026, 10),
-      hlc: '0-0-test',
-    );
+}) => Note(
+  id: id,
+  title: title,
+  body: body,
+  isPinned: isPinned,
+  vaultId: vaultId,
+  createdAt: DateTime(2026, 10),
+  updatedAt: updatedAt ?? DateTime(2026, 10),
+  hlc: '0-0-test',
+);
 
 String _bodyWithDate(String isoDate) {
   final doc = NoteDocument([
     NoteBlock(
-        id: 'b1',
-        kind: NoteBlockKind.paragraph,
-        text: 'Meeting @$isoDate today'),
+      id: 'b1',
+      kind: NoteBlockKind.paragraph,
+      text: 'Meeting @$isoDate today',
+    ),
   ]);
   return doc.toJson();
 }
@@ -54,43 +54,48 @@ void main() {
 
     setUp(() {
       repo = MockNoteRepository();
-      registerFallbackValue(const DateRange(
-        start: LocalDate(2026, 10, 1),
-        end: LocalDate(2026, 10, 31),
-      ));
+      registerFallbackValue(
+        const DateRange(
+          start: LocalDate(2026, 10, 1),
+          end: LocalDate(2026, 10, 31),
+        ),
+      );
     });
 
-    test('Returns CalendarEntry for note with @date mention in range', () async {
-      final note = _note(
-        title: 'Planning',
-        body: _bodyWithDate('2026-10-05'),
-      );
+    test(
+      'Returns CalendarEntry for note with @date mention in range',
+      () async {
+        final note = _note(
+          title: 'Planning',
+          body: _bodyWithDate('2026-10-05'),
+        );
 
-      when(() => repo.watchFolders())
-          .thenAnswer((_) => Stream.value([]));
-      when(() => repo.watchFolder(null))
-          .thenAnswer((_) => Stream.value([note]));
+        when(() => repo.watchFolders()).thenAnswer((_) => Stream.value([]));
+        when(() => repo.watchFolder(null))
+            .thenAnswer((_) => Stream.value([note]));
 
-      final source = NotesCalendarSource(repo);
-      const range = DateRange(
-        start: LocalDate(2026, 10, 1),
-        end: LocalDate(2026, 10, 31),
-      );
+        final source = NotesCalendarSource(repo);
+        const range = DateRange(
+          start: LocalDate(2026, 10, 1),
+          end: LocalDate(2026, 10, 31),
+        );
 
-      final entries = await source.watch(range).first;
+        final entries = await source.watch(range).first;
 
-      expect(entries.length, 1);
-      expect(entries.first.date, const LocalDate(2026, 10, 5));
-      expect(entries.first.title, 'Planning');
-      expect(entries.first.kind, CalendarEntryKind.note);
-      expect(entries.first.sourceId, 'n1');
-    });
+        expect(entries.length, 1);
+        expect(entries.first.date, const LocalDate(2026, 10, 5));
+        expect(entries.first.title, 'Planning');
+        expect(entries.first.kind, CalendarEntryKind.note);
+        expect(entries.first.sourceId, 'n1');
+      },
+    );
 
     test('Returns empty list when note has no @date mentions', () async {
       final note = _note();
 
       when(() => repo.watchFolders()).thenAnswer((_) => Stream.value([]));
-      when(() => repo.watchFolder(null)).thenAnswer((_) => Stream.value([note]));
+      when(() => repo.watchFolder(null))
+          .thenAnswer((_) => Stream.value([note]));
 
       final source = NotesCalendarSource(repo);
       const range = DateRange(
@@ -106,7 +111,8 @@ void main() {
       final note = _note(body: _bodyWithDate('2026-11-15'));
 
       when(() => repo.watchFolders()).thenAnswer((_) => Stream.value([]));
-      when(() => repo.watchFolder(null)).thenAnswer((_) => Stream.value([note]));
+      when(() => repo.watchFolder(null))
+          .thenAnswer((_) => Stream.value([note]));
 
       final source = NotesCalendarSource(repo);
       const range = DateRange(
@@ -130,7 +136,8 @@ void main() {
       );
 
       when(() => repo.watchFolders()).thenAnswer((_) => Stream.value([]));
-      when(() => repo.watchFolder(null)).thenAnswer((_) => Stream.value([note]));
+      when(() => repo.watchFolder(null))
+          .thenAnswer((_) => Stream.value([note]));
 
       final source = NotesCalendarSource(repo);
       const range = DateRange(
@@ -146,7 +153,8 @@ void main() {
       final note = _note(body: _bodyWithDate('2026-10-05'), vaultId: 'vault1');
 
       when(() => repo.watchFolders()).thenAnswer((_) => Stream.value([]));
-      when(() => repo.watchFolder(null)).thenAnswer((_) => Stream.value([note]));
+      when(() => repo.watchFolder(null))
+          .thenAnswer((_) => Stream.value([note]));
 
       final source = NotesCalendarSource(repo);
       const range = DateRange(
@@ -161,12 +169,13 @@ void main() {
     test('Scans notes in sub-folders too', () async {
       const folder = Folder(id: 'f1', name: 'Work', hlc: '0-0-test');
       final note = _note(
-          id: 'n2', title: 'In folder', body: _bodyWithDate('2026-10-10'));
+        id: 'n2',
+        title: 'In folder',
+        body: _bodyWithDate('2026-10-10'),
+      );
 
-      when(() => repo.watchFolders())
-          .thenAnswer((_) => Stream.value([folder]));
-      when(() => repo.watchFolder(null))
-          .thenAnswer((_) => Stream.value([]));
+      when(() => repo.watchFolders()).thenAnswer((_) => Stream.value([folder]));
+      when(() => repo.watchFolder(null)).thenAnswer((_) => Stream.value([]));
       when(() => repo.watchFolder('f1'))
           .thenAnswer((_) => Stream.value([note]));
 
@@ -184,14 +193,16 @@ void main() {
     test('Multiple @date mentions in one note each produce an entry', () async {
       final doc = NoteDocument([
         const NoteBlock(
-            id: 'b1',
-            kind: NoteBlockKind.paragraph,
-            text: 'Meet @2026-10-05 and followup @2026-10-12'),
+          id: 'b1',
+          kind: NoteBlockKind.paragraph,
+          text: 'Meet @2026-10-05 and followup @2026-10-12',
+        ),
       ]);
       final note = _note(body: doc.toJson());
 
       when(() => repo.watchFolders()).thenAnswer((_) => Stream.value([]));
-      when(() => repo.watchFolder(null)).thenAnswer((_) => Stream.value([note]));
+      when(() => repo.watchFolder(null))
+          .thenAnswer((_) => Stream.value([note]));
 
       final source = NotesCalendarSource(repo);
       const range = DateRange(
@@ -211,28 +222,30 @@ void main() {
       repo = MockNoteRepository();
     });
 
-    test('watchRecentNotes returns 5 most recently updated non-vault notes',
-        () async {
-      final notes = List.generate(
-        7,
-        (i) => _note(
-          id: 'n$i',
-          title: 'Note $i',
-          updatedAt: DateTime(2026, 10, i + 1),
-        ),
-      );
+    test(
+      'watchRecentNotes returns 5 most recently updated non-vault notes',
+      () async {
+        final notes = List.generate(
+          7,
+          (i) => _note(
+            id: 'n$i',
+            title: 'Note $i',
+            updatedAt: DateTime(2026, 10, i + 1),
+          ),
+        );
 
-      when(() => repo.watchFolder(null))
-          .thenAnswer((_) => Stream.value(notes));
-      when(() => repo.watchFolders()).thenAnswer((_) => Stream.value([]));
+        when(() => repo.watchFolder(null))
+            .thenAnswer((_) => Stream.value(notes));
+        when(() => repo.watchFolders()).thenAnswer((_) => Stream.value([]));
 
-      final provider = NotesDashboardProvider(repo);
-      final recent = await provider.watchRecentNotes(5).first;
+        final provider = NotesDashboardProvider(repo);
+        final recent = await provider.watchRecentNotes(5).first;
 
-      expect(recent.length, 5);
-      // Should be sorted newest first.
-      expect(recent.first.id, 'n6');
-    });
+        expect(recent.length, 5);
+        // Should be sorted newest first.
+        expect(recent.first.id, 'n6');
+      },
+    );
 
     test('watchRecentNotes excludes vault notes', () async {
       final notes = [
@@ -240,8 +253,7 @@ void main() {
         _note(id: 'n2', vaultId: 'v1', updatedAt: DateTime(2026, 10, 5)),
       ];
 
-      when(() => repo.watchFolder(null))
-          .thenAnswer((_) => Stream.value(notes));
+      when(() => repo.watchFolder(null)).thenAnswer((_) => Stream.value(notes));
       when(() => repo.watchFolders()).thenAnswer((_) => Stream.value([]));
 
       final provider = NotesDashboardProvider(repo);
@@ -258,8 +270,7 @@ void main() {
         _note(id: 'n3', isPinned: true, vaultId: 'v1'),
       ];
 
-      when(() => repo.watchFolder(null))
-          .thenAnswer((_) => Stream.value(notes));
+      when(() => repo.watchFolder(null)).thenAnswer((_) => Stream.value(notes));
       when(() => repo.watchFolders()).thenAnswer((_) => Stream.value([]));
 
       final provider = NotesDashboardProvider(repo);
@@ -271,8 +282,9 @@ void main() {
 
     test('RecentNoteItem has correct title and updatedAt', () async {
       final note = _note(
-          title: 'My Note',
-          updatedAt: DateTime(2026, 10, 5, 14, 30));
+        title: 'My Note',
+        updatedAt: DateTime(2026, 10, 5, 14, 30),
+      );
 
       when(() => repo.watchFolder(null))
           .thenAnswer((_) => Stream.value([note]));

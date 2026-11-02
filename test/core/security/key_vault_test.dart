@@ -39,18 +39,12 @@ void main() {
 
     test('use() throws AuthFailure when locked', () {
       final vault = KeyVault();
-      expect(
-        () => vault.use((_) async => null),
-        throwsA(isA<AuthFailure>()),
-      );
+      expect(() => vault.use((_) async => null), throwsA(isA<AuthFailure>()));
     });
 
     test('useSync() throws AuthFailure when locked', () {
       final vault = KeyVault();
-      expect(
-        () => vault.useSync((_) => null),
-        throwsA(isA<AuthFailure>()),
-      );
+      expect(() => vault.useSync((_) => null), throwsA(isA<AuthFailure>()));
     });
 
     test('dispose is idempotent (safe to call twice)', () {

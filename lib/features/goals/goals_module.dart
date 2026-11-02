@@ -16,10 +16,15 @@ export 'application/goal_providers.dart'
         dayTickerProvider;
 
 export 'domain/goal.dart';
-export 'domain/goal_clock.dart' show GoalClockState, GoalClock, GoalPhase;
+export 'domain/goal_clock.dart' show GoalClockState, GoalClock;
 export 'domain/goal_repository.dart'
-    show GoalRepository, HabitCompletionPort, HabitLinkWindow, AlignmentStats,
-        PerHabitStats, HabitRef;
+    show
+        GoalRepository,
+        HabitCompletionPort,
+        HabitLinkWindow,
+        AlignmentStats,
+        PerHabitStats,
+        HabitRef;
 
 export 'presentation/goal_hero_card.dart' show GoalHeroCard;
 export 'presentation/goal_zen_line.dart' show GoalZenLine;

@@ -12,16 +12,16 @@ enum TodoPriority {
   high;
 
   static TodoPriority fromInt(int v) => switch (v) {
-        1 => medium,
-        2 => high,
-        _ => none,
-      };
+    1 => medium,
+    2 => high,
+    _ => none,
+  };
 
   int toInt() => switch (this) {
-        none => 0,
-        medium => 1,
-        high => 2,
-      };
+    none => 0,
+    medium => 1,
+    high => 2,
+  };
 }
 
 // ── Status ────────────────────────────────────────────────────────────────
@@ -30,8 +30,7 @@ enum TodoStatus {
   pending,
   done;
 
-  static TodoStatus fromString(String s) =>
-      s == 'done' ? done : pending;
+  static TodoStatus fromString(String s) => s == 'done' ? done : pending;
 
   String toLabel() => name;
 }
@@ -94,8 +93,7 @@ class Todo {
   bool get hasSourceNote => sourceNoteId != null && sourceBlockId != null;
 
   /// True when this task is due on [date] (regardless of time).
-  bool isDueOn(LocalDate date) =>
-      dueDate != null && dueDate == date.toIso();
+  bool isDueOn(LocalDate date) => dueDate != null && dueDate == date.toIso();
 
   /// True when this task is overdue relative to [today].
   bool isOverdue(LocalDate today) {
@@ -124,15 +122,13 @@ class Todo {
       dueTime: dueTime != null ? dueTime() : this.dueTime,
       priority: priority ?? this.priority,
       status: status ?? this.status,
-      completedAt:
-          completedAt != null ? completedAt() : this.completedAt,
+      completedAt: completedAt != null ? completedAt() : this.completedAt,
       countsForLockin: countsForLockin ?? this.countsForLockin,
-      sourceNoteId:
-          sourceNoteId != null ? sourceNoteId() : this.sourceNoteId,
-      sourceBlockId:
-          sourceBlockId != null ? sourceBlockId() : this.sourceBlockId,
-      reminderAt:
-          reminderAt != null ? reminderAt() : this.reminderAt,
+      sourceNoteId: sourceNoteId != null ? sourceNoteId() : this.sourceNoteId,
+      sourceBlockId: sourceBlockId != null
+          ? sourceBlockId()
+          : this.sourceBlockId,
+      reminderAt: reminderAt != null ? reminderAt() : this.reminderAt,
       hlc: hlc ?? this.hlc,
       deletedAt: deletedAt != null ? deletedAt() : this.deletedAt,
     );

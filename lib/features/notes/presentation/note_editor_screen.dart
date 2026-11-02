@@ -2,8 +2,18 @@
 // Full-screen note editor. Handles title editing, autosave lifecycle,
 // and backlinks panel.
 
+import 'package:streakin/core/design/icons.dart';
+
+import 'dart:async';
+import 'dart:io';
+
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
+import 'package:window_manager/window_manager.dart';
 
 import 'package:streakin/core/design/tokens.dart';
 import 'package:streakin/features/notes/application/note_providers.dart';
@@ -14,8 +24,11 @@ import 'package:streakin/features/notes/editor/note_editor_controller.dart';
 import 'package:streakin/features/notes/editor/note_editor_widget.dart';
 
 class NoteEditorScreen extends ConsumerStatefulWidget {
-  const NoteEditorScreen({required this.noteId, super.key});
+  const NoteEditorScreen({required this.noteId, this.zen = false, super.key});
   final String noteId;
+
+  /// Writing Zen (Spec §4.9): no chrome, centred ~680 px column, immersive.
+  final bool zen;
 
   @override
   ConsumerState<NoteEditorScreen> createState() => _NoteEditorScreenState();
@@ -34,6 +47,28 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen>
     super.initState();
     _titleController = TextEditingController();
     WidgetsBinding.instance.addObserver(this);
+    if (widget.zen) unawaited(_enterZen());
+  }
+
+  bool get _desktop => !kIsWeb && (Platform.isWindows || Platform.isLinux);
+
+  Future<void> _enterZen() async {
+    await WakelockPlus.enable();
+    if (_desktop) {
+      await windowManager.ensureInitialized();
+      await windowManager.setFullScreen(true);
+    } else {
+      await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersive);
+    }
+  }
+
+  Future<void> _exitZen() async {
+    await WakelockPlus.disable();
+    if (_desktop) {
+      await windowManager.setFullScreen(false);
+    } else {
+      await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    }
   }
 
   @override
@@ -47,6 +82,7 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    if (widget.zen) unawaited(_exitZen());
     // Dismiss keyboard before tearing down the editor to avoid
     // super_editor's SoftwareKeyboardController trying to detach from a
     // defunct widget (FlutterError on back navigation).
@@ -94,16 +130,19 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen>
     final colors = context.colors;
 
     return noteAsync.when(
-      loading: () =>
-          const Scaffold(body: Center(child: CircularProgressIndicator.adaptive())),
+      loading: () => const Scaffold(
+        body: Center(child: CircularProgressIndicator.adaptive()),
+      ),
       error: (e, _) => Scaffold(body: Center(child: Text('Error: $e'))),
       data: (note) {
         if (note == null) {
           return Scaffold(
             appBar: AppBar(),
             body: Center(
-              child: Text('Note not found.',
-                  style: TextStyle(color: colors.textMuted)),
+              child: Text(
+                'Note not found.',
+                style: TextStyle(color: colors.textMuted),
+              ),
             ),
           );
         }
@@ -113,6 +152,8 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen>
 
         final ctrl = _editorController!;
         final autosave = _autosave!;
+
+        if (widget.zen) return _zenScaffold(context, ctrl, autosave);
 
         return Scaffold(
           backgroundColor: colors.bg,
@@ -124,9 +165,10 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen>
             title: TextField(
               controller: _titleController,
               style: TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w600,
-                  color: colors.text),
+                fontSize: 17,
+                fontWeight: FontWeight.w600,
+                color: colors.text,
+              ),
               decoration: InputDecoration(
                 hintText: 'Untitled',
                 hintStyle: TextStyle(color: colors.textMuted),
@@ -138,12 +180,23 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen>
               // Toggle backlinks panel
               IconButton(
                 icon: Icon(
-                  Icons.link,
+                  AppIcons.link,
                   color: _backlinksExpanded ? colors.brand : colors.textMuted,
                 ),
                 tooltip: 'Backlinks',
                 onPressed: () =>
                     setState(() => _backlinksExpanded = !_backlinksExpanded),
+              ),
+              IconButton(
+                icon: Icon(AppIcons.zen, color: colors.textMuted),
+                tooltip: 'Zen mode',
+                onPressed: () => context.push('/notes/${widget.noteId}?zen=1'),
+              ),
+              IconButton(
+                icon: Icon(AppIcons.graph, color: colors.textMuted),
+                tooltip: 'Local graph',
+                onPressed: () =>
+                    context.push('/notes/graph?note=${widget.noteId}&depth=1'),
               ),
             ],
           ),
@@ -156,12 +209,73 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen>
                   noteId: widget.noteId,
                 ),
               ),
-              if (_backlinksExpanded)
-                _BacklinksPanel(noteId: widget.noteId),
+              if (_backlinksExpanded) _BacklinksPanel(noteId: widget.noteId),
             ],
           ),
         );
       },
+    );
+  }
+}
+
+extension _ZenScaffold on _NoteEditorScreenState {
+  Widget _zenScaffold(
+    BuildContext context,
+    NoteEditorController ctrl,
+    NoteAutosaveService autosave,
+  ) {
+    final colors = context.colors;
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.escape): () => context.pop(),
+      },
+      child: Focus(
+        child: Scaffold(
+          backgroundColor: colors.bg,
+          body: Stack(
+            children: [
+              // Soft ambient gradient, very low opacity.
+              Positioned.fill(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        colors.brand.withValues(alpha: 0.06),
+                        colors.success.withValues(alpha: 0.04),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              SafeArea(
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 680),
+                    child: NoteEditorWidget(
+                      controller: ctrl,
+                      autosave: autosave,
+                      noteId: widget.noteId,
+                    ),
+                  ),
+                ),
+              ),
+              Positioned(
+                top: 8,
+                right: 8,
+                child: SafeArea(
+                  child: IconButton(
+                    tooltip: 'Exit Zen (Esc)',
+                    icon: Icon(AppIcons.close, color: colors.textMuted),
+                    onPressed: () => context.pop(),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -191,17 +305,19 @@ class _BacklinksPanel extends ConsumerWidget {
             child: Text(
               'Backlinks',
               style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: colors.textMuted),
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: colors.textMuted,
+              ),
             ),
           ),
           Expanded(
             child: backlinksAsync.when(
               loading: () =>
                   const Center(child: CircularProgressIndicator.adaptive()),
-              error: (e, _) =>
-                  Center(child: Text('Error', style: TextStyle(color: colors.danger))),
+              error: (e, _) => Center(
+                child: Text('Error', style: TextStyle(color: colors.danger)),
+              ),
               data: (links) {
                 if (links.isEmpty) {
                   return Center(
@@ -218,8 +334,11 @@ class _BacklinksPanel extends ConsumerWidget {
                     final note = links[i];
                     return ListTile(
                       dense: true,
-                      leading: Icon(Icons.article_outlined,
-                          size: 18, color: colors.brand),
+                      leading: Icon(
+                        AppIcons.articleOutlined,
+                        size: 18,
+                        color: colors.brand,
+                      ),
                       title: Text(
                         note.title.isEmpty ? 'Untitled' : note.title,
                         style: TextStyle(fontSize: 14, color: colors.text),
@@ -227,10 +346,11 @@ class _BacklinksPanel extends ConsumerWidget {
                       onTap: () {
                         // Navigate to backlink source note.
                         // Use push so user can go back.
-                        Navigator.of(context).push(MaterialPageRoute(
-                          builder: (_) =>
-                              NoteEditorScreen(noteId: note.id),
-                        ));
+                        Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => NoteEditorScreen(noteId: note.id),
+                          ),
+                        );
                       },
                     );
                   },

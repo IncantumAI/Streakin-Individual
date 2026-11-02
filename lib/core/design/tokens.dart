@@ -13,26 +13,26 @@ class AppColors {
   AppColors._();
 
   // ── Neutrals — Light ──────────────────────────────────────────────────────
-  static const Color bgLight = Color(0xFFFAFAFB);
+  static const Color bgLight = Color(0xFFFFFFFF);
   static const Color surfaceLight = Color(0xFFFFFFFF);
   static const Color surfaceAltLight = Color(0xFFF1F1F5);
   static const Color outlineLight = Color(0xFFE3E3EA);
-  static const Color textLight = Color(0xFF17171C);
+  static const Color textLight = Color(0xFF383838);
   static const Color textMutedLight = Color(0xFF6B6B78);
 
   // ── Neutrals — Dark ───────────────────────────────────────────────────────
-  static const Color bgDark = Color(0xFF0E0E12);
-  static const Color surfaceDark = Color(0xFF16161C);
-  static const Color surfaceAltDark = Color(0xFF1F1F27);
-  static const Color outlineDark = Color(0xFF2C2C36);
+  static const Color bgDark = Color(0xFF383838);
+  static const Color surfaceDark = Color(0xFF424242);
+  static const Color surfaceAltDark = Color(0xFF4C4C4C);
+  static const Color outlineDark = Color(0xFF5A5A5A);
   static const Color textDark = Color(0xFFF2F2F5);
   static const Color textMutedDark = Color(0xFF9A9AA8);
 
   // ── Brand ─────────────────────────────────────────────────────────────────
-  static const Color brandLight = Color(0xFF6E56CF);
-  static const Color brandDark = Color(0xFF8E7BEA);
-  static const Color onBrandLight = Color(0xFFFFFFFF);
-  static const Color onBrandDark = Color(0xFF0E0E12);
+  static const Color brandLight = Color(0xFFFF8F34);
+  static const Color brandDark = Color(0xFFFF8F34);
+  static const Color onBrandLight = Color(0xFF383838);
+  static const Color onBrandDark = Color(0xFF383838);
 
   // ── Semantic ──────────────────────────────────────────────────────────────
   static const Color successLight = Color(0xFF2FBF71);
@@ -42,14 +42,21 @@ class AppColors {
   static const Color dangerLight = Color(0xFFE5484D);
   static const Color dangerDark = Color(0xFFFF6369);
 
+  // ── Splash / chart chrome ─────────────────────────────────────────────────
+  static const Color splashOrangeMid = Color(0xFFE67A22);
+  static const Color splashOrangeDark = Color(0xFF9A4A0F);
+
+  /// Dark chart tooltip background (white text on top).
+  static const Color tooltipBackground = Color(0xFF383838);
+
   // ── Streak flame ─────────────────────────────────────────────────────────
   /// Only used for streak flame and counters.
-  static const Color streakLight = Color(0xFFFF7A45);
-  static const Color streakDark = Color(0xFFFF8F5E);
+  static const Color streakLight = Color(0xFFE5532D);
+  static const Color streakDark = Color(0xFFF2643F);
 
   // ── Celebration palette ───────────────────────────────────────────────────
   /// Usable ONLY in: splash, confetti, lock-in, milestone, streak flame, zen ambient.
-  static const Color celebBrand = Color(0xFF6E56CF);
+  static const Color celebBrand = Color(0xFFFF8F34);
   static const Color celebPink = Color(0xFFFF5FA2);
   static const Color celebAmber = Color(0xFFFFC53D);
   static const Color celebTeal = Color(0xFF2DD4BF);
@@ -57,12 +64,12 @@ class AppColors {
 
   // ── Habit accent palette (8 swatches) ─────────────────────────────────────
   static const List<Color> habitAccents = [
-    Color(0xFF6E56CF), // violet
+    Color(0xFFFF8F34), // orange
     Color(0xFF3E9BFF), // blue
     Color(0xFF2DD4BF), // teal
     Color(0xFF3DD68C), // green
     Color(0xFFFFC53D), // amber
-    Color(0xFFFF7A45), // orange
+    Color(0xFFE5532D), // red-orange
     Color(0xFFFF5FA2), // pink
     Color(0xFF8B8D98), // slate
   ];
@@ -182,6 +189,5 @@ class AppColorTokens extends ThemeExtension<AppColorTokens> {
 
 /// Helper to get tokens from context.
 extension AppColorsContext on BuildContext {
-  AppColorTokens get colors =>
-      Theme.of(this).extension<AppColorTokens>()!;
+  AppColorTokens get colors => Theme.of(this).extension<AppColorTokens>()!;
 }

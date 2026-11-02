@@ -61,29 +61,50 @@ class DateMentionParser {
 
   // ── Month name table ────────────────────────────────────────────────────────
   static const _months = {
-    'jan': 1, 'january': 1,
-    'feb': 2, 'february': 2,
-    'mar': 3, 'march': 3,
-    'apr': 4, 'april': 4,
+    'jan': 1,
+    'january': 1,
+    'feb': 2,
+    'february': 2,
+    'mar': 3,
+    'march': 3,
+    'apr': 4,
+    'april': 4,
     'may': 5,
-    'jun': 6, 'june': 6,
-    'jul': 7, 'july': 7,
-    'aug': 8, 'august': 8,
-    'sep': 9, 'sept': 9, 'september': 9,
-    'oct': 10, 'october': 10,
-    'nov': 11, 'november': 11,
-    'dec': 12, 'december': 12,
+    'jun': 6,
+    'june': 6,
+    'jul': 7,
+    'july': 7,
+    'aug': 8,
+    'august': 8,
+    'sep': 9,
+    'sept': 9,
+    'september': 9,
+    'oct': 10,
+    'october': 10,
+    'nov': 11,
+    'november': 11,
+    'dec': 12,
+    'december': 12,
   };
 
   // ── Weekday name table ──────────────────────────────────────────────────────
   static const _weekdays = {
-    'mon': 1, 'monday': 1,
-    'tue': 2, 'tuesday': 2,
-    'wed': 3, 'wednesday': 3,
-    'thu': 4, 'thursday': 4, 'thur': 4, 'thurs': 4,
-    'fri': 5, 'friday': 5,
-    'sat': 6, 'saturday': 6,
-    'sun': 7, 'sunday': 7,
+    'mon': 1,
+    'monday': 1,
+    'tue': 2,
+    'tuesday': 2,
+    'wed': 3,
+    'wednesday': 3,
+    'thu': 4,
+    'thursday': 4,
+    'thur': 4,
+    'thurs': 4,
+    'fri': 5,
+    'friday': 5,
+    'sat': 6,
+    'saturday': 6,
+    'sun': 7,
+    'sunday': 7,
   };
 
   /// Parse a raw @-mention string (without the leading `@`).
@@ -96,8 +117,7 @@ class DateMentionParser {
     if (input.isEmpty) throw DateMentionParseException(raw);
 
     // ── ISO date: 2026-10-15 [HH:mm] ────────────────────────────────────────
-    final isoMatch = RegExp(
-            r'^(\d{4})-(\d{2})-(\d{2})(?:\s+(.+))?$')
+    final isoMatch = RegExp(r'^(\d{4})-(\d{2})-(\d{2})(?:\s+(.+))?$')
         .firstMatch(input);
     if (isoMatch != null) {
       final y = int.parse(isoMatch.group(1)!);
@@ -109,7 +129,9 @@ class DateMentionParser {
         final t = _parseTime(timeStr);
         if (t == null) throw DateMentionParseException(raw);
         return ParsedMention(
-            startsAt: DateTime(y, m, d, t.$1, t.$2), allDay: false);
+          startsAt: DateTime(y, m, d, t.$1, t.$2),
+          allDay: false,
+        );
       }
       return ParsedMention(startsAt: date, allDay: true);
     }
@@ -135,9 +157,15 @@ class DateMentionParser {
       final t = _parseTime(rest);
       if (t == null) throw DateMentionParseException(raw);
       return ParsedMention(
-          startsAt: DateTime(
-              tomorrow.year, tomorrow.month, tomorrow.day, t.$1, t.$2),
-          allDay: false);
+        startsAt: DateTime(
+          tomorrow.year,
+          tomorrow.month,
+          tomorrow.day,
+          t.$1,
+          t.$2,
+        ),
+        allDay: false,
+      );
     }
 
     if (input.startsWith('yesterday')) {
@@ -149,16 +177,27 @@ class DateMentionParser {
       final t = _parseTime(rest);
       if (t == null) throw DateMentionParseException(raw);
       return ParsedMention(
-          startsAt: DateTime(
-              yesterday.year, yesterday.month, yesterday.day, t.$1, t.$2),
-          allDay: false);
+        startsAt: DateTime(
+          yesterday.year,
+          yesterday.month,
+          yesterday.day,
+          t.$1,
+          t.$2,
+        ),
+        allDay: false,
+      );
     }
 
     // ── "next <weekday> [time]" ──────────────────────────────────────────────
     if (input.startsWith('next ')) {
       final rest = input.substring(5).trim();
-      return _parseWeekdayExpr(rest, today, base, forceNext: true,
-          rawFull: raw);
+      return _parseWeekdayExpr(
+        rest,
+        today,
+        base,
+        forceNext: true,
+        rawFull: raw,
+      );
     }
 
     // ── Bare weekday [time] ──────────────────────────────────────────────────
@@ -166,9 +205,13 @@ class DateMentionParser {
       if (input == entry.key ||
           input.startsWith('${entry.key} ') ||
           input.startsWith('${entry.key}\t')) {
-        final rest = input.substring(entry.key.length).trim();
-        return _parseWeekdayExpr(input, today, base,
-            forceNext: false, rawFull: raw);
+        return _parseWeekdayExpr(
+          input,
+          today,
+          base,
+          forceNext: false,
+          rawFull: raw,
+        );
       }
     }
 
@@ -177,8 +220,7 @@ class DateMentionParser {
     if (dayMonthResult != null) return dayMonthResult;
 
     // ── Bare day number: @15 [time] ──────────────────────────────────────────
-    final dayOnly =
-        RegExp(r'^(\d{1,2})(?:\s+(.+))?$').firstMatch(input);
+    final dayOnly = RegExp(r'^(\d{1,2})(?:\s+(.+))?$').firstMatch(input);
     if (dayOnly != null) {
       final day = int.parse(dayOnly.group(1)!);
       if (day >= 1 && day <= 31) {
@@ -232,8 +274,9 @@ class DateMentionParser {
     final t = _parseTime(rest);
     if (t == null) throw DateMentionParseException(rawFull);
     return ParsedMention(
-        startsAt: DateTime(date.year, date.month, date.day, t.$1, t.$2),
-        allDay: false);
+      startsAt: DateTime(date.year, date.month, date.day, t.$1, t.$2),
+      allDay: false,
+    );
   }
 
   // ── Parse day-month combinations ─────────────────────────────────────────
@@ -284,16 +327,20 @@ class DateMentionParser {
     final t = _parseTime(timeToken);
     if (t == null) return null;
     return ParsedMention(
-        startsAt: DateTime(date.year, date.month, date.day, t.$1, t.$2),
-        allDay: false);
+      startsAt: DateTime(date.year, date.month, date.day, t.$1, t.$2),
+      allDay: false,
+    );
   }
 
   // ── Next weekday helper ───────────────────────────────────────────────────
 
   /// Returns the date of the nearest [isoWeekday] (1=Mon…7=Sun).
   /// If [forceNext] is true, always advances past today even if today matches.
-  static DateTime _nextWeekday(DateTime from, int isoWeekday,
-      {required bool forceNext}) {
+  static DateTime _nextWeekday(
+    DateTime from,
+    int isoWeekday, {
+    required bool forceNext,
+  }) {
     int diff = isoWeekday - from.weekday;
     if (diff < 0) diff += 7;
     if (diff == 0 && forceNext) diff = 7;

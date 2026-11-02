@@ -18,12 +18,14 @@ class HabitCalendarSource implements CalendarSource {
       for (final habit in active) {
         for (final date in range.dates) {
           if (!habit.scheduleMask.isScheduled(date)) continue;
-          entries.add(CalendarEntry(
-            date: date,
-            title: habit.name,
-            kind: CalendarEntryKind.habit,
-            sourceId: habit.id,
-          ));
+          entries.add(
+            CalendarEntry(
+              date: date,
+              title: habit.name,
+              kind: CalendarEntryKind.habit,
+              sourceId: habit.id,
+            ),
+          );
         }
       }
       yield entries;
