@@ -15,54 +15,77 @@
 
 ## What is Streakin?
 
-Streakin is an **offline-first, privacy-first** personal productivity app built around two pillars: a **habit tracker** and a **notetaker**. Everything stays on your device, encrypted at rest. No account, no cloud, no analytics — ever.
+Streakin is an **offline-first, privacy-first** personal productivity app built around two pillars: a **habit tracker** and a **notetaker**. Everything stays on your device and is encrypted at rest. There is no account, no cloud and no analytics.
 
-The to-do list, calendar, and dashboard exist to serve those two pillars, not the other way around.
+The to-do list, calendar, goals and dashboard exist to serve those two pillars, not the other way around.
+
+> This is the app for **individuals**. Streakin Business, for teams and companies, is a separate product.
 
 ---
 
 ## Features
 
 ### Habits
-- Daily habit tracking with flexible schedules (every day, weekdays, or custom days)
+- Daily habit tracking with flexible schedules (every day, weekdays or custom days)
 - One-tap check-in with streak tracking and best-streak history
-- **Lock-in streaks** — the moment all habits for the day are done, the day locks in
-- Rest tokens — take planned rest days without breaking your streak (configurable weekly cap)
+- **Lock-in streaks:** the moment all of the day's habits are done, the day locks in
+- Rest tokens let you take planned rest days without breaking your streak, with a configurable weekly cap
 - Weekly and monthly views with completion heatmaps
-- Milestone celebrations at 7, 14, 30, 60, 90, 180, 365 days
+- Milestone celebrations at 7, 14, 30, 60, 90, 180 and 365 days
 
-### Notetaker *(coming in v0.2)*
-- Block-based rich text editor with tables, checklists, code blocks
-- `[[Wiki links]]` between notes — build a personal knowledge graph
-- Folders, tags, and note templates
-- Semantic search powered by an on-device MiniLM model
-- Attachment support: images, PDFs, `.docx`, `.pptx`
-- Note vaults with independent lock/encryption
+### Notetaker
+- Block-based rich text editor with checklists and templates
+- `[[Wiki links]]` and backlinks between notes
+- An interactive graph of how your notes connect
+- Folders and tags
+- `@date` mentions that appear on the calendar and can remind you
+- Fast on-device search (meaning-based search is planned)
+- Attachments: images, PDFs, `.docx` and `.pptx`
+- **Vaults:** separately locked, separately encrypted spaces for your most private notes
 
-### To-do *(coming in v0.3)*
-- Tasks with due dates, priorities, and reminders
-- Tasks appear on the calendar alongside habit events
+### To-do
+- Tasks with due dates, priorities and reminders, shown in several views
+- Turn a checklist item in a note into a task; completing one completes the other
+- You can choose to count today's flagged tasks toward your lock-in
+
+### Goals
+- One primary goal at a time, either dated (with a countdown) or open-ended (counting up)
+- Link habits to your goal to see how well your days line up with it
 
 ### Dashboard
 - Today ring showing daily habit completion
 - Lock-in streak counter
-- Consistency chart (7d / 30d / 90d)
-- At-risk habits — habits not yet done today
-- Quick actions
+- Consistency chart (7, 30 or 90 days)
+- At-risk habits: the ones not yet done today
+- Quick actions: capture a thought, check in, start a note, enter Zen
 
-### Calendar *(coming in v0.2)*
-- Month view showing habits, tasks, and note date mentions in one place
-- The calendar is a read-only projection — it never owns data
+### Calendar
+- Month view showing habits, tasks and dated notes in one place
+- The calendar is a read-only view; it never owns data
+
+### Zen Mode
+- **Writing Zen:** a distraction-free writing space
+- **Focus Zen:** a guided breathing timer for short focus sessions
+
+### Private Sharing
+- Move or share your data between your own devices with encrypted files, with no server involved
+- Protect a file with a passphrase, or pair two devices with a short verification code
+- Preview everything before importing it
 
 ### Privacy & Security
 - All data encrypted with AES-256-GCM via SQLCipher
 - Password-based unlock using Argon2id key derivation
-- Recovery key generated at setup — the only way back in if you forget your password
-- Auto-lock on app background with configurable timeout
+- A recovery key generated at setup is the only way back in if you forget your password
+- Auto-lock when the app goes to the background, with a configurable timeout
+- Increasing wait times after repeated wrong passwords
+- Screen-capture protection and a privacy shield in the app switcher
 - Zero network permissions in release builds
 
-### Zen Mode *(coming in v0.4)*
-- Distraction-free writing and reflection space
+### Desktop
+- Lives in the system tray; closing the window locks your session
+- Reminders keep working while the app is locked
+- Optional launch at login
+- Keyboard shortcuts for common actions
 
 ---
 
@@ -72,9 +95,9 @@ The to-do list, calendar, and dashboard exist to serve those two pillars, not th
 |---|---|
 | Android | ✅ Active development |
 | Windows | ✅ Active development |
-| Linux | 🔜 Phase 2 |
-| iOS | 🔜 Phase 8 |
-| macOS | 🔜 Phase 8 |
+| Linux | ✅ Active development |
+| iOS | 🔜 Planned |
+| macOS | 🔜 Planned |
 
 ---
 
@@ -82,12 +105,9 @@ The to-do list, calendar, and dashboard exist to serve those two pillars, not th
 
 | Version | Status | Highlights |
 |---|---|---|
-| **0.1.0-alpha** | 🚧 In progress | Habits, dashboard, calendar, lock/unlock, encrypted local DB |
-| 0.2.0 | Planned | Notetaker core, wiki links, attachments |
-| 0.3.0 | Planned | To-do list, calendar integration |
-| 0.4.0 | Planned | Zen mode, encrypted export/import |
-| 0.5.0 | Planned | Desktop tray, background reminders |
-| 1.0.0 | Planned | Full feature set, iOS + macOS |
+| **1.0.0-alpha** | 🧪 In testing | Habits, notetaker, vaults, to-do, goals, calendar, dashboard, Zen mode, private sharing, desktop tray and reminders, encrypted local database |
+| 1.0.0 | Planned | First public release on Google Play, the Microsoft Store and Linux |
+| Later | Planned | iOS and macOS, on-device meaning-based search |
 
 ---
 
@@ -100,5 +120,9 @@ Streakin is built on the belief that the best productivity tool is one that stay
 ---
 
 <div align="center">
-  <sub>Built by <a href="https://incantum.in">Incantum</a> · No telemetry · No cloud · Your data stays yours</sub>
+  <sub>Built by <a href="https://incantum.in">Incantum</a></sub>
+</div>
+
+<div align="center">
+  <sub>No telemetry · No cloud · Your data stays yours</sub>
 </div>

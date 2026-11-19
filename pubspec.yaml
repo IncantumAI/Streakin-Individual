@@ -140,14 +140,15 @@ flutter:
 
   assets:
     - assets/icon.png
-    - assets/fonts/
+    # - assets/fonts/
 
 # Windows MSIX packaging (Phase 8A). Run via the release-desktop workflow:
 #   dart pub global activate msix && dart pub global run msix:create
 msix_config:
-  display_name: Streakin            # TODO(rename)
+  display_name: Streakin
   publisher_display_name: Incantum
-  identity_name: in.incantum.streakin  # TODO(rename)
+  # TODO(release-ids): replace with the Package/Identity/Name Partner Center assigns when the Store app is reserved.
+  identity_name: in.incantum.streakin.individual
   msix_version: 0.1.0.0
   logo_path: assets/icon.png
   capabilities: ""                  # no network, no broad file access

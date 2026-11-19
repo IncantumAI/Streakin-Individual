@@ -1,4 +1,4 @@
-package `in`.incantum.streakin
+package `in`.incantum.streakin.individual
 
 import android.os.Bundle
 import android.util.Log

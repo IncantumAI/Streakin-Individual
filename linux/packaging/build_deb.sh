@@ -12,8 +12,8 @@ rm -rf "$ROOT"
 mkdir -p "$ROOT/DEBIAN" "$ROOT/opt/$PKG" "$ROOT/usr/share/applications" \
          "$ROOT/usr/share/icons/hicolor/512x512/apps" "$ROOT/usr/bin"
 cp -r "$BUNDLE/." "$ROOT/opt/$PKG/"
-cp linux/packaging/in.incantum.streakin.desktop "$ROOT/usr/share/applications/"
-cp assets/icon.png "$ROOT/usr/share/icons/hicolor/512x512/apps/in.incantum.streakin.png"
+cp linux/packaging/in.incantum.streakin.individual.desktop "$ROOT/usr/share/applications/"
+cp assets/icon.png "$ROOT/usr/share/icons/hicolor/512x512/apps/in.incantum.streakin.individual.png"
 ln -s "/opt/$PKG/$PKG" "$ROOT/usr/bin/$PKG"
 
 cat > "$ROOT/DEBIAN/control" <<CTL

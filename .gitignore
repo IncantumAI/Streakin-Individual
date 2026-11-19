@@ -124,6 +124,7 @@ Implementation
 .vscode
 .antigravity
 graphify-out
+.graphifyignore
 CLAUDE.md
 
 # Agents
@@ -188,3 +189,12 @@ coverage/html/
 
 # Performance results (machine-specific)
 tool/perf/
+
+# Code-signing certificates and keys (MSIX cert lives in CI secrets): never commit
+*.pem
+*.key
+*.pfx
+*.p12
+*.cer
+*.mobileprovision
+Thumbs.db

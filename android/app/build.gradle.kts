@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    namespace = "in.incantum.streakin"
+    namespace = "in.incantum.streakin.individual"
     compileSdk = 37
     ndkVersion = flutter.ndkVersion
 
@@ -16,7 +16,9 @@ android {
     }
 
     defaultConfig {
-        applicationId = "in.incantum.streakin"
+        // TODO(release-ids): Individual app ID. Permanent once published on Play. Verify before the first release build.
+        // Business app = in.incantum.streakin.business. Also: msix identity_name (pubspec.yaml), Linux APPLICATION_ID.
+        applicationId = "in.incantum.streakin.individual"
         minSdk = 24
         targetSdk = 37
         versionCode = flutter.versionCode

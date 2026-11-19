@@ -9,8 +9,8 @@ APPDIR="build/appimage/Streakin.AppDir" # TODO(rename)
 rm -rf "$APPDIR"
 mkdir -p "$APPDIR/usr/bin"
 cp -r "$BUNDLE/." "$APPDIR/usr/bin/"
-cp linux/packaging/in.incantum.streakin.desktop "$APPDIR/"
-cp assets/icon.png "$APPDIR/in.incantum.streakin.png"
+cp linux/packaging/in.incantum.streakin.individual.desktop "$APPDIR/"
+cp assets/icon.png "$APPDIR/in.incantum.streakin.individual.png"
 cat > "$APPDIR/AppRun" <<'RUN'
 #!/bin/sh
 HERE="$(dirname "$(readlink -f "$0")")"

@@ -193,7 +193,7 @@ class SettingsScreen extends ConsumerWidget {
                 icon: AppIcons.habitDefault,
                 title: 'Rate the app',
                 onTap: () => _launchUrl(
-                  'https://play.google.com/store/apps/details?id=in.incantum.streakin',
+                  'https://play.google.com/store/apps/details?id=in.incantum.streakin.individual',
                 ),
               ),
             ],

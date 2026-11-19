@@ -1,13 +1,13 @@
 # Flatpak manifest (optional, preferred for Flathub).
 # TODO(rename): app-id and command follow the final brand (spec §19 item 6).
-app-id: in.incantum.streakin
+app-id: in.incantum.streakin.individual
 runtime: org.freedesktop.Platform
 runtime-version: '24.08'
 sdk: org.freedesktop.Sdk
 command: streakin
 finish-args:
   # Minimal permissions: no network, no host filesystem. Data lives in
-  # ~/.var/app/in.incantum.streakin.
+  # ~/.var/app/in.incantum.streakin.individual.
   - --share=ipc
   - --socket=wayland
   - --socket=fallback-x11
@@ -21,8 +21,8 @@ modules:
     build-commands:
       - cp -r bundle /app/streakin-bundle
       - install -Dm755 streakin-launcher.sh /app/bin/streakin
-      - install -Dm644 in.incantum.streakin.desktop /app/share/applications/in.incantum.streakin.desktop
-      - install -Dm644 icon.png /app/share/icons/hicolor/512x512/apps/in.incantum.streakin.png
+      - install -Dm644 in.incantum.streakin.individual.desktop /app/share/applications/in.incantum.streakin.individual.desktop
+      - install -Dm644 icon.png /app/share/icons/hicolor/512x512/apps/in.incantum.streakin.individual.png
     sources:
       - type: dir
         path: ../../build/linux/x64/release
@@ -31,6 +31,6 @@ modules:
         commands:
           - exec /app/streakin-bundle/streakin "$@"
       - type: file
-        path: in.incantum.streakin.desktop
+        path: in.incantum.streakin.individual.desktop
       - type: file
         path: ../../assets/icon.png

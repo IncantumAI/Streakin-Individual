@@ -11,7 +11,7 @@ class StartupRegistration {
 
   // TODO(rename): launcher name / id.
   static const _name = 'Streakin';
-  static const _desktopFile = 'in.incantum.streakin.desktop';
+  static const _desktopFile = 'in.incantum.streakin.individual.desktop';
 
   static bool get supported => Platform.isWindows || Platform.isLinux;
 
